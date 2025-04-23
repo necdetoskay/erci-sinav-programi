@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # PostgreSQL veritabanı
+  postgres:
+    image: postgres:15-alpine
+    container_name: kentwebadmin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kentwebadmin
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - kentkonut-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin panel
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: kentwebadmin-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@kentwebadmin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - kentkonut-network
+
+volumes:
+  postgres-data:
+  pgadmin-data:
+
+networks:
+  kentkonut-network:
+    driver: bridge 
