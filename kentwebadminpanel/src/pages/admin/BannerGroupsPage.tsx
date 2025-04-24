@@ -332,7 +332,7 @@ const BannerGroupsPage: React.FC = () => {
         </Alert>
       ) : (
         <Box sx={{ width: '100%' }}>
-          <Paper sx={{ width: '100%', mb: 2, boxShadow: 'none' }}>
+          <Paper sx={{ width: '100%', mb: 2, boxShadow: 'none', bgcolor: 'transparent' }}>
             <List sx={{ width: '100%', padding: 0, py: 2 }}>
               {groups.map((group, index) => (
                 <React.Fragment key={group.id}>
