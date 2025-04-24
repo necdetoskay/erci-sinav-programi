@@ -1,24 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box } from '@mui/material';
 import BannerProgressBar from './BannerProgressBar';
+import { Banner } from '../../types/banner.types';
 import './BannerSlider.css';
-
-interface Banner {
-  id: number;
-  imageUrl: string;
-  targetUrl?: string;
-  metadata?: {
-    backgroundColor?: string;
-    altText?: string;
-    progressBar?: {
-      show: boolean;
-      position: 'top' | 'bottom';
-      style: 'linear' | 'circular';
-      color: 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning';
-      thickness: number;
-    };
-  };
-}
 
 interface BannerSliderProps {
   banners: Banner[];
@@ -101,18 +85,24 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
               className={`banner-slider__item ${index === currentIndex ? 'active' : ''}`}
               style={{
                 backgroundImage: `url(${banner.imageUrl})`,
-                backgroundColor: banner.metadata?.backgroundColor || '#000',
-                opacity: index === currentIndex ? 1 : 0,
-                transition: 'opacity 0.5s ease-in-out'
+                backgroundColor: banner.metadata?.backgroundColor || 'transparent'
               }}
             >
-              <a href={banner.targetUrl} target="_blank" rel="noopener noreferrer">
-                <img
-                  src={banner.imageUrl}
-                  alt={banner.metadata?.altText || 'Banner'}
-                  className="banner-slider__image"
+              {banner.targetUrl && (
+                <a
+                  href={banner.targetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    display: 'block'
+                  }}
                 />
-              </a>
+              )}
             </div>
           ))}
         </div>
@@ -137,7 +127,7 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
                 startTimeRef.current = Date.now();
               }}
             >
-              &lt;
+              ‹
             </button>
             <button
               className="banner-slider__nav banner-slider__nav--next"
@@ -147,7 +137,7 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
                 startTimeRef.current = Date.now();
               }}
             >
-              &gt;
+              ›
             </button>
           </>
         )}

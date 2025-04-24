@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   AppBar, 
@@ -13,7 +13,7 @@ import {
   MenuItem,
   Divider
 } from '@mui/material';
-import { AccountCircle, Logout } from '@mui/icons-material';
+import { AccountCircle, Logout, Menu as MenuIcon } from '@mui/icons-material';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
 
@@ -25,10 +25,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const SIDEBAR_WIDTH = 240; // Sidebar genişliği
+  const SIDEBAR_WIDTH = 250; // Sidebar genişliği
   
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  
+  // Sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -42,6 +45,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     handleClose();
     logout();
     navigate('/login');
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
   return (
@@ -60,19 +67,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         }}
       >
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography 
-            variant="h6" 
-            noWrap 
-            component="div"
-            onClick={() => navigate('/')}
-            sx={{ 
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center'
-            }}
-          >
-            Kent Konut Yönetim Paneli
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={toggleSidebar}
+              sx={{ mr: 2, display: { sm: 'none' } }}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography 
+              variant="h6" 
+              noWrap 
+              component="div"
+              onClick={() => navigate('/')}
+              sx={{ 
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+            >
+              Kent Konut Yönetim Paneli
+            </Typography>
+          </Box>
           
           <div>
             <IconButton
@@ -130,19 +148,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </Toolbar>
       </AppBar>
       
-      {/* Sol menü - Kalıcı olarak gösteriliyor */}
-      <Sidebar />
+      {/* Sol menü - Kalıcı olarak gösteriliyor (masaüstü) ve geçici olarak (mobil) */}
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       {/* Ana içerik - Sidebar'ın yanında */}
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${SIDEBAR_WIDTH}px)` },
-          marginLeft: { xs: 0, sm: `${SIDEBAR_WIDTH}px` },
-          marginTop: '64px', // AppBar yüksekliği
-          minHeight: 'calc(100vh - 64px)'
+          position: 'absolute',
+          left: '300px', // 250px (menü) + 50px (boşluk)
+          right: 0,
+          top: '64px',
+          bottom: 0,
+          width: 'auto',
+          p: 0,
+          m: 0
         }}
       >
         {children}

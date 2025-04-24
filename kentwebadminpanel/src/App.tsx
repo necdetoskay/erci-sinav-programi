@@ -9,12 +9,40 @@ import RegisterForm from './components/auth/RegisterForm';
 import Dashboard from './pages/Dashboard';
 import BannerManagementPage from './pages/admin/BannerManagementPage';
 import BannerStatsPage from './pages/admin/BannerStatsPage';
+import BannerGroupsPage from './pages/admin/BannerGroupsPage';
+import BannerGroupDetailPage from './pages/admin/BannerGroupDetailPage';
 import { SnackbarProvider } from 'notistack';
 import { CircularProgress, Box } from '@mui/material';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Check if token exists but is expired or invalid
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Check if the token is about to expire by decoding it
+      try {
+        // Simple JWT check (this is not a full JWT decoding)
+        // A proper implementation would decode the token and check its expiration
+        const tokenParts = token.split('.');
+        if (tokenParts.length === 3) {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          if (payload.exp && payload.exp * 1000 < Date.now()) {
+            console.warn('Token expired, logging out');
+            logout();
+            navigate('/login');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking token:', error);
+      }
+    }
+  }, [logout, navigate]);
   
   if (isLoading) {
     return (
@@ -75,6 +103,8 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+            
+            {/* Banner Management Routes */}
             <Route path="/banners" element={
               <ProtectedRoute>
                 <Layout>
@@ -89,6 +119,45 @@ function App() {
                 </Layout>
               </ProtectedRoute>
             } />
+            
+            {/* Banner Groups Routes */}
+            <Route path="/admin/banner-groups" element={
+              <ProtectedRoute>
+                <Layout>
+                  <BannerGroupsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/banner-group/:groupId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <BannerGroupDetailPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/banner-groups/edit/:groupId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <BannerGroupsPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/banner-group/:groupId/add" element={
+              <ProtectedRoute>
+                <Layout>
+                  <BannerManagementPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/banner-group/:groupId/edit/:bannerId" element={
+              <ProtectedRoute>
+                <Layout>
+                  <BannerManagementPage />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            
+            {/* Legacy redirects */}
             <Route path="/carousel" element={
               <Navigate to="/banners" replace />
             } />

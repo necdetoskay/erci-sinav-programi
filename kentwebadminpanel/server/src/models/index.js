@@ -3,6 +3,7 @@ import Role from './role.model.js';
 import Permission from './permission.model.js';
 import Banner from './banner.model.js';
 import BannerClick from './banner-click.model.js';
+import BannerGroup from './banner-group.model.js';
 import sequelize from '../db/connection.js';
 
 // Define model relationships
@@ -24,6 +25,10 @@ Permission.belongsToMany(User, { through: UserPermission });
 
 // Banner ve BannerClick ilişkisi banner-click.model.js'de tanımlandı
 
+// BannerGroup ve Banner ilişkisi
+BannerGroup.hasMany(Banner, { foreignKey: 'groupId' });
+Banner.belongsTo(BannerGroup, { foreignKey: 'groupId' });
+
 // Export all models and relationships
 export {
   User,
@@ -34,5 +39,6 @@ export {
   UserPermission,
   Banner,
   BannerClick,
+  BannerGroup,
   sequelize
 }; 

@@ -16,6 +16,7 @@ import { globalErrorHandler, AppError } from './middleware/error.middleware.js';
 
 // Routes
 import bannerRoutes from './routes/banner.routes.js';
+import bannerGroupRoutes from './routes/banner-group.routes.js';
 import uploadRoutes from './routes/upload.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
@@ -45,6 +46,7 @@ app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // API Routes
 app.use('/api/banners', bannerRoutes);
+app.use('/api/banner-groups', bannerGroupRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

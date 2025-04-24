@@ -31,17 +31,55 @@ export interface BannerMetadata {
   };
 }
 
+export interface BannerGroup {
+  id: string;
+  name: string;
+  description?: string;
+  defaultDimensions: BannerDimensions;
+  defaultSettings?: {
+    animationType?: string;
+    backgroundColor?: string;
+    progressBar?: BannerProgressBarConfig;
+  };
+  bannersCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateBannerGroupRequest {
+  name: string;
+  description?: string;
+  defaultDimensions: BannerDimensions;
+  defaultSettings?: {
+    animationType?: string;
+    backgroundColor?: string;
+    progressBar?: BannerProgressBarConfig;
+  };
+}
+
+export interface UpdateBannerGroupRequest {
+  name?: string;
+  description?: string;
+  defaultDimensions?: BannerDimensions;
+  defaultSettings?: {
+    animationType?: string;
+    backgroundColor?: string;
+    progressBar?: BannerProgressBarConfig;
+  };
+}
+
 export interface Banner {
   id: string;
+  groupId: string;
   imageUrl: string;
   order: number;
-  startDate: string | Date;
-  endDate?: string | Date | null;
+  startDate: string;
+  endDate?: string | null;
   targetUrl: string;
   isActive: boolean;
   metadata?: BannerMetadata;
-  created_at?: string;
-  updated_at?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface BannerClickStats {
@@ -57,13 +95,14 @@ export interface BannerClickStats {
 }
 
 export interface CreateBannerRequest {
+  groupId: string;
   imageUrl: string;
-  order?: number;
-  startDate?: string | Date;
-  endDate?: string | Date | null;
+  order: number;
+  startDate: string;
+  endDate?: string | null;
   targetUrl: string;
-  isActive?: boolean;
-  metadata?: Partial<BannerMetadata>;
+  isActive: boolean;
+  metadata?: BannerMetadata;
 }
 
 export interface UpdateBannerRequest {
@@ -84,4 +123,12 @@ export interface ImageUploadResponse {
     dimensions: BannerDimensions;
     processedImage: any;
   };
+}
+
+export interface BannerProgressBarConfig {
+  show: boolean;
+  position: 'top' | 'bottom';
+  style: 'linear' | 'circular';
+  color: 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning';
+  thickness: number;
 } 

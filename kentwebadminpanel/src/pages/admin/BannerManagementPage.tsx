@@ -25,7 +25,11 @@ import {
   Grid,
   Switch,
   FormControlLabel,
-  Slider
+  Slider,
+  Alert,
+  Snackbar,
+  CircularProgress,
+  Link
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -37,29 +41,78 @@ import {
   ArrowDownward as ArrowDownwardIcon,
   Image as ImageIcon,
   Upload as UploadIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
-import { Banner } from '../../components/banner/BannerSlider';
+import { Banner, CreateBannerRequest, UpdateBannerRequest, BannerGroup } from '../../types/banner.types';
 import { 
-  getAllBanners, 
+  getBanners, 
   createBanner, 
   updateBanner, 
   deleteBanner,
-  createBannerWithImage,
-  updateBannerWithImage,
-} from '../../services/banner.service';
+  uploadBannerImage,
+  reorderBanners,
+  getBannerGroups,
+  getBannerGroup,
+  loadBanners
+} from '../../services/bannerService';
 import { useSnackbar } from 'notistack';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import BannerSlider from '../../components/banner/BannerSlider';
 import BannerPreview from '../../components/banner/BannerPreview';
+import { BannerImageProcessor } from '../../components/banner/BannerImageProcessor';
+import { BannerImageEditor } from '../../components/banner/BannerImageEditor';
+import { useTheme } from '@mui/material/styles';
+import { useNavigate, useLocation } from 'react-router-dom';
+import trLocale from 'date-fns/locale/tr';
+import { format, parseISO } from 'date-fns';
+import { useAuth } from '../../context/AuthContext';
+
+type DialogMode = 'create' | 'edit';
 
 const BannerManagementPage: React.FC = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const groupIdFromUrl = queryParams.get('groupId');
+  const { isAuthenticated, logout } = useAuth();
+
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
-  const [currentBanner, setCurrentBanner] = useState<Partial<Banner>>({});
+  const [dialogMode, setDialogMode] = useState<DialogMode>('create');
+  const [currentBanner, setCurrentBanner] = useState<CreateBannerRequest | (UpdateBannerRequest & { id: string })>({
+    groupId: groupIdFromUrl || '',
+    imageUrl: '',
+    targetUrl: '',
+    order: 0,
+    startDate: new Date().toISOString(),
+    endDate: new Date().toISOString(),
+    isActive: true,
+    metadata: {
+      animationType: 'fade',
+      backgroundColor: 'transparent',
+      altText: '',
+      seo: {
+        title: '',
+        description: '',
+      },
+      dimensions: {
+        width: 1920,
+        height: 1080,
+        aspectRatio: '16:9',
+      },
+      progressBar: {
+        show: true,
+        position: 'bottom',
+        style: 'linear',
+        color: 'primary',
+        thickness: 3,
+      },
+    },
+  });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -67,84 +120,143 @@ const BannerManagementPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { enqueueSnackbar } = useSnackbar();
   const [showPreview, setShowPreview] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error' | 'info' | 'warning'
+  });
+  const [error, setError] = useState(false);
 
-  // Banner verilerini yükle
-  const loadBanners = async () => {
+  const fetchBanners = async () => {
+    setLoading(true);
+    setError(false);
+    
     try {
-      setLoading(true);
-      const data = await getAllBanners();
-      setBanners(data);
-    } catch (error) {
-      console.error('Bannerları yüklerken hata:', error);
-      enqueueSnackbar('Bannerlar yüklenirken bir hata oluştu', { variant: 'error' });
+      if (!isAuthenticated) {
+        console.error('User is not authenticated');
+        logout();
+        navigate('/login');
+        return;
+      }
+      
+      const banners = await loadBanners(groupIdFromUrl || undefined);
+      setBanners(banners);
+    } catch (error: any) {
+      console.error('Error loading banners:', error);
+      
+      if (error.response && error.response.status === 401) {
+        setSnackbar({
+          open: true,
+          message: 'Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.',
+          severity: 'error'
+        });
+        logout();
+        navigate('/login');
+        return;
+      }
+      
+      setSnackbar({
+        open: true,
+        message: error.response?.status === 404 
+          ? 'Banner API endpoint\'i bulunamadı.' 
+          : 'Bannerlar yüklenirken bir hata oluştu.',
+        severity: 'error'
+      });
+      setError(true);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadBanners();
-  }, []);
+    fetchBanners();
 
-  // Dialog işlemleri
-  const handleOpenDialog = (mode: 'create' | 'edit', banner?: Banner) => {
+    return () => {
+      setCurrentBanner(undefined);
+    };
+  }, [groupIdFromUrl]);
+
+  const handleOpenDialog = (mode: DialogMode, banner?: Banner) => {
     setDialogMode(mode);
-    setCurrentBanner(mode === 'create' ? {
-      isActive: true,
-      order: banners.length,
-      metadata: {
-        animationType: 'fade',
-        backgroundColor: '#000000',
-        altText: '',
-        seo: {
-          title: '',
-          description: ''
+    if (mode === 'edit' && banner) {
+      const { id, ...bannerData } = banner;
+      setCurrentBanner({ ...bannerData, id });
+      setImagePreview(banner.imageUrl);
+    } else {
+      setCurrentBanner({
+        groupId: groupIdFromUrl || '',
+        imageUrl: '',
+        targetUrl: '',
+        order: banners.length,
+        startDate: new Date().toISOString(),
+        endDate: new Date().toISOString(),
+        isActive: true,
+        metadata: {
+          animationType: 'fade',
+          backgroundColor: 'transparent',
+          altText: '',
+          seo: {
+            title: '',
+            description: '',
+          },
+          dimensions: {
+            width: 1920,
+            height: 1080,
+            aspectRatio: '16:9',
+          },
+          progressBar: {
+            show: true,
+            position: 'bottom',
+            style: 'linear',
+            color: 'primary',
+            thickness: 3,
+          },
         },
-        dimensions: {
-          width: 0,
-          height: 0,
-          aspectRatio: '16:9'
-        }
-      }
-    } : { ...banner });
-    setOpenDialog(true);
-    setFormErrors({});
+      });
+    }
     setImageFile(null);
-    setImagePreview(mode === 'edit' && banner?.imageUrl ? banner.imageUrl : null);
+    setFormErrors({});
+    setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setCurrentBanner({});
+    setCurrentBanner({
+      groupId: groupIdFromUrl || '',
+      imageUrl: '',
+      targetUrl: '',
+      order: 0,
+      startDate: new Date().toISOString(),
+      endDate: new Date().toISOString(),
+      isActive: true,
+      metadata: {
+        animationType: 'fade',
+        backgroundColor: 'transparent',
+        altText: '',
+        seo: {
+          title: '',
+          description: '',
+        },
+        dimensions: {
+          width: 1920,
+          height: 1080,
+          aspectRatio: '16:9',
+        },
+        progressBar: {
+          show: true,
+          position: 'bottom',
+          style: 'linear',
+          color: 'primary',
+          thickness: 3,
+        },
+      },
+    });
     setImageFile(null);
     setImagePreview(null);
   };
 
-  // Dosya seçme
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      const file = event.target.files[0];
-      setImageFile(file);
-      
-      // Önizleme oluştur
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        if (e.target?.result) {
-          setImagePreview(e.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Dosya seçme alanını aç
-  const handleOpenFileSelect = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
-  // Form alanlarını doğrulama
   const validateForm = () => {
     const errors: Record<string, string> = {};
     
@@ -160,49 +272,106 @@ const BannerManagementPage: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Form gönderme
   const handleSubmit = async () => {
     if (!validateForm()) return;
     
     try {
-      // Resim yükleme varsa
-      if (imageFile) {
-        if (dialogMode === 'create') {
-          await createBannerWithImage(currentBanner, imageFile);
-          enqueueSnackbar('Banner ve resim başarıyla oluşturuldu', { variant: 'success' });
+      setLoading(true);
+      
+      if (dialogMode === 'create') {
+        if (imageFile) {
+          await createBanner(currentBanner as CreateBannerRequest);
         } else {
-          if (currentBanner.id) {
-            await updateBannerWithImage(currentBanner.id, currentBanner, imageFile);
-            enqueueSnackbar('Banner ve resim başarıyla güncellendi', { variant: 'success' });
-          }
+          await createBanner(currentBanner as CreateBannerRequest);
         }
+        enqueueSnackbar('Banner başarıyla oluşturuldu', { variant: 'success' });
       } else {
-        // Sadece veri güncelleme
-        if (dialogMode === 'create') {
-          await createBanner(currentBanner);
-          enqueueSnackbar('Banner başarıyla oluşturuldu', { variant: 'success' });
-        } else {
-          if (currentBanner.id) {
-            await updateBanner(currentBanner.id, currentBanner);
-            enqueueSnackbar('Banner başarıyla güncellendi', { variant: 'success' });
+        if ('id' in currentBanner) {
+          const { id, ...updateData } = currentBanner;
+          if (imageFile) {
+            await updateBanner(id, updateData);
+          } else {
+            await updateBanner(id, updateData);
           }
+          enqueueSnackbar('Banner başarıyla güncellendi', { variant: 'success' });
+        } else {
+          throw new Error('Banner ID is missing for update operation');
         }
       }
+      
+      await fetchBanners();
       handleCloseDialog();
-      loadBanners();
     } catch (error) {
       console.error('Banner kaydedilirken hata:', error);
       enqueueSnackbar('Banner kaydedilirken bir hata oluştu', { variant: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Banner silme
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+    setIsProcessing(true);
+  };
+
+  const handleProcessed = async (processedImages: {
+    desktop: File;
+    tablet: File;
+    mobile: File;
+  }) => {
+    try {
+      const uploadResponse = await uploadBannerImage(processedImages.desktop);
+      
+      setCurrentBanner(prev => ({
+        ...prev,
+        imageUrl: uploadResponse.imageUrl,
+        metadata: {
+          ...prev.metadata,
+          dimensions: uploadResponse.dimensions
+        }
+      }));
+
+      await Promise.all([
+        uploadBannerImage(processedImages.tablet),
+        uploadBannerImage(processedImages.mobile)
+      ]);
+
+      setIsProcessing(false);
+      setSelectedFile(null);
+      enqueueSnackbar('Resimler başarıyla yüklendi', { variant: 'success' });
+    } catch (error) {
+      console.error('Resimler yüklenirken hata:', error);
+      enqueueSnackbar('Resimler yüklenirken bir hata oluştu', { variant: 'error' });
+      setIsProcessing(false);
+      setSelectedFile(null);
+    }
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setCurrentBanner((prev) => {
+      const newBanner = { ...prev };
+      
+      const fields = field.split('.');
+      let current: any = newBanner;
+      
+      for (let i = 0; i < fields.length - 1; i++) {
+        if (!current[fields[i]]) {
+          current[fields[i]] = {};
+        }
+        current = current[fields[i]];
+      }
+      
+      current[fields[fields.length - 1]] = value;
+      return newBanner;
+    });
+  };
+
   const handleDeleteBanner = async (id: string) => {
     if (window.confirm('Bu banner\'ı silmek istediğinizden emin misiniz?')) {
       try {
         await deleteBanner(id);
         enqueueSnackbar('Banner başarıyla silindi', { variant: 'success' });
-        loadBanners();
+        fetchBanners();
       } catch (error) {
         console.error('Banner silinirken hata:', error);
         enqueueSnackbar('Banner silinirken bir hata oluştu', { variant: 'error' });
@@ -210,7 +379,6 @@ const BannerManagementPage: React.FC = () => {
     }
   };
 
-  // Banner sıralama
   const handleReorderBanner = async (id: string, direction: 'up' | 'down') => {
     const index = banners.findIndex(b => b.id === id);
     if (
@@ -223,163 +391,175 @@ const BannerManagementPage: React.FC = () => {
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     const updatedBanners = [...banners];
     
-    // Swap orders
     const temp = updatedBanners[index].order;
     updatedBanners[index].order = updatedBanners[newIndex].order;
     updatedBanners[newIndex].order = temp;
     
-    // Swap positions in array
     [updatedBanners[index], updatedBanners[newIndex]] = [updatedBanners[newIndex], updatedBanners[index]];
     
     setBanners(updatedBanners);
     
     try {
-      // Update both banners in the database
       await updateBanner(updatedBanners[index].id, { order: updatedBanners[index].order });
       await updateBanner(updatedBanners[newIndex].id, { order: updatedBanners[newIndex].order });
       enqueueSnackbar('Banner sıralaması güncellendi', { variant: 'success' });
     } catch (error) {
       console.error('Banner sıralaması güncellenirken hata:', error);
       enqueueSnackbar('Sıralama güncellenirken bir hata oluştu', { variant: 'error' });
-      loadBanners(); // Revert to original state
+      fetchBanners();
     }
   };
 
-  // Form alanı değişikliği
-  const handleInputChange = (field: string, value: any) => {
-    if (field.includes('.')) {
-      const [parent, child, subChild] = field.split('.');
-      
-      if (subChild) {
-        setCurrentBanner({
-          ...currentBanner,
-          [parent]: {
-            ...currentBanner[parent as keyof typeof currentBanner],
-            [child]: {
-              ...(currentBanner[parent as keyof typeof currentBanner] as any)?.[child],
-              [subChild]: value
-            }
-          }
-        });
-      } else {
-        setCurrentBanner({
-          ...currentBanner,
-          [parent]: {
-            ...currentBanner[parent as keyof typeof currentBanner],
-            [child]: value
-          }
-        });
+  const handlePreviewOpen = () => {
+    setPreviewOpen(true);
+  };
+
+  const handlePreviewClose = () => {
+    setPreviewOpen(false);
+  };
+
+  const getPreviewBanner = (): Banner => {
+    return {
+      id: 'preview',
+      imageUrl: currentBanner.imageUrl || '',
+      order: currentBanner.order || 0,
+      startDate: currentBanner.startDate || new Date().toISOString(),
+      endDate: currentBanner.endDate || null,
+      targetUrl: currentBanner.targetUrl || '',
+      isActive: currentBanner.isActive === undefined ? true : currentBanner.isActive,
+      metadata: {
+        animationType: currentBanner.metadata?.animationType || 'fade',
+        backgroundColor: currentBanner.metadata?.backgroundColor || 'transparent',
+        altText: currentBanner.metadata?.altText || '',
+        seo: {
+          title: currentBanner.metadata?.seo?.title || '',
+          description: currentBanner.metadata?.seo?.description || ''
+        },
+        dimensions: {
+          width: currentBanner.metadata?.dimensions?.width || 1920,
+          height: currentBanner.metadata?.dimensions?.height || 1080,
+          aspectRatio: currentBanner.metadata?.dimensions?.aspectRatio || '16:9'
+        },
+        progressBar: {
+          show: currentBanner.metadata?.progressBar?.show ?? true,
+          position: (currentBanner.metadata?.progressBar?.position || 'bottom') as 'top' | 'bottom',
+          style: (currentBanner.metadata?.progressBar?.style || 'linear') as 'linear' | 'circular',
+          color: (currentBanner.metadata?.progressBar?.color || 'primary') as 'primary' | 'secondary' | 'success' | 'error' | 'info' | 'warning',
+          thickness: currentBanner.metadata?.progressBar?.thickness || 3
+        }
       }
-    } else {
-      setCurrentBanner({
-        ...currentBanner,
-        [field]: value
-      });
-    }
+    };
+  };
+
+  const renderErrorState = () => {
+    return (
+      <Box sx={{ textAlign: 'center', p: 4 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {snackbar.message}
+        </Alert>
+        <Button 
+          variant="contained" 
+          onClick={fetchBanners}
+          startIcon={<RefreshIcon />}
+        >
+          Tekrar Dene
+        </Button>
+      </Box>
+    );
   };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Banner Yönetimi</Typography>
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog('create')}
-        >
-          Yeni Banner Ekle
-        </Button>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<VisibilityIcon />}
-          onClick={() => setShowPreview(true)}
-          disabled={banners.length === 0}
-        >
-          Önizleme
-        </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">
+          {groupIdFromUrl ? 'Grup Banner Yönetimi' : 'Banner Yönetimi'}
+        </Typography>
+        <Box>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog('create')}
+            sx={{ mr: 1 }}
+          >
+            Yeni Banner Ekle
+          </Button>
+          {groupIdFromUrl && (
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/admin/banner-groups')}
+            >
+              Gruplara Dön
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {loading ? (
-        <Typography>Yükleniyor...</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        renderErrorState()
+      ) : banners.length === 0 ? (
+        <Alert severity="info">
+          Henüz banner bulunmuyor. Yeni bir banner eklemek için "Yeni Banner Ekle" butonuna tıklayın.
+        </Alert>
       ) : (
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
+                <TableCell width="50">Sıra</TableCell>
                 <TableCell>Görsel</TableCell>
-                <TableCell>Durum</TableCell>
-                <TableCell>Sıra</TableCell>
-                <TableCell>Başlangıç</TableCell>
-                <TableCell>Bitiş</TableCell>
                 <TableCell>Hedef URL</TableCell>
-                <TableCell>İşlemler</TableCell>
+                <TableCell width="120">Başlangıç</TableCell>
+                <TableCell width="120">Bitiş</TableCell>
+                <TableCell width="80">Durum</TableCell>
+                <TableCell width="120">İşlemler</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {banners.map((banner) => (
                 <TableRow key={banner.id}>
+                  <TableCell>{banner.order}</TableCell>
                   <TableCell>
-                    <Box 
-                      component="img" 
+                    <img 
                       src={banner.imageUrl} 
-                      alt={banner.metadata?.altText || 'Banner'}
-                      sx={{ width: 100, height: 56, objectFit: 'cover', borderRadius: 1 }}
+                      alt="Banner" 
+                      style={{ width: '120px', height: '40px', objectFit: 'cover' }} 
                     />
+                  </TableCell>
+                  <TableCell>
+                    <Link href={banner.targetUrl} target="_blank" rel="noopener">
+                      {banner.targetUrl}
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    {format(new Date(banner.startDate), 'dd.MM.yyyy')}
+                  </TableCell>
+                  <TableCell>
+                    {banner.endDate ? format(new Date(banner.endDate), 'dd.MM.yyyy') : '-'}
                   </TableCell>
                   <TableCell>
                     <Chip 
                       label={banner.isActive ? 'Aktif' : 'Pasif'} 
-                      color={banner.isActive ? 'success' : 'default'}
+                      color={banner.isActive ? 'success' : 'default'} 
+                      size="small" 
                     />
                   </TableCell>
-                  <TableCell>{banner.order}</TableCell>
-                  <TableCell>{new Date(banner.startDate).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {banner.endDate ? new Date(banner.endDate).toLocaleDateString() : 'Süresiz'}
-                  </TableCell>
-                  <TableCell>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        maxWidth: 150, 
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
+                    <IconButton
+                      size="small"
+                      onClick={() => handleOpenDialog('edit', banner)}
                     >
-                      {banner.targetUrl}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex' }}>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleReorderBanner(banner.id, 'up')}
-                        disabled={banners.indexOf(banner) === 0}
-                      >
-                        <ArrowUpwardIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleReorderBanner(banner.id, 'down')}
-                        disabled={banners.indexOf(banner) === banners.length - 1}
-                      >
-                        <ArrowDownwardIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleOpenDialog('edit', banner)}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleDeleteBanner(banner.id)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDeleteBanner(banner.id)}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -388,255 +568,60 @@ const BannerManagementPage: React.FC = () => {
         </TableContainer>
       )}
 
-      {/* Banner Ekleme/Düzenleme Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>
           {dialogMode === 'create' ? 'Yeni Banner Ekle' : 'Banner Düzenle'}
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  border: '1px dashed',
-                  borderColor: 'divider',
-                  borderRadius: 1,
-                  p: 2,
-                  height: 250,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  backgroundColor: '#f5f5f5'
+              <Typography variant="h6" gutterBottom>
+                Banner Resmi
+              </Typography>
+              <BannerImageEditor
+                banner={currentBanner}
+                onImageChange={handleFileSelect}
+                onCropChange={(crop) => {
+                  setCurrentBanner(prev => ({
+                    ...prev,
+                    metadata: {
+                      ...prev.metadata,
+                      crop
+                    }
+                  }));
                 }}
-              >
-                {imagePreview ? (
-                  <Box
-                    component="img"
-                    src={imagePreview}
-                    alt="Banner önizleme"
-                    sx={{
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain'
-                    }}
-                  />
-                ) : (
-                  <ImageIcon sx={{ fontSize: 80, color: 'text.secondary' }} />
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-                <Button
-                  variant="contained"
-                  startIcon={<UploadIcon />}
-                  onClick={handleOpenFileSelect}
-                  sx={{ mt: 2 }}
-                >
-                  Resim Yükle
-                </Button>
-                {formErrors.imageUrl && (
-                  <FormHelperText error>{formErrors.imageUrl}</FormHelperText>
-                )}
-              </Box>
+                onZoomChange={(zoom) => {
+                  setCurrentBanner(prev => ({
+                    ...prev,
+                    metadata: {
+                      ...prev.metadata,
+                      zoom
+                    }
+                  }));
+                }}
+              />
+              {formErrors.image && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  {formErrors.image}
+                </Alert>
+              )}
             </Grid>
+
             <Grid item xs={12} md={6}>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Hedef URL"
-                    fullWidth
-                    value={currentBanner.targetUrl || ''}
-                    onChange={(e) => handleInputChange('targetUrl', e.target.value)}
-                    error={!!formErrors.targetUrl}
-                    helperText={formErrors.targetUrl}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                      <DatePicker
-                        label="Başlangıç Tarihi"
-                        value={currentBanner.startDate ? new Date(currentBanner.startDate) : new Date()}
-                        onChange={(date) => handleInputChange('startDate', date)}
-                      />
-                    </LocalizationProvider>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                      <DatePicker
-                        label="Bitiş Tarihi (Opsiyonel)"
-                        value={currentBanner.endDate ? new Date(currentBanner.endDate) : null}
-                        onChange={(date) => handleInputChange('endDate', date)}
-                      />
-                    </LocalizationProvider>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Sıra"
-                    type="number"
-                    fullWidth
-                    value={currentBanner.order || 0}
-                    onChange={(e) => handleInputChange('order', parseInt(e.target.value, 10))}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={currentBanner.isActive === undefined ? true : currentBanner.isActive}
-                        onChange={(e) => handleInputChange('isActive', e.target.checked)}
-                      />
-                    }
-                    label="Aktif"
-                  />
-                </Grid>
-              </Grid>
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-                Ek Bilgiler
+              <Typography variant="h6" gutterBottom>
+                Banner Bilgileri
               </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Alt Text"
-                    fullWidth
-                    value={currentBanner.metadata?.altText || ''}
-                    onChange={(e) => handleInputChange('metadata.altText', e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Animasyon Tipi</InputLabel>
-                    <Select
-                      value={currentBanner.metadata?.animationType || 'fade'}
-                      onChange={(e) => handleInputChange('metadata.animationType', e.target.value)}
-                      label="Animasyon Tipi"
-                    >
-                      <MenuItem value="fade">Fade</MenuItem>
-                      <MenuItem value="slide">Slide</MenuItem>
-                      <MenuItem value="zoom">Zoom</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="Arkaplan Rengi"
-                    fullWidth
-                    value={currentBanner.metadata?.backgroundColor || '#000000'}
-                    onChange={(e) => handleInputChange('metadata.backgroundColor', e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="SEO Başlık"
-                    fullWidth
-                    value={currentBanner.metadata?.seo?.title || ''}
-                    onChange={(e) => handleInputChange('metadata.seo.title', e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    label="SEO Açıklama"
-                    fullWidth
-                    value={currentBanner.metadata?.seo?.description || ''}
-                    onChange={(e) => handleInputChange('metadata.seo.description', e.target.value)}
-                  />
-                </Grid>
-              </Grid>
-            </Grid>
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom>
-                Progress Bar Ayarları
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={currentBanner.metadata?.progressBar?.show ?? true}
-                        onChange={(e) =>
-                          handleInputChange('metadata.progressBar.show', e.target.checked)
-                        }
-                      />
-                    }
-                    label="Progress Bar Göster"
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Pozisyon</InputLabel>
-                    <Select
-                      value={currentBanner.metadata?.progressBar?.position ?? 'bottom'}
-                      onChange={(e) =>
-                        handleInputChange('metadata.progressBar.position', e.target.value)
-                      }
-                      label="Pozisyon"
-                    >
-                      <MenuItem value="top">Üst</MenuItem>
-                      <MenuItem value="bottom">Alt</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Stil</InputLabel>
-                    <Select
-                      value={currentBanner.metadata?.progressBar?.style ?? 'linear'}
-                      onChange={(e) =>
-                        handleInputChange('metadata.progressBar.style', e.target.value)
-                      }
-                      label="Stil"
-                    >
-                      <MenuItem value="linear">Doğrusal</MenuItem>
-                      <MenuItem value="circular">Dairesel</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <FormControl fullWidth>
-                    <InputLabel>Renk</InputLabel>
-                    <Select
-                      value={currentBanner.metadata?.progressBar?.color ?? 'primary'}
-                      onChange={(e) =>
-                        handleInputChange('metadata.progressBar.color', e.target.value)
-                      }
-                      label="Renk"
-                    >
-                      <MenuItem value="primary">Ana Renk</MenuItem>
-                      <MenuItem value="secondary">İkincil Renk</MenuItem>
-                      <MenuItem value="success">Başarı</MenuItem>
-                      <MenuItem value="error">Hata</MenuItem>
-                      <MenuItem value="info">Bilgi</MenuItem>
-                      <MenuItem value="warning">Uyarı</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography gutterBottom>Kalınlık</Typography>
-                  <Slider
-                    value={currentBanner.metadata?.progressBar?.thickness ?? 4}
-                    onChange={(_, value) =>
-                      handleInputChange('metadata.progressBar.thickness', value)
-                    }
-                    min={2}
-                    max={10}
-                    step={1}
-                    marks
-                    valueLabelDisplay="auto"
-                  />
-                </Grid>
-              </Grid>
+              
+              <TextField
+                label="Hedef URL"
+                value={currentBanner.targetUrl || ''}
+                onChange={(e) => handleInputChange('targetUrl', e.target.value)}
+                fullWidth
+                placeholder="https://example.com/sayfa"
+                sx={{ mb: 2 }}
+                error={!!formErrors.targetUrl}
+                helperText={formErrors.targetUrl}
+              />
             </Grid>
           </Grid>
         </DialogContent>
@@ -650,22 +635,20 @@ const BannerManagementPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Önizleme Dialog */}
-      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
+      <Dialog open={previewOpen} onClose={handlePreviewClose} maxWidth="lg" fullWidth>
         <DialogTitle>Banner Önizleme</DialogTitle>
         <DialogContent>
           <Box sx={{ height: 500 }}>
-            <BannerSlider banners={[currentBanner as Banner]} />
+            <BannerSlider banners={[getPreviewBanner()]} />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPreviewOpen(false)} color="primary">
+          <Button onClick={handlePreviewClose} color="primary">
             Kapat
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Preview Dialog */}
       {showPreview && (
         <BannerPreview
           banners={banners.filter(banner => banner.isActive)}

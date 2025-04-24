@@ -7,6 +7,14 @@ const Banner = sequelize.define('banner', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
+  groupId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'banner_groups',
+      key: 'id'
+    }
+  },
   imageUrl: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -53,6 +61,13 @@ const Banner = sequelize.define('banner', {
         width: 0,
         height: 0,
         aspectRatio: '16:9'
+      },
+      progressBar: {
+        show: true,
+        position: 'bottom',
+        style: 'linear',
+        color: 'primary',
+        thickness: 3
       }
     }
   }

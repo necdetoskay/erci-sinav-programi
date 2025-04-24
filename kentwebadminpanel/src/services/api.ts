@@ -3,9 +3,10 @@ import { refreshAccessToken } from './auth.service';
 
 // Create an axios instance with default configuration
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*'
   },
   // Add timeout to prevent hanging requests
   timeout: 10000
@@ -38,7 +39,7 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.log('API Error:', error.message, error.code);
+    console.log('API Error:', error.message, error.code, error.response?.status);
     
     const originalRequest = error.config;
     
