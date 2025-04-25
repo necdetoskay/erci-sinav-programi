@@ -1,98 +1,146 @@
-# Kent Konut Platform
+# Next.js Fullstack Template
 
-Bu proje, Kent Konut için geliştirilmiş web platformudur. İki ana bileşenden oluşur:
+Modern, ölçeklenebilir ve güvenli bir Next.js fullstack uygulama şablonu.
 
-1. Kent Konut Web (Ana Site)
-2. Kent Konut Admin Panel
+## 🚀 Özellikler
 
-## Teknolojiler
+- ⚡️ Next.js 14 App Router
+- 🔐 NextAuth.js ile kimlik doğrulama
+- 🎨 Tailwind CSS ile modern UI
+- 📦 Prisma ORM ile veritabanı yönetimi
+- 🔄 TypeScript ile tip güvenliği
+- 🛡️ ESLint ile kod kalitesi
+- 📱 Responsive tasarım
+- 🎭 Radix UI bileşenleri
+- 📝 Form yönetimi (React Hook Form + Zod)
+- 🔔 Bildirimler (Sonner)
+- 🐳 Docker desteği
 
-- Frontend: React + TypeScript + Vite
-- Backend: Node.js + Express
-- Veritabanı: PostgreSQL
-- Konteynerizasyon: Docker
+## 📋 Gereksinimler
 
-## Kurulum
+- Node.js 18.17 veya üzeri
+- npm veya yarn
+- Docker (opsiyonel)
 
-### Docker ile Tam Kurulum
+## 🛠️ Kurulum
 
-Projeyi tamamen Docker üzerinde çalıştırmak için Docker ve Docker Compose gereklidir.
-
+1. Projeyi klonlayın:
 ```bash
-# Projeyi klonlayın
-git clone https://github.com/your-username/kentkonut-platform.git
-cd kentkonut-platform
-
-# Docker container'larını başlatın
-docker-compose up -d
+git clone https://github.com/yourusername/nextjs-fullstack-template.git
+cd nextjs-fullstack-template
 ```
 
-### Yerel Geliştirme Kurulumu
-
-Sadece veritabanını Docker'da çalıştırıp, frontend ve backend'i yerel olarak çalıştırabilirsiniz. Bu yaklaşım, geliştirme sırasında kod değişikliklerinin anında uygulanmasını sağlar.
-
-#### Windows
-
+2. Bağımlılıkları yükleyin:
 ```bash
-# Sadece veritabanını çalıştırın
-run-local.bat
-```
-
-#### Linux/Mac
-
-```bash
-# Çalıştırma iznini ayarlayın
-chmod +x run-local.sh
-
-# Sadece veritabanını çalıştırın
-./run-local.sh
-```
-
-Veya manuel olarak:
-
-```bash
-# Sadece veritabanı servislerini başlatın
-docker-compose -f docker-compose.db.yml up -d
-
-# Backend API'yi başlatın (ayrı bir terminalde)
-cd kentwebadminpanel/server
 npm install
-npm run dev
+```
 
-# Frontend uygulamasını başlatın (ayrı bir terminalde)
-cd kentwebadminpanel
-npm install
+3. .env dosyasını oluşturun:
+```bash
+cp .env.example .env
+```
+
+4. Veritabanını başlatın:
+```bash
+npm run db:push
+```
+
+5. Geliştirme sunucusunu başlatın:
+```bash
 npm run dev
 ```
 
-## Servisler
+## 📁 Proje Yapısı
 
-Proje aşağıdaki servisleri içerir:
-
-1. Ana Site: http://localhost:3000
-2. Admin Panel: http://localhost:5173 (yerel geliştirme) veya http://localhost:8080 (Docker)
-3. Admin API: http://localhost:5000
-4. PostgreSQL: localhost:5433
-5. pgAdmin: http://localhost:5050
-   - Email: admin@kentwebadmin.com
-   - Şifre: admin
-
-## Geliştirme
-
-Her iki proje de (web ve admin panel) kendi klasörlerinde bağımsız olarak geliştirilebilir:
-
-```bash
-# Ana site için
-cd kentkonut-web
-npm install
-npm run dev
-
-# Admin panel için
-cd kentwebadminpanel
-npm install
-npm run dev
+```
+├── app/                    # Next.js app router
+│   ├── api/               # API routes
+│   ├── (auth)/            # Kimlik doğrulama sayfaları
+│   ├── dashboard/         # Dashboard sayfaları
+│   └── ...
+├── components/            # React bileşenleri
+│   ├── ui/               # UI bileşenleri
+│   └── ...
+├── lib/                  # Yardımcı fonksiyonlar
+├── prisma/              # Prisma şeması
+├── providers/           # Context providers
+└── public/             # Statik dosyalar
 ```
 
-## Lisans
+## 🔧 Kullanılan Teknolojiler
 
-Bu proje özel lisans altında geliştirilmiştir. Tüm hakları saklıdır. 
+- [Next.js](https://nextjs.org/) - React framework
+- [NextAuth.js](https://next-auth.js.org/) - Kimlik doğrulama
+- [Prisma](https://www.prisma.io/) - ORM
+- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
+- [Radix UI](https://www.radix-ui.com/) - UI bileşenleri
+- [React Hook Form](https://react-hook-form.com/) - Form yönetimi
+- [Zod](https://zod.dev/) - Şema doğrulama
+- [Sonner](https://sonner.emilkowal.ski/) - Bildirimler
+
+## 📝 Veritabanı Şeması
+
+```prisma
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+```
+
+## 🔒 Güvenlik
+
+- CSRF koruması
+- XSS koruması
+- Rate limiting
+- Input doğrulama
+- Güvenli oturum yönetimi
+
+## 🧪 Test
+
+```bash
+# Testleri çalıştır
+npm test
+
+# Test coverage raporu
+npm run test:coverage
+```
+
+## 🚀 Deployment
+
+1. Production build alın:
+```bash
+npm run build
+```
+
+2. Production sunucusunu başlatın:
+```bash
+npm start
+```
+
+## 📄 Lisans
+
+MIT
+
+## 🤝 Katkıda Bulunma
+
+1. Fork'layın
+2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Commit'leyin (`git commit -m 'Add amazing feature'`)
+4. Push'layın (`git push origin feature/amazing-feature`)
+5. Pull Request açın
+
+## İletişim
+
+Proje Sahibi - [@necdetoskay](https://twitter.com/yourusername)
+
+Proje Linki: [https://github.com/yourusername/nextjs-fullstack-template](https://github.com/necdetoskay/nextjs-fullstack-template)

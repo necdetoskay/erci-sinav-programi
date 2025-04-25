@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50" width="200" height="50">
-  <rect x="10" y="10" width="30" height="30" fill="#4f46e5" rx="5" />
-  <rect x="45" y="10" width="30" height="30" fill="#4f46e5" rx="5" opacity="0.8" />
-  <text x="85" y="32" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#111827">KentWeb</text>
-  <text x="85" y="40" font-family="Arial, sans-serif" font-size="8" fill="#6b7280">Admin Panel</text>
-</svg> 
