@@ -83,3 +83,45 @@ enum Status {
   ACTIVE
   INACTIVE
 }
+
+// Sınav sistemi modelleri
+
+model Exam {
+  id               Int          @id @default(autoincrement())
+  title            String
+  description      String?      @db.Text
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @default(now()) @updatedAt
+  status           String       @default("draft") // 'draft' veya 'published'
+  duration_minutes Int          @default(60)
+  access_code      String?
+  questions        Question[]
+  exam_results     ExamResult[]
+}
+
+model Question {
+  id             Int      @id @default(autoincrement())
+  exam_id        Int
+  question_text  String   @db.Text
+  options        Json     // Seçenekler JSON dizisi olarak
+  correct_answer String   // 'A', 'B', 'C', 'D' gibi
+  explanation    String?  @db.Text
+  difficulty     String   @default("medium") // 'easy', 'medium', 'hard'
+  position       Int?
+  created_at     DateTime @default(now())
+  exam           Exam     @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+}
+
+model ExamResult {
+  id                Int      @id @default(autoincrement())
+  exam_id           Int
+  participant_name  String
+  participant_email String?
+  score             Int?
+  total_questions   Int?
+  start_time        DateTime?
+  end_time          DateTime?
+  answers           Json?    // Verilen cevaplar JSON olarak
+  created_at        DateTime @default(now())
+  exam              Exam     @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+}
