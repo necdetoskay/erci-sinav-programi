@@ -1,4 +1,4 @@
-# Akıllı Sınav Sistemi
+# Erci Sınav Programı
 
 Eğitim dokümanlarından otomatik olarak sınav oluşturan, kullanıcıların bu sınavları çözmesini sağlayan ve detaylı istatistikler sunan modern bir web uygulaması.
 
