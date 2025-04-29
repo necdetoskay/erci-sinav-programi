@@ -1,146 +1,118 @@
-# Next.js Fullstack Template
+# Akıllı Sınav Sistemi
 
-Modern, ölçeklenebilir ve güvenli bir Next.js fullstack uygulama şablonu.
+Eğitim dokümanlarından otomatik olarak sınav oluşturan, kullanıcıların bu sınavları çözmesini sağlayan ve detaylı istatistikler sunan modern bir web uygulaması.
 
-## 🚀 Özellikler
+## 🎯 Proje Hedefleri
 
-- ⚡️ Next.js 14 App Router
-- 🔐 NextAuth.js ile kimlik doğrulama
-- 🎨 Tailwind CSS ile modern UI
-- 📦 Prisma ORM ile veritabanı yönetimi
-- 🔄 TypeScript ile tip güvenliği
-- 🛡️ ESLint ile kod kalitesi
-- 📱 Responsive tasarım
-- 🎭 Radix UI bileşenleri
-- 📝 Form yönetimi (React Hook Form + Zod)
-- 🔔 Bildirimler (Sonner)
-- 🐳 Docker desteği
+- Eğitim dokümanlarından otomatik sınav oluşturma
+- Kullanıcı dostu sınav çözme deneyimi
+- Detaylı performans analizi ve raporlama
+- Kolay yönetilebilir admin paneli
 
-## 📋 Gereksinimler
+## 📋 Master Plan
 
-- Node.js 18.17 veya üzeri
-- npm veya yarn
-- Docker (opsiyonel)
+### Faz 1: Temel Veritabanı ve Backend Altyapısı
 
-## 🛠️ Kurulum
+#### Veritabanı Modelleri
+- [ ] Document modeli
+- [ ] Quiz modeli
+- [ ] Question modeli
+- [ ] QuizAttempt modeli
+- [ ] AnswerLog modeli
+- [ ] User model ilişkileri
 
-1. Projeyi klonlayın:
-```bash
-git clone https://github.com/yourusername/nextjs-fullstack-template.git
-cd nextjs-fullstack-template
-```
+#### API Rotaları
+- [ ] `/api/documents` endpoints
+- [ ] `/api/quizzes` endpoints
+- [ ] `/api/quizzes/[id]/questions` endpoints
+- [ ] `/api/attempts` endpoints
 
-2. Bağımlılıkları yükleyin:
-```bash
-npm install
-```
+### Faz 2: Admin Paneli
 
-3. .env dosyasını oluşturun:
-```bash
-cp .env.example .env
-```
+#### Dashboard
+- [ ] Doküman yükleme arayüzü
+- [ ] Doküman listesi
+- [ ] Sınav oluşturma formu
+- [ ] Sınav listesi
 
-4. Veritabanını başlatın:
-```bash
-npm run db:push
-```
+#### Sınav Yönetimi
+- [ ] Sınav düzenleme arayüzü
+- [ ] Soru önizleme/düzenleme
+- [ ] Sınav yayınlama sistemi
+- [ ] Sınav istatistikleri
 
-5. Geliştirme sunucusunu başlatın:
-```bash
-npm run dev
-```
+### Faz 3: LLM Entegrasyonu
 
-## 📁 Proje Yapısı
+#### OpenAI Entegrasyonu
+- [ ] API yapılandırması
+- [ ] Prompt şablonları
+- [ ] Hata yönetimi
 
-```
-├── app/                    # Next.js app router
-│   ├── api/               # API routes
-│   ├── (auth)/            # Kimlik doğrulama sayfaları
-│   ├── dashboard/         # Dashboard sayfaları
-│   └── ...
-├── components/            # React bileşenleri
-│   ├── ui/               # UI bileşenleri
-│   └── ...
-├── lib/                  # Yardımcı fonksiyonlar
-├── prisma/              # Prisma şeması
-├── providers/           # Context providers
-└── public/             # Statik dosyalar
-```
+#### Soru Üretimi
+- [ ] PDF/DOCX metin çıkarma
+- [ ] Metin bölümleme sistemi
+- [ ] Otomatik soru üretimi
+- [ ] Kalite kontrol sistemi
 
-## 🔧 Kullanılan Teknolojiler
+### Faz 4: Kullanıcı Arayüzü
 
-- [Next.js](https://nextjs.org/) - React framework
-- [NextAuth.js](https://next-auth.js.org/) - Kimlik doğrulama
-- [Prisma](https://www.prisma.io/) - ORM
-- [Tailwind CSS](https://tailwindcss.com/) - CSS framework
-- [Radix UI](https://www.radix-ui.com/) - UI bileşenleri
-- [React Hook Form](https://react-hook-form.com/) - Form yönetimi
-- [Zod](https://zod.dev/) - Şema doğrulama
-- [Sonner](https://sonner.emilkowal.ski/) - Bildirimler
+#### Sınav Listesi
+- [ ] Aktif sınavlar görünümü
+- [ ] Sınav detayları
+- [ ] Geçmiş sınavlar
 
-## 📝 Veritabanı Şeması
+#### Sınav Çözüm Ekranı
+- [ ] Tek soru gösterimi
+- [ ] Soru zamanlayıcısı
+- [ ] İlerleme göstergesi
+- [ ] Anlık geri bildirim
 
-```prisma
-model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
+#### Sonuç Sayfası
+- [ ] Skor analizi
+- [ ] Performans detayları
+- [ ] Zaman analizi
+- [ ] Doğru cevap gösterimi
 
-enum Role {
-  USER
-  ADMIN
-}
-```
+### Faz 5: Analitik ve Raporlama
 
-## 🔒 Güvenlik
+#### Admin Raporları
+- [ ] Sınav istatistikleri
+- [ ] Kullanıcı analizleri
+- [ ] Soru zorluğu analizi
+- [ ] Zaman bazlı raporlar
 
-- CSRF koruması
-- XSS koruması
-- Rate limiting
-- Input doğrulama
-- Güvenli oturum yönetimi
+#### Kullanıcı Raporları
+- [ ] Kişisel performans grafikleri
+- [ ] Gelişim takibi
+- [ ] Zayıf alan analizi
 
-## 🧪 Test
+### Faz 6: Optimizasyon
 
-```bash
-# Testleri çalıştır
-npm test
+#### Performans
+- [ ] Veritabanı optimizasyonu
+- [ ] Önbellekleme
+- [ ] API optimizasyonu
 
-# Test coverage raporu
-npm run test:coverage
-```
+#### Kullanıcı Deneyimi
+- [ ] Mobil uyumluluk
+- [ ] Erişilebilirlik
+- [ ] UX iyileştirmeleri
 
-## 🚀 Deployment
+#### Güvenlik
+- [ ] Rate limiting
+- [ ] Input validasyonu
+- [ ] XSS/CSRF koruması
 
-1. Production build alın:
-```bash
-npm run build
-```
+## 🛠️ Teknolojiler
 
-2. Production sunucusunu başlatın:
-```bash
-npm start
-```
+- **Frontend & Backend**: Next.js
+- **Veritabanı**: PostgreSQL + Prisma
+- **LLM**: OpenAI API
+- **UI**: Tailwind CSS + shadcn/ui
+- **Auth**: NextAuth.js
 
-## 📄 Lisans
+## 📝 Notlar
 
-MIT
-
-## 🤝 Katkıda Bulunma
-
-1. Fork'layın
-2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Commit'leyin (`git commit -m 'Add amazing feature'`)
-4. Push'layın (`git push origin feature/amazing-feature`)
-5. Pull Request açın
-
-## İletişim
-
-Proje Sahibi - [@necdetoskay](https://twitter.com/yourusername)
-
-Proje Linki: [https://github.com/yourusername/nextjs-fullstack-template](https://github.com/necdetoskay/nextjs-fullstack-template)
+- Her faz tamamlandığında checklist güncellenecek
+- Yeni özellikler ve iyileştirmeler için öneriler eklenebilir
+- Faz sıralaması proje ihtiyaçlarına göre değiştirilebilir

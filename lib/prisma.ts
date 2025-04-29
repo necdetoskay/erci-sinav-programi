@@ -1,9 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+declare global {
+  var prisma: PrismaClient | undefined;
+}
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+const prisma = global.prisma || new PrismaClient({
+  datasources: {
+    db: {
+      url: "postgresql://postgres:P@ssw0rd@localhost:5432/kentkonutdb"
+    }
+  }
+});
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma; 
+if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
+
+export { prisma }; 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -12,7 +13,17 @@ const registerSchema = z.object({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, password } = registerSchema.parse(body);
+    
+    // Validate input
+    const validationResult = registerSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { message: validationResult.error.errors[0].message },
+        { status: 400 }
+      );
+    }
+
+    const { name, email, password } = validationResult.data;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -21,7 +32,7 @@ export async function POST(req: Request) {
 
     if (existingUser) {
       return NextResponse.json(
-        { message: 'User already exists' },
+        { message: 'User with this email already exists' },
         { status: 400 }
       );
     }
@@ -36,13 +47,29 @@ export async function POST(req: Request) {
         email,
         password: hashedPassword,
       },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+      },
     });
 
     return NextResponse.json(
-      { message: 'User created successfully' },
+      {
+        message: 'User created successfully',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          createdAt: user.createdAt,
+        },
+      },
       { status: 201 }
     );
   } catch (error) {
+    console.error('Registration error:', error);
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { message: error.errors[0].message },
@@ -50,8 +77,17 @@ export async function POST(req: Request) {
       );
     }
 
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return NextResponse.json(
+          { message: 'User with this email already exists' },
+          { status: 400 }
+        );
+      }
+    }
+
     return NextResponse.json(
-      { message: 'Something went wrong' },
+      { message: 'An error occurred while creating your account' },
       { status: 500 }
     );
   }

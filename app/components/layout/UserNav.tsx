@@ -1,7 +1,8 @@
 "use client"
 
-import { signOut } from "next-auth/react"
-import { LogOut, User } from "lucide-react"
+import { signOut, useSession } from "next-auth/react"
+import { LogOut, Settings, User } from "lucide-react"
+import Link from "next/link"
 
 import {
   DropdownMenu,
@@ -12,26 +13,48 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export function UserNav() {
+  const { data: session } = useSession()
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <User className="h-5 w-5" />
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
+            <AvatarFallback>{session?.user?.name?.[0]?.toUpperCase() || "U"}</AvatarFallback>
+          </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">Admin</p>
+            <p className="text-sm font-medium leading-none">{session?.user?.name || "Kullanıcı"}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              admin@kentkonut.com
+              {session?.user?.email || ""}
             </p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()}>
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <User className="mr-2 h-4 w-4" />
+            <span>Profil</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/settings">
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Ayarlar</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem 
+          className="text-red-600 focus:text-red-600" 
+          onClick={() => signOut({ callbackUrl: "/login" })}
+        >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Çıkış Yap</span>
         </DropdownMenuItem>
