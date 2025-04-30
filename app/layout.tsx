@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { AuthProvider } from '@/providers/auth-provider';
 import { Toaster } from 'sonner';
-import { UserProvider } from '@/app/context/UserContext';
 import { ThemeProvider } from '@/app/providers/theme-provider';
+import { UserProvider } from '@/app/context/UserContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -21,19 +21,19 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>
-            <UserProvider>
+        <AuthProvider>
+          <UserProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
               {children}
               <Toaster />
-            </UserProvider>
-          </AuthProvider>
-        </ThemeProvider>
+            </ThemeProvider>
+          </UserProvider>
+        </AuthProvider>
       </body>
     </html>
   );

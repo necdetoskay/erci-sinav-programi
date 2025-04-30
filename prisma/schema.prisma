@@ -10,7 +10,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://postgres:P@ssw0rd@localhost:5432/kentkonutdb"
+  url      = env("DATABASE_URL")
 }
 
 model User {
