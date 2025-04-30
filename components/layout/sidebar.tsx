@@ -9,10 +9,12 @@ import {
   UsersIcon,
   SettingsIcon,
   LogOutIcon,
+  BookOpenIcon,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
+  { name: 'Sınavlar', href: '/admin/exams', icon: BookOpenIcon },
   { name: 'Properties', href: '/properties', icon: Building2Icon },
   { name: 'Tenants', href: '/tenants', icon: UsersIcon },
   { name: 'Settings', href: '/settings', icon: SettingsIcon },

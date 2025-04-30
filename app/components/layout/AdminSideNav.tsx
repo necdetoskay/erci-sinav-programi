@@ -2,9 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Users, Settings, BookOpen, PenTool } from "lucide-react"
+import { LayoutDashboard, BookOpen, Users, PenTool, Settings } from "lucide-react"
 
 const sidebarNavItems = [
   {
@@ -18,14 +17,14 @@ const sidebarNavItems = [
     icon: BookOpen,
   },
   {
-    title: "Soru Havuzu",
-    href: "/admin/questions",
-    icon: PenTool,
-  },
-  {
     title: "Kullanıcılar",
     href: "/dashboard/users",
     icon: Users,
+  },
+  {
+    title: "Soru Havuzu",
+    href: "/admin/questions",
+    icon: PenTool,
   },
   {
     title: "Ayarlar",
@@ -34,7 +33,7 @@ const sidebarNavItems = [
   },
 ]
 
-export function SideNav() {
+export function AdminSideNav() {
   const pathname = usePathname()
 
   return (

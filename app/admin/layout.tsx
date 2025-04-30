@@ -1,9 +1,9 @@
 "use client";
 
-import { SideNav } from "../components/layout/SideNav"
+import { AdminSideNav } from "../components/layout/AdminSideNav"
 import { Toaster } from "@/components/ui/sonner"
 
-export default function DashboardLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
@@ -16,7 +16,7 @@ export default function DashboardLayout({
           <h1 className="text-lg font-bold">Erci Sınav Programı</h1>
         </div>
         <div className="p-6">
-          <SideNav />
+          <AdminSideNav />
         </div>
       </div>
       {/* Main Content */}
