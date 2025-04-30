@@ -1,19 +1,30 @@
-import NextAuth from "next-auth";
+import NextAuth, { DefaultSession, NextAuthOptions, Session } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { getServerSession } from "next-auth";
+import { JWT } from "next-auth/jwt";
+import { User } from "next-auth";
 
 const prisma = new PrismaClient();
 
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut,
-} = NextAuth({
-  pages: {
-    signIn: "/login",
-  },
+interface ExtendedJWT extends JWT {
+  id: string;
+  email: string;
+  role: string;
+  name?: string | null;
+}
+
+interface ExtendedSession extends Session {
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    name?: string | null;
+  }
+}
+
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -55,27 +66,47 @@ export const {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      console.log("JWT Callback - Input:", { token, user, account });
+      
       if (user) {
+        // User bilgilerini token'a ekle
         token.id = user.id;
         token.email = user.email;
         token.role = user.role;
         token.name = user.name;
       }
-      return token;
+
+      console.log("JWT Callback - Output token:", token);
+      return token as ExtendedJWT;
     },
     async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id;
-        session.user.email = token.email || "";
-        session.user.role = token.role || "USER";
-        session.user.name = token.name || null;
+      console.log("Session Callback - Input:", { session, token });
+      
+      if (session.user && token) {
+        // Token'dan gelen bilgileri session'a ekle
+        session.user.id = token.id as string;
+        session.user.email = token.email as string;
+        session.user.role = token.role as string;
+        session.user.name = token.name as string | null;
       }
-      return session;
+
+      console.log("Session Callback - Output session:", session);
+      return session as ExtendedSession;
     },
   },
-  session: {
-    strategy: "jwt",
+  pages: {
+    signIn: "/login",
   },
+  session: {
+    strategy: "jwt" as const,
+  },
+  secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
-}); 
+};
+
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };
+
+// Export auth utilities
+export const auth = () => getServerSession(authOptions); 

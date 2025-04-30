@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { Breadcrumb } from '../../../components/breadcrumb';
 
 export default function CreateExamPage() {
   const router = useRouter();
@@ -97,6 +98,13 @@ export default function CreateExamPage() {
 
   return (
     <div className="container mx-auto p-6">
+      <Breadcrumb 
+        items={[
+          { label: 'Yönetim', href: '/admin' },
+          { label: 'Sınavlar', href: '/admin/exams' },
+          { label: 'Yeni Sınav' }
+        ]} 
+      />
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Yeni Sınav Oluştur</h1>
       </div>

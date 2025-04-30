@@ -21,6 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { Breadcrumb } from '../../components/breadcrumb';
 
 interface Exam {
   id: number;
@@ -113,6 +114,12 @@ export default function ExamsPage() {
 
   return (
     <div className="container mx-auto p-6">
+      <Breadcrumb 
+        items={[
+          { label: 'Yönetim', href: '/admin' },
+          { label: 'Sınavlar' }
+        ]} 
+      />
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Sınavlar</h1>
         <Button onClick={handleCreateExam}>

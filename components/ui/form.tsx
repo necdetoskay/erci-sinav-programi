@@ -5,22 +5,20 @@ import * as LabelPrimitive from "@radix-ui/react-label"
 import { Slot } from "@radix-ui/react-slot"
 import {
   Controller,
+  ControllerProps,
+  FieldPath,
+  FieldValues,
   FormProvider,
   useFormContext,
-  type ControllerProps,
-  type FieldPath,
-  type FieldValues,
-  useForm,
   UseFormProps,
   UseFormReturn,
 } from "react-hook-form"
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import { z } from "zod"
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
-const Form = FormProvider
+const FormRoot = FormProvider
 
 type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,
@@ -140,7 +138,7 @@ const FormDescription = React.forwardRef<
     <p
       ref={ref}
       id={formDescriptionId}
-      className={cn("text-[0.8rem] text-muted-foreground", className)}
+      className={cn("text-sm text-muted-foreground", className)}
       {...props}
     />
   )
@@ -152,7 +150,7 @@ const FormMessage = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : children
+  const body = error ? String(error?.message) : children
 
   if (!body) {
     return null
@@ -162,7 +160,7 @@ const FormMessage = React.forwardRef<
     <p
       ref={ref}
       id={formMessageId}
-      className={cn("text-[0.8rem] font-medium text-destructive", className)}
+      className={cn("text-sm font-medium text-destructive", className)}
       {...props}
     >
       {body}
@@ -171,41 +169,27 @@ const FormMessage = React.forwardRef<
 })
 FormMessage.displayName = "FormMessage"
 
-interface FormProps<T extends z.ZodType<any, any>>
-  extends Omit<React.FormHTMLAttributes<HTMLFormElement>, 'onSubmit'> {
-  schema: T;
-  defaultValues?: UseFormProps<z.infer<T>>['defaultValues'];
-  onSubmit: (data: z.infer<T>) => void;
-  children: (methods: UseFormReturn<z.infer<T>>) => React.ReactNode;
-}
+type FormProps<T extends z.ZodType<any, any>> = {
+  form: UseFormReturn<z.infer<T>>;
+  children: React.ReactNode;
+} & Omit<React.FormHTMLAttributes<HTMLFormElement>, "children">
 
-export function Form<T extends z.ZodType<any, any>>({
-  schema,
-  defaultValues,
-  onSubmit,
+function FormComponent<T extends z.ZodType<any, any>>({
+  form,
   children,
-  className,
   ...props
 }: FormProps<T>) {
-  const methods = useForm<z.infer<T>>({
-    resolver: zodResolver(schema),
-    defaultValues,
-  });
-
   return (
-    <form
-      onSubmit={methods.handleSubmit(onSubmit)}
-      className={cn('space-y-4', className)}
-      {...props}
-    >
-      {children(methods)}
-    </form>
-  );
+    <FormRoot {...form}>
+      {children}
+    </FormRoot>
+  )
 }
 
 export {
   useFormField,
-  Form,
+  FormRoot,
+  FormComponent as Form,
   FormItem,
   FormLabel,
   FormControl,

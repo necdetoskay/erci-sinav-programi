@@ -71,7 +71,7 @@ export async function POST(request: Request) {
         title,
         description: description || '',
         duration_minutes: duration_minutes || 60,
-        access_code: access_code || generateRandomCode(6),
+        access_code: access_code || generateExamCode(),
         status: 'draft',
       }
     });
@@ -84,14 +84,8 @@ export async function POST(request: Request) {
 }
 
 // Rastgele erişim kodu oluşturma fonksiyonu
-function generateRandomCode(length: number): string {
-  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let result = '';
-  
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    result += characters.charAt(randomIndex);
-  }
-  
-  return result;
+function generateExamCode(): string {
+  const timestamp = Date.now().toString();
+  const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+  return timestamp.slice(-6) + random;
 } 

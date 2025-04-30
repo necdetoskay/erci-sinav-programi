@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { Breadcrumb } from '../../../../components/breadcrumb';
 
 export default function EditExamPage({ params }: { params: { examId: string } }) {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function EditExamPage({ params }: { params: { examId: string } })
   const [accessCode, setAccessCode] = useState('');
   const [status, setStatus] = useState('draft');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [exam, setExam] = useState<{ title: string } | null>(null);
 
   // Sınav süresi seçenekleri
   const durationOptions = [
@@ -58,6 +60,7 @@ export default function EditExamPage({ params }: { params: { examId: string } })
         setDurationMinutes(exam.duration_minutes.toString());
         setAccessCode(exam.access_code || '');
         setStatus(exam.status);
+        setExam(exam);
       } catch (error) {
         console.error('Sınav yüklenirken hata:', error);
         toast.error('Sınav yüklenemedi. Lütfen daha sonra tekrar deneyin.');
@@ -157,6 +160,14 @@ export default function EditExamPage({ params }: { params: { examId: string } })
 
   return (
     <div className="container mx-auto p-6">
+      <Breadcrumb 
+        items={[
+          { label: 'Yönetim', href: '/admin' },
+          { label: 'Sınavlar', href: '/admin/exams' },
+          { label: exam?.title || 'Sınav', href: `/admin/exams/${params.examId}` },
+          { label: 'Düzenle' }
+        ]} 
+      />
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Sınavı Düzenle</h1>
       </div>

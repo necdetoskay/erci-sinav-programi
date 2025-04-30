@@ -26,6 +26,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   posts         Post[]
+  questionPools QuestionPool[]
 }
 
 model Account {
@@ -124,4 +125,37 @@ model ExamResult {
   answers           Json?    // Verilen cevaplar JSON olarak
   created_at        DateTime @default(now())
   exam              Exam     @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+}
+
+// Soru Havuzu modelleri
+model QuestionPool {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?   @db.Text
+  subject     String    // Ders/Konu
+  grade       String    // Sınıf seviyesi
+  difficulty  String    @default("medium") // 'easy', 'medium', 'hard'
+  status      Status    @default(ACTIVE)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  questions   PoolQuestion[]
+  createdBy   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+}
+
+model PoolQuestion {
+  id             Int          @id @default(autoincrement())
+  questionText   String       @db.Text
+  options        Json         // Seçenekler JSON dizisi olarak
+  correctAnswer  String       // 'A', 'B', 'C', 'D' gibi
+  explanation    String?      @db.Text
+  tags          String[]     // Soru etiketleri
+  difficulty     String       @default("medium")
+  position       Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  pool          QuestionPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  poolId        Int
+
+  @@index([poolId])
 }

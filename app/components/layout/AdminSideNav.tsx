@@ -23,7 +23,7 @@ const sidebarNavItems = [
   },
   {
     title: "Soru Havuzu",
-    href: "/admin/questions",
+    href: "/question-pools",
     icon: PenTool,
   },
   {

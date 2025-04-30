@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -19,12 +19,24 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, Trash, Plus, Save } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface Exam {
-  id: number;
-  title: string;
-  status: string;
-}
+import { AddFromPool } from "./components/add-from-pool";
+import { AddQuestion } from "./components/add-question";
+import { DraggableQuestion } from "./components/draggable-question";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { Breadcrumb } from '../../../../components/breadcrumb';
 
 interface Option {
   id: string;
@@ -41,7 +53,46 @@ interface Question {
   position: number;
 }
 
-export default function QuestionsPage({ params }: { params: { examId: string } }) {
+interface Exam {
+  id: number;
+  title: string;
+  status: string;
+  questions: Question[];
+}
+
+async function fetchExamAndQuestions(examId: number, setExam: any, setQuestions: any, setLoading: any) {
+  try {
+    setLoading(true);
+    
+    // Önce sınavı getir
+    const examResponse = await fetch(`/api/admin/exams/${examId}`);
+    if (!examResponse.ok) {
+      throw new Error('Sınav yüklenirken bir hata oluştu');
+    }
+    const examData = await examResponse.json();
+    setExam(examData);
+    
+    // API'den gelen soruları uygun formata dönüştür
+    const formattedQuestions = (examData.questions || []).map((q: any) => ({
+      ...q,
+      options: Array.isArray(q.options) 
+        ? q.options.map((text: string, index: number) => ({
+            id: `${q.id}-option-${index + 1}`,
+            text: text
+          }))
+        : []
+    }));
+    
+    setQuestions(formattedQuestions);
+  } catch (error) {
+    console.error('Veri yüklenirken hata:', error);
+    toast.error('Sınav ve sorular yüklenemedi');
+  } finally {
+    setLoading(false);
+  }
+}
+
+export default function ExamQuestionsPage({ params }: { params: { examId: string } }) {
   const router = useRouter();
   const examId = parseInt(params.examId);
   
@@ -57,58 +108,37 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
     { value: 'hard', label: 'Zor' },
   ];
 
-  useEffect(() => {
-    // Sınav ve soruları yükle
-    async function fetchExamAndQuestions() {
-      try {
-        setLoading(true);
-        
-        // Önce sınavı getir
-        const examResponse = await fetch(`/api/admin/exams/${examId}`);
-        if (!examResponse.ok) {
-          throw new Error('Sınav yüklenirken bir hata oluştu');
-        }
-        const examData = await examResponse.json();
-        setExam(examData);
-        
-        // Sonra sınava ait soruları getir
-        setQuestions(examData.questions || []);
-        
-        // Soru yoksa, bir tane boş soru ekle
-        if (examData.questions.length === 0) {
-          addNewQuestion();
-        }
-      } catch (error) {
-        console.error('Veri yüklenirken hata:', error);
-        toast.error('Sınav ve sorular yüklenemedi');
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchExamAndQuestions();
-  }, [examId]);
-
   // Yeni boş soru oluştur
-  const createEmptyQuestion = (position: number): Question => ({
+  const createEmptyQuestion = useCallback((position: number): Question => ({
     question_text: '',
     options: [
-      { id: '1', text: '' },
-      { id: '2', text: '' },
-      { id: '3', text: '' },
-      { id: '4', text: '' },
+      { id: `new-${position}-option-1`, text: '' },
+      { id: `new-${position}-option-2`, text: '' },
+      { id: `new-${position}-option-3`, text: '' },
+      { id: `new-${position}-option-4`, text: '' },
     ],
     correct_answer: 'A',
     explanation: '',
     difficulty: 'medium',
     position,
-  });
+  }), []);
 
   // Yeni soru ekle
-  const addNewQuestion = () => {
+  const addNewQuestion = useCallback(() => {
     const newPosition = questions.length + 1;
-    setQuestions([...questions, createEmptyQuestion(newPosition)]);
-  };
+    setQuestions(prev => [...prev, createEmptyQuestion(newPosition)]);
+  }, [questions.length, createEmptyQuestion]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  useEffect(() => {
+    fetchExamAndQuestions(examId, setExam, setQuestions, setLoading);
+  }, [examId]);
 
   // Soruyu sil
   const removeQuestion = (index: number) => {
@@ -162,34 +192,6 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
     setQuestions(newQuestions);
   };
 
-  // Soruyu yukarı taşı
-  const moveQuestionUp = (index: number) => {
-    if (index === 0) return;
-    
-    const newQuestions = [...questions];
-    [newQuestions[index - 1], newQuestions[index]] = [newQuestions[index], newQuestions[index - 1]];
-    
-    // Pozisyonları güncelle
-    newQuestions[index - 1].position = index;
-    newQuestions[index].position = index + 1;
-    
-    setQuestions(newQuestions);
-  };
-
-  // Soruyu aşağı taşı
-  const moveQuestionDown = (index: number) => {
-    if (index === questions.length - 1) return;
-    
-    const newQuestions = [...questions];
-    [newQuestions[index], newQuestions[index + 1]] = [newQuestions[index + 1], newQuestions[index]];
-    
-    // Pozisyonları güncelle
-    newQuestions[index].position = index + 1;
-    newQuestions[index + 1].position = index + 2;
-    
-    setQuestions(newQuestions);
-  };
-
   // Soruları kaydet
   const saveQuestions = async () => {
     // Validasyon
@@ -201,8 +203,9 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
         return;
       }
       
-      for (let j = 0; j < q.options.length; j++) {
-        if (!q.options[j].text.trim()) {
+      // Şık validasyonu düzeltildi
+      for (const option of q.options) {
+        if (!option.text.trim()) {
           toast.error(`Soru ${i+1}: Tüm şıklar doldurulmalıdır`);
           return;
         }
@@ -214,8 +217,13 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
       
       // API'ye gönderilecek şekilde soruları formatla
       const formattedQuestions = questions.map((q) => ({
-        ...q,
-        options: q.options.map(opt => opt.text),
+        id: q.id,
+        question_text: q.question_text,
+        options: q.options.map(opt => opt.text), // Sadece text değerlerini gönder
+        correct_answer: q.correct_answer,
+        explanation: q.explanation,
+        difficulty: q.difficulty,
+        position: q.position,
       }));
       
       const response = await fetch(`/api/admin/exams/${examId}/questions`, {
@@ -233,8 +241,8 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
       
       toast.success('Sorular başarıyla kaydedildi');
       
-      // Sınav sayfasına dön
-      router.push(`/admin/exams/${examId}`);
+      // Sınav listesi sayfasına dön
+      router.push('/admin/exams');
     } catch (error) {
       console.error('Sorular kaydedilirken hata:', error);
       toast.error(error instanceof Error ? error.message : 'Sorular kaydedilirken bir hata meydana geldi');
@@ -248,9 +256,27 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
     return String.fromCharCode(65 + index); // A, B, C, D...
   };
 
-  // İptal
-  const handleCancel = () => {
-    router.push(`/admin/exams/${examId}`);
+  // Sürükleme işlemi tamamlandığında
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    
+    if (active.id !== over.id) {
+      setQuestions((items) => {
+        const oldIndex = items.findIndex(
+          (item) => (item.id?.toString() || `question-${items.indexOf(item)}`) === active.id
+        );
+        const newIndex = items.findIndex(
+          (item) => (item.id?.toString() || `question-${items.indexOf(item)}`) === over.id
+        );
+        
+        const newItems = arrayMove(items, oldIndex, newIndex);
+        // Pozisyonları güncelle
+        return newItems.map((item, index) => ({
+          ...item,
+          position: index + 1,
+        }));
+      });
+    }
   };
 
   if (loading) {
@@ -273,17 +299,38 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Sınav Soruları</h1>
-        <div className="flex items-center gap-2">
-          <Badge variant={exam?.status === 'published' ? 'default' : 'secondary'}>
-            {exam?.status === 'published' ? 'Yayında' : 'Taslak'}
-          </Badge>
-          <h2 className="text-xl font-semibold">{exam?.title}</h2>
+      <Breadcrumb 
+        items={[
+          { label: 'Yönetim', href: '/admin' },
+          { label: 'Sınavlar', href: '/admin/exams' },
+          { label: exam?.title || 'Sınav', href: `/admin/exams/${params.examId}` },
+          { label: 'Sorular' }
+        ]} 
+      />
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold">Sınav Soruları</h1>
+          <p className="text-muted-foreground">
+            {exam?.title} - Toplam {questions.length} Soru
+          </p>
+        </div>
+        <div className="flex gap-4">
+          <AddQuestion 
+            examId={examId} 
+            onQuestionAdded={() => {
+              fetchExamAndQuestions(examId, setExam, setQuestions, setLoading);
+            }} 
+          />
+          <AddFromPool 
+            examId={examId} 
+            onQuestionsAdded={() => {
+              fetchExamAndQuestions(examId, setExam, setQuestions, setLoading);
+            }} 
+          />
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="edit">Soruları Düzenle</TabsTrigger>
           <TabsTrigger value="preview">Önizleme</TabsTrigger>
@@ -291,129 +338,35 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
         
         {/* Düzenleme Görünümü */}
         <TabsContent value="edit">
-          {questions.map((question, qIndex) => (
-            <Card key={qIndex} className="mb-6">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg">Soru {qIndex + 1}</CardTitle>
-                <div className="flex items-center gap-1">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => moveQuestionUp(qIndex)}
-                    disabled={qIndex === 0}
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => moveQuestionDown(qIndex)}
-                    disabled={qIndex === questions.length - 1}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => removeQuestion(qIndex)}
-                    className="text-destructive"
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor={`question-${qIndex}`}>Soru Metni</Label>
-                  <Textarea 
-                    id={`question-${qIndex}`}
-                    value={question.question_text}
-                    onChange={(e) => updateQuestionText(qIndex, e.target.value)}
-                    placeholder="Soru metnini giriniz"
-                    rows={3}
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  {question.options.map((option, oIndex) => (
-                    <div key={option.id} className="space-y-2">
-                      <Label htmlFor={`question-${qIndex}-option-${oIndex}`}>
-                        Şık {getOptionLetter(oIndex)}
-                      </Label>
-                      <Input
-                        id={`question-${qIndex}-option-${oIndex}`}
-                        value={option.text}
-                        onChange={(e) => updateOptionText(qIndex, oIndex, e.target.value)}
-                        placeholder={`${getOptionLetter(oIndex)} şıkkını giriniz`}
-                      />
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`question-${qIndex}-answer`}>Doğru Cevap</Label>
-                    <Select
-                      value={question.correct_answer}
-                      onValueChange={(value) => updateCorrectAnswer(qIndex, value)}
-                    >
-                      <SelectTrigger id={`question-${qIndex}-answer`}>
-                        <SelectValue placeholder="Doğru cevabı seçin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {question.options.map((_, oIndex) => (
-                          <SelectItem key={oIndex} value={getOptionLetter(oIndex)}>
-                            {getOptionLetter(oIndex)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor={`question-${qIndex}-difficulty`}>Zorluk</Label>
-                    <Select
-                      value={question.difficulty}
-                      onValueChange={(value) => updateDifficulty(qIndex, value)}
-                    >
-                      <SelectTrigger id={`question-${qIndex}-difficulty`}>
-                        <SelectValue placeholder="Zorluk seviyesi seçin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {difficultyOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor={`question-${qIndex}-explanation`}>Açıklama (İsteğe Bağlı)</Label>
-                  <Textarea 
-                    id={`question-${qIndex}-explanation`}
-                    value={question.explanation || ''}
-                    onChange={(e) => updateExplanation(qIndex, e.target.value)}
-                    placeholder="Cevabın neden doğru olduğunu açıklayın (isteğe bağlı)"
-                    rows={2}
-                  />
-                </div>
+          {questions.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <p className="text-muted-foreground">Henüz soru eklenmemiş</p>
               </CardContent>
             </Card>
-          ))}
-          
-          <div className="flex justify-center mb-6">
-            <Button 
-              variant="outline" 
-              onClick={addNewQuestion}
-              className="w-full max-w-md"
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Soru Ekle
-            </Button>
-          </div>
+              <SortableContext
+                items={questions.map((q, i) => q.id?.toString() || `question-${i}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {questions.map((question, index) => (
+                    <DraggableQuestion
+                      key={question.id?.toString() || `question-${index}`}
+                      question={question}
+                      index={index}
+                      onRemove={() => removeQuestion(index)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
         </TabsContent>
         
         {/* Önizleme Görünümü */}
@@ -459,14 +412,14 @@ export default function QuestionsPage({ params }: { params: { examId: string } }
       <div className="flex justify-between">
         <Button 
           variant="outline" 
-          onClick={handleCancel}
+          onClick={() => router.push('/admin/exams')}
         >
           İptal
         </Button>
         
         <Button 
           onClick={saveQuestions}
-          disabled={saving}
+          disabled={saving || questions.length === 0}
           className="gap-2"
         >
           <Save className="h-4 w-4" />
