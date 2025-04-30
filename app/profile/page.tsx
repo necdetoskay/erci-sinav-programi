@@ -1,65 +1,42 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import Link from "next/link";
+"use client"
 
-export default async function ProfilePage() {
-  const session = await auth();
+import { useSession } from "next-auth/react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-  // If no session exists, redirect to login
-  if (!session) {
-    redirect("/auth/login");
-  }
+export default function ProfilePage() {
+  const { data: session } = useSession()
 
   return (
-    <div className="flex min-h-screen flex-col items-center p-24">
-      <div className="max-w-3xl w-full mx-auto p-8 bg-white shadow-lg rounded-lg">
-        <h1 className="text-3xl font-bold mb-8 text-center">Your Profile</h1>
-        
-        <div className="mb-8 bg-gray-50 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">Account Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="container mx-auto py-10">
+      <h1 className="text-4xl font-bold mb-6">Profil</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Kullanıcı Bilgileri</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-20 w-20">
+              <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
+              <AvatarFallback>{session?.user?.name?.[0]?.toUpperCase() || "U"}</AvatarFallback>
+            </Avatar>
             <div>
-              <p className="text-gray-600 text-sm">User ID</p>
-              <p className="font-medium">{session.user.id}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">Name</p>
-              <p className="font-medium">{session.user.name}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">Email</p>
-              <p className="font-medium">{session.user.email}</p>
-            </div>
-            <div>
-              <p className="text-gray-600 text-sm">Role</p>
-              <p className="font-medium capitalize">{session.user.role}</p>
+              <h2 className="text-2xl font-semibold">{session?.user?.name}</h2>
+              <p className="text-muted-foreground">{session?.user?.email}</p>
             </div>
           </div>
-        </div>
-
-        <div className="flex justify-between">
-          <Link
-            href="/"
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors duration-200"
-          >
-            Back to Home
-          </Link>
-          <form
-            action={async () => {
-              "use server";
-              const { signOut } = await import("@/lib/auth");
-              await signOut();
-            }}
-          >
-            <button
-              type="submit"
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors duration-200"
-            >
-              Sign Out
-            </button>
-          </form>
-        </div>
-      </div>
+          <div className="grid gap-4">
+            <div>
+              <h3 className="font-medium mb-2">Rol</h3>
+              <p className="text-muted-foreground capitalize">{session?.user?.role || "Kullanıcı"}</p>
+            </div>
+            <div>
+              <h3 className="font-medium mb-2">Durum</h3>
+              <p className="text-muted-foreground capitalize">{session?.user?.status || "Aktif"}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 } 
