@@ -159,3 +159,26 @@ model PoolQuestion {
 
   @@index([poolId])
 }
+
+// Sınav Giriş Doğrulama Modeli
+model ExamEntryAttempt {
+  id               String    @id @default(cuid())
+  examAccessCode   String    // Kullanıcının girdiği ilk kod (toplu maildeki)
+  email            String
+  verificationCode String    // E-postaya gönderilen kod
+  expiresAt        DateTime  // Doğrulama kodunun son kullanma tarihi
+  verified         Boolean   @default(false) // Kod doğrulandı mı?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([examAccessCode, email])
+  @@index([verificationCode])
+}
+
+// Uygulama Ayarları Modeli
+model Setting {
+  key       String  @id // Ayar anahtarı (örn: "SMTP_HOST", "SMTP_PORT")
+  value     String? @db.Text // Ayar değeri
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

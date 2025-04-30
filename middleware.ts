@@ -18,9 +18,11 @@ export default withAuth(
 );
 
 export const config = {
+  // Apply middleware only to dashboard paths
   matcher: [
     '/dashboard/:path*',
-    '/login',
-    '/register',
+    // '/login', // Removed: Login should be public
+    // '/register', // Removed: Register should be public
+    // Add other protected routes here if needed, e.g., '/admin/:path*'
   ],
-}; 
+};
