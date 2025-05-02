@@ -33,7 +33,7 @@ export default function UsersPage() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteUser = async (userId: number) => {
+  const handleDeleteUser = async (userId: string) => { // Changed type to string
     try {
       await deleteUser(userId);
       toast.success("Kullanıcı başarıyla silindi");
@@ -55,7 +55,6 @@ export default function UsersPage() {
               <TableHead>Ad Soyad</TableHead>
               <TableHead>E-posta</TableHead>
               <TableHead>Rol</TableHead>
-              <TableHead>Durum</TableHead>
               <TableHead className="text-right">İşlemler</TableHead>
             </TableRow>
           </TableHeader>
@@ -67,23 +66,6 @@ export default function UsersPage() {
                 <TableCell>
                   <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>
                     {user.role === "ADMIN" ? "Yönetici" : "Kullanıcı"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      user.status === "ACTIVE"
-                        ? "default"
-                        : user.status === "INACTIVE"
-                        ? "secondary"
-                        : "destructive"
-                    }
-                  >
-                    {user.status === "ACTIVE"
-                      ? "Aktif"
-                      : user.status === "INACTIVE"
-                      ? "Pasif"
-                      : "Silinmiş"}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
@@ -114,4 +96,4 @@ export default function UsersPage() {
       />
     </div>
   );
-} 
+}

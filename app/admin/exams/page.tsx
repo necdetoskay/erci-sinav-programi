@@ -115,12 +115,7 @@ export default function ExamsPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <Breadcrumb 
-        items={[
-          { label: 'Yönetim', href: '/admin' },
-          { label: 'Sınavlar' }
-        ]} 
-      />
+      {/* Breadcrumb kaldırıldı */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Sınavlar</h1>
         <Button onClick={handleCreateExam}>
@@ -129,13 +124,10 @@ export default function ExamsPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Sınav Listesi</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Card bileşeni kaldırıldı, tablo doğrudan div içine alındı */}
+      <div className="bg-white rounded-lg shadow">
           {loading ? (
-            <div className="flex justify-center py-8">
+            <div className="flex justify-center py-8 px-6"> {/* Padding eklendi */}
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             </div>
           ) : error ? (
@@ -150,9 +142,9 @@ export default function ExamsPage() {
               </Button>
             </div>
           ) : exams.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 px-6 text-muted-foreground"> {/* Padding eklendi */}
               <p>Henüz sınav oluşturulmamış.</p>
-              <Button 
+              <Button
                 variant="outline" 
                 className="mt-4"
                 onClick={handleCreateExam}
@@ -262,8 +254,7 @@ export default function ExamsPage() {
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+      </div> {/* bg-white div kapanışı */}
     </div>
   );
 }

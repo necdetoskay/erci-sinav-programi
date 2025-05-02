@@ -8,7 +8,9 @@ import { useUsers } from '@/app/context/UserContext';
 export default function EditUser() {
   const params = useParams();
   const { users } = useUsers();
-  const user = users.find((user) => user.id === Number(params.id));
+  // Corrected: Compare string ID from params directly with user.id (string)
+  const userId = params.id as string; // Ensure params.id is treated as string
+  const user = users.find((user) => user.id === userId); 
 
   if (!user) {
     return (
@@ -30,4 +32,4 @@ export default function EditUser() {
       </div>
     </Layout>
   );
-} 
+}

@@ -18,14 +18,15 @@ function EnterEmailContent() {
   useEffect(() => {
     const code = searchParams.get('examCode');
     if (code) {
-      setExamCode(code);
-    } else {
-      // Exam code yoksa ilk adıma geri yönlendir
-      toast.error("Sınav Kodu Bulunamadı", {
-        description: "Lütfen tekrar deneyin.",
-      });
-      router.push('/exam/enter-code');
-    }
+       setExamCode(code);
+     } else {
+       // Exam code yoksa ilk adıma geri yönlendir
+       // toast.error("Sınav Kodu Bulunamadı", { // Removed toast to prevent persistence
+       //   description: "Lütfen tekrar deneyin.",
+       // });
+       console.warn("Redirecting from /enter-email to /enter-code due to missing examCode."); // Added console warning instead
+       router.push('/exam/enter-code');
+     }
   }, [searchParams, router]);
 
   const handleRequestCode = async (event: React.FormEvent<HTMLFormElement>) => {

@@ -37,7 +37,7 @@ export default function UserFormModal({
     email: "",
     password: "",
     role: "USER" as Role,
-    status: "ACTIVE" as Status,
+    // status: "ACTIVE" as Status, // Removed status from initial state
   });
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,11 +45,11 @@ export default function UserFormModal({
   useEffect(() => {
     if (user && mode === "edit") {
       setFormData({
-        name: user.name,
+        name: user.name ?? "", // Handle potential null name
         email: user.email,
-        password: "",
+        password: "", // Keep password empty for edit
         role: user.role as Role,
-        status: user.status as Status,
+        // status: user.status as Status, // Removed status
       });
     }
   }, [user, mode]);
@@ -63,11 +63,18 @@ export default function UserFormModal({
       if (mode === "add") {
         await addUser(formData);
       } else if (user) {
-        const updateData = { ...formData };
-        if (!updateData.password) {
-          delete updateData.password;
+        // Construct updateData carefully, excluding status and optional password
+        const updatePayload: { name: string; email: string; role: Role; password?: string } = {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+        };
+        // Only include password if it's not empty
+        if (formData.password) {
+          updatePayload.password = formData.password;
         }
-        await updateUser(user.id, updateData);
+        // Pass the cleaned payload (without status) to updateUser
+        await updateUser(user.id, updatePayload); 
       }
       onClose();
     } catch (err) {
@@ -175,23 +182,8 @@ export default function UserFormModal({
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="status">Durum</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: Status) =>
-                      setFormData({ ...formData, status: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Durum seçin" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ACTIVE">Aktif</SelectItem>
-                      <SelectItem value="INACTIVE">Pasif</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Removed Status Select Field */}
+                
               </div>
             </CardContent>
 
@@ -219,4 +211,4 @@ export default function UserFormModal({
       </div>
     </div>
   );
-} 
+}

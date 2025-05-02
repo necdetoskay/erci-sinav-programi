@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { ExamAttemptStatus, Question, ExamAttempt, ExamAttemptAnswer } from '@prisma/client'; // Import necessary types
+import { getServerSession } from "next-auth/next"; // Import next-auth session
+import { authOptions } from "@/lib/auth"; // Import auth options
 
 // Helper function to convert index to letter (0 -> A, 1 -> B, ...)
 const indexToLetter = (index: number): string => {
@@ -68,6 +70,13 @@ export async function GET(
         const { code: accessCode, firstName, lastName } = queryValidation.data;
         const participantName = (firstName && lastName) ? `${firstName} ${lastName}` : 'Bilinmeyen Katılımcı';
 
+        // Get user session to retrieve email
+        const session = await getServerSession(authOptions);
+        // Use session email if available, otherwise null (handle cases where exam might be public?)
+        const participantEmail = session?.user?.email ?? null;
+        console.log(`[API start] Participant Name: ${participantName}, Email from session: ${participantEmail}`);
+
+
         // 1. Sınavı ve sorularını getir
         const exam = await prisma.exam.findUnique({
             where: { id: examIdInt },
@@ -115,6 +124,7 @@ export async function GET(
                 data: {
                     examId: examIdInt,
                     participantName: participantName,
+                    participantEmail: participantEmail, // Add email here
                     status: ExamAttemptStatus.STARTED,
                     startTime: new Date(),
                     answers: {},

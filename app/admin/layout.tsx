@@ -22,7 +22,7 @@ export default function AdminLayout({
       </div>
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        <Header /> {/* Header bileşenini ekle */}
+        {/* Header bileşeni kaldırıldı */}
         <main className="flex-1 overflow-y-auto p-6"> {/* Padding ekleyelim */}
           {children}
         </main>

@@ -1,21 +1,22 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma"; // Corrected: Use named import
 import { hash } from "bcryptjs";
 import { Status } from "@prisma/client";
 
 // Tüm kullanıcıları getir
 export async function GET() {
   try {
+    // Fetch all users (removed status filter as it doesn't exist on User model)
     const users = await prisma.user.findMany({
-      where: {
-        status: Status.ACTIVE,
-      },
-      select: {
+      // where: { // Removed status filter
+      //   status: Status.ACTIVE, 
+      // },
+      select: { // Removed status field
         id: true,
         name: true,
         email: true,
         role: true,
-        status: true,
+        // status: true, 
         createdAt: true,
         updatedAt: true,
       },
@@ -23,8 +24,9 @@ export async function GET() {
 
     return NextResponse.json(users);
   } catch (error) {
+    console.error("Error in GET /api/users:", error); // Log the actual error
     return NextResponse.json(
-      { error: "Failed to fetch users" },
+      { error: "Failed to fetch users", details: error instanceof Error ? error.message : String(error) }, // Optionally include details
       { status: 500 }
     );
   }
@@ -68,4 +70,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

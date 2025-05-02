@@ -25,12 +25,22 @@ export async function POST(req: Request) {
 
     const { name, email, password } = validationResult.data;
 
-    // Check if user already exists
+    // Check if user already exists using Prisma ORM
+    console.log(`[Register Route] Checking for existing user with email (ORM): ${email}`); 
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
+    console.log(`[Register Route] Result of findUnique (ORM):`, existingUser); 
+
+    // Check if user already exists using Raw SQL
+    console.log(`[Register Route] Checking for existing user with email (Raw SQL): ${email}`);
+    const rawResult: any[] = await prisma.$queryRaw`SELECT * FROM "User" WHERE email = ${email}`;
+    console.log(`[Register Route] Result of $queryRaw (Raw SQL):`, rawResult);
+
 
     if (existingUser) {
+      // Decision still based on ORM result for now, but we have raw log
+      console.log(`[Register Route] Found existing user (ORM). ID: ${existingUser.id}`); 
       return NextResponse.json(
         { message: 'User with this email already exists' },
         { status: 400 }
@@ -78,12 +88,17 @@ export async function POST(req: Request) {
     }
 
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      // Handle known Prisma errors
       if (error.code === 'P2002') {
+        // Unique constraint violation (e.g., email already exists)
+        console.error('Prisma P2002 error during user creation:', error);
         return NextResponse.json(
-          { message: 'User with this email already exists' },
+          { message: 'Database constraint violation: A user with this email likely already exists.' },
           { status: 400 }
         );
       }
+      // Add handling for other specific Prisma errors if needed
+      console.error('Unhandled Prisma Known Request Error:', error);
     }
 
     return NextResponse.json(

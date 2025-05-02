@@ -29,12 +29,16 @@ import {
 export default function Users() {
   const { users, deleteUser } = useUsers()
 
-  const handleDelete = async (id: number) => {
+  // Corrected handleDelete to accept string ID and show specific error
+  const handleDelete = async (id: string) => { 
     try {
-      await deleteUser(id)
-      toast.success("User deleted successfully")
+      await deleteUser(id); // Pass string ID to context function
+      // Success toast is already handled within deleteUser context function if needed
+      // toast.success("User deleted successfully"); // Can be removed if context handles it
     } catch (error) {
-      toast.error("Something went wrong")
+      // Error toast is already handled within deleteUser context function
+      // toast.error(error instanceof Error ? error.message : "Something went wrong"); // Can be removed
+      console.error("Error caught in page handleDelete:", error); // Keep console log if desired
     }
   }
 
@@ -54,7 +58,6 @@ export default function Users() {
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -68,23 +71,6 @@ export default function Users() {
                       variant={user.role === "ADMIN" ? "default" : "secondary"}
                     >
                       {user.role === "ADMIN" ? "Admin" : "User"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        user.status === "ACTIVE"
-                          ? "default"
-                          : user.status === "INACTIVE"
-                          ? "secondary"
-                          : "destructive"
-                      }
-                    >
-                      {user.status === "ACTIVE"
-                        ? "Active"
-                        : user.status === "INACTIVE"
-                        ? "Inactive"
-                        : "Deleted"}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -123,4 +109,4 @@ export default function Users() {
       </div>
     </Layout>
   )
-} 
+}

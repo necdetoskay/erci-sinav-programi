@@ -1,10 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useParams, useRouter } from 'next/navigation'; // useRouter import edildi
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'; // CardFooter import edildi
 import { Skeleton } from '@/components/ui/skeleton';
 import { ExamAttemptStatus } from '@prisma/client'; // ExamAttemptStatus import edildi
+import { Button } from '@/components/ui/button'; // Button import edildi
+import { toast } from 'sonner'; // toast import edildi
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"; // AlertDialog import edildi
 
 // API'den gelen yanıt tipini tanımlayalım
 interface ExamResultResponse {
@@ -18,9 +31,11 @@ interface ExamResultResponse {
 
 export default function ExamResultsPage() {
     const params = useParams();
+    const router = useRouter(); // useRouter hook'u kullanıldı
     const attemptId = params.attemptId as string;
     const [result, setResult] = useState<ExamResultResponse | null>(null); // Tip güncellendi
     const [isLoading, setIsLoading] = useState(true);
+    const [isDeleting, setIsDeleting] = useState(false); // Deleting state
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -48,6 +63,28 @@ export default function ExamResultsPage() {
 
         fetchResult();
     }, [attemptId]);
+
+    const handleDeleteAttempt = async () => {
+        if (!attemptId) return;
+        setIsDeleting(true);
+        try {
+            const response = await fetch(`/api/exam/attempt/${attemptId}/delete`, {
+                method: 'DELETE',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to delete attempt.');
+            }
+            toast.success("Attempt Deleted", { description: "You can now retake the exam." });
+            // Redirect back to the start page after successful deletion
+            router.push('/exam/enter-code');
+        } catch (err: any) {
+            console.error("Error deleting attempt:", err);
+            toast.error("Deletion Failed", { description: err.message || 'Could not delete the exam attempt.' });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -92,10 +129,30 @@ export default function ExamResultsPage() {
                     {/* İleride daha fazla detay eklenebilir */}
                     {/* <p>Süre: {result.timeTaken ? `${Math.floor(result.timeTaken / 60)}dk ${result.timeTaken % 60}sn` : '-'}</p> */}
                 </CardContent>
-                {/* İsteğe bağlı: Ana sayfaya veya başka bir yere dön butonu */}
-                {/* <CardFooter>
-                    <Button className="w-full">Ana Sayfaya Dön</Button>
-                </CardFooter> */}
+                <CardFooter className="flex justify-center">
+                    {/* Delete Attempt Button */}
+                     <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" disabled={isDeleting}>
+                                {isDeleting ? 'Siliniyor...' : 'Denemeyi Sil & Tekrar Başla'}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Emin misiniz?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Bu işlem geri alınamaz. Bu sınav denemesi ve cevaplarınız kalıcı olarak silinecektir.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>İptal</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteAttempt} disabled={isDeleting}>
+                              Sil
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                </CardFooter>
             </Card>
         </div>
     );

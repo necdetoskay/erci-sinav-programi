@@ -4,14 +4,10 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-const prisma = global.prisma || new PrismaClient({
-  datasources: {
-    db: {
-      url: "postgresql://postgres:P@ssw0rd@localhost:5432/kentkonutdb"
-    }
-  }
-});
+// Initialize Prisma Client without hardcoded datasources
+// It will automatically use the DATABASE_URL from the .env file
+const prisma = global.prisma || new PrismaClient();
 
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
-export { prisma }; 
+export { prisma };

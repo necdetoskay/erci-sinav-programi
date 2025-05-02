@@ -36,60 +36,89 @@ const formSchema = z.object({
     message: "Password must be at least 6 characters.",
   }).optional(),
   role: z.enum(["ADMIN", "USER"]),
-  status: z.enum(["ACTIVE", "INACTIVE"]),
+  // status: z.enum(["ACTIVE", "INACTIVE"]), // Removed status from schema
 })
 
 type UserFormValues = z.infer<typeof formSchema>
 
+// Define User type based on what the form actually uses/needs
+// Match the User type from UserContext if possible, but ensure ID is string
+interface UserFormData {
+    id: string; // Changed to string
+    name: string | null; // Match UserContext
+    email: string;
+    role: "ADMIN" | "USER";
+    // status: "ACTIVE" | "INACTIVE"; // Removed status
+}
+
 interface UserFormProps {
-  initialData?: {
-    id: number
-    name: string
-    email: string
-    role: "ADMIN" | "USER"
-    status: "ACTIVE" | "INACTIVE"
-  }
+  initialData?: UserFormData // Use the defined type
 }
 
 export function UserForm({ initialData }: UserFormProps) {
   const { addUser, updateUser } = useUsers()
   const router = useRouter()
 
+  // Initialize the form with react-hook-form
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: initialData || {
-      name: "",
-      email: "",
-      password: "",
-      role: "USER",
-      status: "ACTIVE",
-    },
+    // Adjust defaultValues to handle potential null name and ensure type consistency
+    defaultValues: initialData 
+      ? { 
+          name: initialData.name ?? "", // Use nullish coalescing for name
+          email: initialData.email, 
+          role: initialData.role,
+          // password is not set for initialData (edit mode)
+        } 
+      : { // Default values for new user form
+          name: "",
+          email: "",
+          password: "", 
+          role: "USER", 
+        },
   })
 
   async function onSubmit(data: UserFormValues) {
     try {
       if (initialData) {
-        await updateUser(initialData.id, data)
-        toast.success("User updated successfully")
+        // Pass string ID and relevant data to updateUser
+        await updateUser(initialData.id, { 
+          name: data.name, 
+          email: data.email, 
+          role: data.role,
+          // status: data.status // Removed status
+        });
+        // toast is handled in updateUser context function
+        // toast.success("User updated successfully"); 
       } else {
+        // Add user logic (ensure CreateUserData matches context)
         if (!data.password) {
           toast.error("Password is required for new users")
           return
         }
-        await addUser({
-          ...data,
-          password: data.password,
-        })
-        toast.success("User created successfully")
+        // Ensure the data passed matches CreateUserData expected by context
+        // Note: addUser in context is currently a placeholder
+        await addUser({ 
+          name: data.name,
+          email: data.email,
+          password: data.password, // Password is required here
+          role: data.role,
+          // status: data.status, // Removed status
+        });
+        // toast is handled in addUser context function (currently a warning)
+        // toast.success("User created successfully"); 
       }
-      router.push("/users")
+      router.push("/users"); // Navigate back after submit
     } catch (error) {
-      toast.error("Something went wrong")
+      // Error toast is handled in context functions
+      // toast.error("Something went wrong"); 
+      console.error("Error during form submission:", error); // Keep console log
     }
   }
 
   return (
-    <Form {...form}>
+    // Correctly pass the form object to the Form component
+    <Form form={form}> 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}
@@ -153,31 +182,11 @@ export function UserForm({ initialData }: UserFormProps) {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Removed Status FormField */}
         <Button type="submit">
           {initialData ? "Update User" : "Create User"}
         </Button>
       </form>
     </Form>
   )
-} 
+}
