@@ -59,40 +59,48 @@ export const authOptions: NextAuthOptions = {
         } catch (error) {
           console.error("Authentication error:", error);
           throw error;
-        } finally {
-          await prisma.$disconnect();
         }
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, account }) {
-      console.log("JWT Callback - Input:", { token, user, account });
-      
-      if (user) {
-        // User bilgilerini token'a ekle
-        token.id = user.id;
-        token.email = user.email;
-        token.role = user.role;
-        token.name = user.name;
-      }
+      try {
+        console.log("JWT Callback - Input:", { token, user, account });
+        
+        if (user) {
+          // User bilgilerini token'a ekle
+          token.id = user.id;
+          token.email = user.email;
+          token.role = user.role;
+          token.name = user.name;
+        }
 
-      console.log("JWT Callback - Output token:", token);
-      return token as ExtendedJWT;
+        console.log("JWT Callback - Output token:", token);
+        return token as ExtendedJWT;
+      } catch (error) {
+        console.error("JWT Callback Error:", error);
+        throw error; // Re-throw the error so NextAuth can handle it
+      }
     },
     async session({ session, token }) {
-      console.log("Session Callback - Input:", { session, token });
-      
-      if (session.user && token) {
-        // Token'dan gelen bilgileri session'a ekle
-        session.user.id = token.id as string;
-        session.user.email = token.email as string;
-        session.user.role = token.role as string;
-        session.user.name = token.name as string | null;
-      }
+      try {
+        console.log("Session Callback - Input:", { session, token });
+        
+        if (session.user && token) {
+          // Token'dan gelen bilgileri session'a ekle
+          session.user.id = token.id as string;
+          session.user.email = token.email as string;
+          session.user.role = token.role as string;
+          session.user.name = token.name as string | null;
+        }
 
-      console.log("Session Callback - Output session:", session);
-      return session as ExtendedSession;
+        console.log("Session Callback - Output session:", session);
+        return session as ExtendedSession;
+      } catch (error) {
+        console.error("Session Callback Error:", error);
+        throw error; // Re-throw the error
+      }
     },
   },
   pages: {
@@ -109,4 +117,4 @@ const handler = NextAuth(authOptions);
 export { handler as GET, handler as POST };
 
 // Export auth utilities
-export const auth = () => getServerSession(authOptions); 
+export const auth = () => getServerSession(authOptions);

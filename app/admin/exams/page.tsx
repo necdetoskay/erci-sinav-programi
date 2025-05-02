@@ -29,6 +29,7 @@ interface Exam {
   status: 'draft' | 'published';
   created_at: string;
   updated_at: string;
+  access_code: string; // Sınav kodunu ekle
   participantCount?: number;
   totalParticipants?: number;
 }
@@ -165,6 +166,7 @@ export default function ExamsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Sınav Adı</TableHead>
+                    <TableHead>Sınav Kodu</TableHead> {/* Yeni sütun başlığı */}
                     <TableHead>Durum</TableHead>
                     <TableHead>Katılım</TableHead>
                     <TableHead className="text-right">İşlem</TableHead>
@@ -174,6 +176,7 @@ export default function ExamsPage() {
                   {exams.map((exam) => (
                     <TableRow key={exam.id}>
                       <TableCell className="font-medium">{exam.title}</TableCell>
+                      <TableCell>{exam.access_code}</TableCell> {/* Sınav kodunu göster */}
                       <TableCell>
                         <Badge variant={exam.status === 'published' ? 'default' : 'secondary'}>
                           {exam.status === 'published' ? 'Yayında' : 'Taslak'}
@@ -263,4 +266,4 @@ export default function ExamsPage() {
       </Card>
     </div>
   );
-} 
+}

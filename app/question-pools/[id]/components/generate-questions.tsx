@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,14 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -27,159 +20,312 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Wand2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { cn } from "@/lib/utils";
 import { AILoading } from "@/components/ui/ai-loading";
+import { v4 as uuidv4 } from "uuid";
 
+// Zod şeması (API'nin beklediği alanlara göre güncellenebilir)
 const formSchema = z.object({
-  count: z.number().min(1).max(25),
+  promptText: z.string().min(10, { message: "Prompt en az 10 karakter olmalıdır." }),
+  count: z.coerce.number().min(1, "En az 1 soru üretilmeli").max(10, "En fazla 10 soru üretilebilir"), // API limiti 10
+  // optionsPerQuestion: z.coerce.number().min(2).max(6), // API bunu bekliyor, ekleyelim
   model: z.enum([
-    "google/gemini-2.0-flash-exp:free",
+    // "google/gemini-2.0-flash-exp:free", // Eski değeri kaldır
+    "gemini-1.5-flash-latest", // Çalışan modeli ekle
     "deepseek/deepseek-chat-v3-0324:free",
     "meta-llama/llama-4-scout:free",
     "qwen/qwen3-235b-a22b:free",
     "deepseek-ai/deepseek-coder-33b-instruct",
-    "google/gemini-pro"
+    // "google/gemini-pro", // Eski model kaldırıldı
+    "gemini-2.5-pro-exp-03-25", // Yeni model enum'a eklendi
+    "meta-llama/llama-4-scout-17b-16e-instruct" // Groq modeli eklendi
   ]),
+  // difficulty API tarafından doğrudan kullanılmıyor, prompt'a eklenebilir
   difficulty: z.enum(["easy", "medium", "hard"])
 });
 
 type FormData = z.infer<typeof formSchema>;
 
+// Üretilen soru tipi (API yanıtına göre ayarlanmalı)
 type GeneratedQuestion = {
-  id: string;
+  id: string; // UUID ile atanacak
   questionText: string;
   options: Array<{
     text: string;
-    label: string;
+    label: string; // A, B, C...
   }>;
-  correctAnswer: string;
+  correctAnswer: string; // A, B, C...
   explanation: string;
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: "easy" | "medium" | "hard"; // Formdan gelen zorluk
   approved?: boolean;
 };
 
 interface GenerateQuestionsProps {
-  poolId: number;
+  poolId: number | undefined;
+  poolTitle: string | undefined;
+  onQuestionsGenerated: () => void;
 }
 
-export function GenerateQuestions({ poolId }: GenerateQuestionsProps) {
+export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: GenerateQuestionsProps) {
   const [open, setOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [generatedQuestions, setGeneratedQuestions] = useState<GeneratedQuestion[]>([]);
   const router = useRouter();
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      count: 1,
-      model: "google/gemini-2.0-flash-exp:free",
-      difficulty: "medium"
-    },
-  });
+  // Form alanları için state'ler
+  const [promptText, setPromptText] = useState(poolTitle || "");
+  const [count, setCount] = useState(1);
+  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  // Varsayılan modeli de çalışanla değiştir
+  const [model, setModel] = useState("gemini-1.5-flash-latest"); 
+  const [optionsPerQuestion, setOptionsPerQuestion] = useState(4); // Seçenek sayısı için state
+  const [formErrors, setFormErrors] = useState<z.ZodIssue[]>([]);
 
-  // Form ve state'leri sıfırlama fonksiyonu
-  const resetForm = () => {
-    form.reset({
-      count: 1,
-      model: "google/gemini-2.0-flash-exp:free",
-      difficulty: "medium"
-    });
+  useEffect(() => {
+    setPromptText(poolTitle || "");
+  }, [poolTitle]);
+
+  const resetFormAndState = () => {
+    setPromptText(poolTitle || "");
+    setCount(1);
+    setDifficulty("medium");
+    setModel("google/gemini-2.0-flash-exp:free");
+    setOptionsPerQuestion(4); // Seçenek sayısını da sıfırla
     setCurrentStep(0);
     setGeneratedQuestions([]);
     setIsGenerating(false);
+    setFormErrors([]);
   };
 
-  // Dialog kapanma fonksiyonu
-  const handleOpenChange = (open: boolean) => {
-    setOpen(open);
-    if (!open) {
-      resetForm();
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      resetFormAndState();
     }
   };
 
-  async function onSubmit(data: FormData) {
+  // API'den gelen metni parse etme fonksiyonu
+  const parseGeneratedText = (text: string, count: number, difficulty: "easy" | "medium" | "hard"): GeneratedQuestion[] => {
+    const questions: GeneratedQuestion[] = [];
+    // Metni satırlara ayır
+    const lines = text.trim().split('\n');
+    let currentQuestion: Partial<GeneratedQuestion> = {};
+    let options: Array<{ text: string; label: string }> = [];
+    let questionCounter = 0;
+
+    const optionRegex = /^([A-F])\)\s*(.*)/; // Seçenekleri yakalamak için regex
+    // Regex'leri baştaki ve sondaki ** işaretlerini opsiyonel olarak alacak şekilde güncelle
+    const answerRegex = /^\**Doğru Cevap:\**\s*([A-F])\**/i; 
+    const explanationRegex = /^\**Açıklama:\**\s*(.*)/i;
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue; // Boş satırları atla
+
+      // Soru metnini yakala (genellikle numara ile başlar)
+      if (/^\d+\.\s*(.*)/.test(trimmedLine) && questionCounter < count) {
+        // Önceki soruyu tamamla (varsa)
+        if (currentQuestion.questionText) {
+          currentQuestion.options = options;
+          // Zorluk seviyesini formdan al
+          currentQuestion.difficulty = difficulty;
+          // ID ata
+          currentQuestion.id = uuidv4();
+          questions.push(currentQuestion as GeneratedQuestion);
+        }
+        // Yeni soruyu başlat
+        questionCounter++;
+        currentQuestion = { questionText: trimmedLine.replace(/^\d+\.\s*/, '') };
+        options = [];
+      }
+      // Seçenekleri yakala
+      else if (optionRegex.test(trimmedLine)) {
+        const match = trimmedLine.match(optionRegex);
+        if (match) {
+          options.push({ label: match[1], text: match[2].trim() });
+        }
+      }
+      // Doğru cevabı yakala
+      else if (answerRegex.test(trimmedLine)) {
+        const match = trimmedLine.match(answerRegex);
+        if (match) {
+          currentQuestion.correctAnswer = match[1].toUpperCase();
+        }
+      }
+      // Açıklamayı yakala
+      else if (explanationRegex.test(trimmedLine)) {
+        const match = trimmedLine.match(explanationRegex);
+        if (match) {
+          // Açıklama metninden sondaki olası ** işaretini temizle
+          currentQuestion.explanation = match[1].trim().replace(/\**$/, ''); 
+        }
+      }
+      // Eğer hiçbirine uymuyorsa ve bir soru metni varsa, seçenek veya açıklamanın devamı olabilir
+      else if (currentQuestion.questionText && options.length > 0) {
+         // Son seçeneğe veya açıklamaya ekleme yapılabilir (şimdilik basit tutalım)
+         console.warn("Unparsed line, potentially part of previous option/explanation:", trimmedLine);
+      }
+    }
+
+    // Döngü bittikten sonra son soruyu ekle
+    if (currentQuestion.questionText && questionCounter <= count) {
+      currentQuestion.options = options;
+      currentQuestion.difficulty = difficulty;
+      currentQuestion.id = uuidv4();
+      questions.push(currentQuestion as GeneratedQuestion);
+    }
+
+    // Eğer istenen sayıda soru parse edilemediyse uyarı ver
+    if (questions.length !== count) {
+        console.warn(`Expected ${count} questions, but parsed ${questions.length}. API response format might be inconsistent.`);
+        toast.warning(`API ${count} soru üretmedi (${questions.length} üretildi). Yanıt formatı tutarsız olabilir.`);
+    }
+
+
+    return questions;
+  };
+
+
+  // Buton tıklamasıyla tetiklenecek fonksiyon
+  const handleGenerateClick = async () => {
+    setFormErrors([]);
+    const formData = {
+      promptText,
+      count,
+      difficulty, // Bu API'ye doğrudan gönderilmiyor, prompt'a eklenebilir
+      model,
+      optionsPerQuestion // API'nin beklediği alan
+    };
+
+    // Zod şemasını API'nin beklediği alanlara göre güncelleyelim
+    const apiSchema = formSchema.extend({
+        optionsPerQuestion: z.coerce.number().min(2).max(6)
+    });
+
+    const validationResult = apiSchema.safeParse(formData);
+    if (!validationResult.success) {
+      setFormErrors(validationResult.error.issues);
+      toast.error("Lütfen formdaki hataları düzeltin.");
+      console.error("Form validation errors:", validationResult.error.flatten());
+      return;
+    }
+
+    const validatedData = validationResult.data;
+    console.log("onSubmit triggered with data:", validatedData);
+
     try {
       setIsGenerating(true);
-      const response = await fetch(`/api/question-pools/${poolId}/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      const apiUrl = "/api/generate-questions"; // Doğru API adresini kullan
+      console.log(`Calling API: ${apiUrl}`);
 
-      if (!response.ok) {
-        throw new Error("Sorular üretilirken bir hata oluştu");
+      // API'nin beklediği payload'ı oluştur
+      const apiPayload = {
+        content: validatedData.promptText, // promptText -> content
+        numberOfQuestions: validatedData.count, // count -> numberOfQuestions
+        optionsPerQuestion: validatedData.optionsPerQuestion,
+        model: validatedData.model,
+        // difficulty prompt'a eklenebilir veya API'de işlenebilir
+      };
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiPayload),
+      });
+      console.log("API Response Status:", response.status);
+
+      const responseData = await response.json();
+
+      if (!response.ok || !responseData.success) {
+        console.error("API Error Response Body:", responseData);
+        throw new Error(responseData.error || `Sorular üretilirken bir hata oluştu (Status: ${response.status})`);
       }
 
-      const questions = await response.json();
-      setGeneratedQuestions(questions.map((q: GeneratedQuestion) => ({ ...q, approved: false })));
-      setCurrentStep(1);
+      console.log("API raw response text:", responseData.questions); // API'den gelen ham metni logla
+
+      // API'den gelen metni parse et
+      const parsedQuestions = parseGeneratedText(responseData.questions, validatedData.count, validatedData.difficulty);
+      console.log("Parsed Questions:", JSON.stringify(parsedQuestions, null, 2)); // Parse edilen soruları logla
+
+      if (parsedQuestions.length === 0 && validatedData.count > 0) {
+           console.error("Parsed questions array is empty despite successful API call.");
+           toast.error("API yanıtı işlenemedi veya boş döndü. Yanıt formatını kontrol edin.");
+           // Hata durumunda bile boş diziyle state'i güncelleyebiliriz veya hata mesajı gösterebiliriz.
+           setGeneratedQuestions([]);
+      } else {
+          setGeneratedQuestions(parsedQuestions.map(q => ({ ...q, approved: false })));
+      }
+
+      setCurrentStep(1); // Onaylama adımına geç
+      console.log("Moved to step 1");
+
     } catch (error) {
-      toast.error("Sorular üretilirken bir hata oluştu");
+      console.error("Error in handleGenerateClick:", error);
+      toast.error(error instanceof Error ? error.message : "Sorular üretilirken bilinmeyen bir hata oluştu");
     } finally {
       setIsGenerating(false);
+      console.log("handleGenerateClick finished");
     }
-  }
+  };
+
 
   async function saveApprovedQuestions() {
+     // ... (saveApprovedQuestions kodu aynı kalıyor, ancak API endpoint'i kontrol edilmeli) ...
+     console.log("saveApprovedQuestions triggered");
     try {
       const approvedQuestions = generatedQuestions.filter(q => q.approved);
-      
+      console.log("Approved questions:", approvedQuestions);
       if (approvedQuestions.length === 0) {
         toast.error("Lütfen en az bir soru onaylayın");
         return;
       }
-
-      const response = await fetch(`/api/question-pools/${poolId}/questions/batch`, {
+      // Doğru API endpoint'ini kullandığımızdan emin olalım
+      const batchApiUrl = `/api/question-pools/${poolId}/questions/batch`;
+      console.log(`Calling API: ${batchApiUrl}`);
+      const response = await fetch(batchApiUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        // API'nin beklediği payload'ı kontrol et
         body: JSON.stringify({ questions: approvedQuestions }),
       });
-
+      console.log("Save Batch API Response Status:", response.status);
       if (!response.ok) {
+         const errorBody = await response.text();
+         console.error("Save Batch API Error Response Body:", errorBody);
         throw new Error("Sorular kaydedilirken bir hata oluştu");
       }
-
       toast.success("Onaylanan sorular başarıyla kaydedildi");
       setOpen(false);
-      resetForm();
-      router.refresh();
-      
-      // Sayfayı yenile
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
+      resetFormAndState();
+      onQuestionsGenerated();
     } catch (error) {
-      toast.error("Sorular kaydedilirken bir hata oluştu");
+       console.error("Error saving approved questions:", error);
+      toast.error(error instanceof Error ? error.message : "Sorular kaydedilirken bilinmeyen bir hata oluştu");
     }
   }
 
   function toggleApproval(questionId: string) {
+    // ... (toggleApproval kodu aynı kalıyor) ...
     setGeneratedQuestions(prev => {
       const newQuestions = prev.map(q =>
         q.id === questionId ? { ...q, approved: !q.approved } : q
       );
-      
-      // Eğer soru onaylandıysa ve başka sorular varsa, otomatik olarak sonraki soruya geç
       const currentQuestion = newQuestions.find(q => q.id === questionId);
-      if (currentQuestion?.approved && currentStep < totalSteps) {
-        setTimeout(() => setCurrentStep(currentStep + 1), 500);
+      const currentIndex = newQuestions.findIndex(q => q.id === questionId);
+      if (currentQuestion?.approved && currentIndex < newQuestions.length - 1) {
+        setTimeout(() => setCurrentStep(currentIndex + 1 + 1), 300);
       }
-      
       return newQuestions;
     });
   }
+
+  const getError = (path: string) => formErrors.find(err => err.path.includes(path))?.message;
 
   const currentQuestion = generatedQuestions[currentStep - 1];
   const totalSteps = generatedQuestions.length;
@@ -187,7 +333,7 @@ export function GenerateQuestions({ poolId }: GenerateQuestionsProps) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>
+        <Button variant="outline">
           <Wand2 className="mr-2 h-4 w-4" />
           Yapay Zeka ile Soru Üret
         </Button>
@@ -205,89 +351,112 @@ export function GenerateQuestions({ poolId }: GenerateQuestionsProps) {
         {isGenerating ? (
           <AILoading className="my-8" />
         ) : currentStep === 0 ? (
-          <Form form={form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="count"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Soru Sayısı</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={25}
-                          {...field}
-                          onChange={e => field.onChange(parseInt(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+          // Basit HTML formu
+          <div className="space-y-4 py-4">
+            {/* Prompt Text */}
+            <div className="space-y-2">
+              <Label htmlFor="promptText">Soru Üretme Konusu (Prompt)</Label>
+              <Textarea
+                id="promptText"
+                name="promptText"
+                placeholder="Yapay zekanın hangi konu hakkında soru üretmesini istediğinizi buraya yazın..."
+                className={`resize-y min-h-[80px] ${getError('promptText') ? 'border-red-500' : ''}`}
+                value={promptText}
+                onChange={(e) => setPromptText(e.target.value)}
+                required
+              />
+              {getError('promptText') && <p className="text-sm text-red-600">{getError('promptText')}</p>}
+            </div>
 
-                <FormField
-                  control={form.control}
-                  name="difficulty"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Zorluk Seviyesi</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Zorluk seviyesi seçin" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="easy">Kolay</SelectItem>
-                          <SelectItem value="medium">Orta</SelectItem>
-                          <SelectItem value="hard">Zor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="model"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Model</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Model seçin" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash</SelectItem>
-                          <SelectItem value="deepseek/deepseek-chat-v3-0324:free">DeepSeek Chat v3</SelectItem>
-                          <SelectItem value="meta-llama/llama-4-scout:free">Llama 4 Scout</SelectItem>
-                          <SelectItem value="qwen/qwen3-235b-a22b:free">Qwen 3</SelectItem>
-                          <SelectItem value="deepseek-ai/deepseek-coder-33b-instruct">DeepSeek Coder</SelectItem>
-                          <SelectItem value="google/gemini-pro">Gemini Pro</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4"> {/* 4 sütun */}
+              {/* Soru Sayısı */}
+              <div className="space-y-2">
+                 <Label htmlFor="count">Soru Sayısı</Label>
+                 <Input
+                   id="count"
+                   name="count"
+                   type="number"
+                   min={1}
+                   max={10} // API limitine göre ayarlandı
+                   value={count}
+                   onChange={(e) => setCount(parseInt(e.target.value, 10) || 1)}
+                   required
+                   className={getError('count') ? 'border-red-500' : ''}
+                 />
+                 {getError('count') && <p className="text-sm text-red-600">{getError('count')}</p>}
               </div>
 
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isGenerating}>
-                  {isGenerating ? "Üretiliyor..." : "Soru Üret"}
-                </Button>
+               {/* Seçenek Sayısı */}
+               <div className="space-y-2">
+                 <Label htmlFor="optionsPerQuestion">Seçenek Sayısı</Label>
+                 <Input
+                   id="optionsPerQuestion"
+                   name="optionsPerQuestion"
+                   type="number"
+                   min={2}
+                   max={6} // API limitine göre ayarlandı
+                   value={optionsPerQuestion}
+                   onChange={(e) => setOptionsPerQuestion(parseInt(e.target.value, 10) || 4)}
+                   required
+                   className={getError('optionsPerQuestion') ? 'border-red-500' : ''}
+                 />
+                 {getError('optionsPerQuestion') && <p className="text-sm text-red-600">{getError('optionsPerQuestion')}</p>}
               </div>
-            </form>
-          </Form>
+
+              {/* Zorluk Seviyesi */}
+              <div className="space-y-2">
+                 <Label htmlFor="difficulty">Zorluk Seviyesi</Label>
+                 <Select name="difficulty" value={difficulty} onValueChange={(value: "easy" | "medium" | "hard") => setDifficulty(value)}>
+                    <SelectTrigger id="difficulty" className={getError('difficulty') ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Zorluk seviyesi seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="easy">Kolay</SelectItem>
+                      <SelectItem value="medium">Orta</SelectItem>
+                      <SelectItem value="hard">Zor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {getError('difficulty') && <p className="text-sm text-red-600">{getError('difficulty')}</p>}
+              </div>
+
+              {/* Model */}
+               <div className="space-y-2">
+                 <Label htmlFor="model">Model</Label>
+                 <Select name="model" value={model} onValueChange={setModel}>
+                    <SelectTrigger id="model" className={getError('model') ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Model seçin" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {/* Eski değeri çalışanla değiştir ve metni güncelle */}
+                      <SelectItem value="gemini-1.5-flash-latest">Gemini 1.5 Flash</SelectItem> 
+                      <SelectItem value="deepseek/deepseek-chat-v3-0324:free">DeepSeek Chat v3</SelectItem>
+                      <SelectItem value="meta-llama/llama-4-scout:free">Llama 4 Scout</SelectItem>
+                      <SelectItem value="qwen/qwen3-235b-a22b:free">Qwen 3</SelectItem>
+                      <SelectItem value="deepseek-ai/deepseek-coder-33b-instruct">DeepSeek Coder</SelectItem>
+                      {/* <SelectItem value="google/gemini-pro">Gemini Pro</SelectItem>  Eski model kaldırıldı */}
+                      <SelectItem value="gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro Exp</SelectItem> {/* Yeni model eklendi */}
+                      <SelectItem value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</SelectItem> {/* Groq modeli eklendi */}
+                    </SelectContent>
+                  </Select>
+                  {getError('model') && <p className="text-sm text-red-600">{getError('model')}</p>}
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                onClick={handleGenerateClick}
+                disabled={isGenerating || poolId === undefined}
+              >
+                {isGenerating ? "Üretiliyor..." : "Soru Üret"}
+              </Button>
+            </div>
+          </div>
         ) : (
+          // Onaylama adımı
           <div className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
+             {/* ... (Onaylama adımı kodu aynı kalıyor) ... */}
+             <div className="flex items-center justify-between mb-4">
               <div className="text-sm text-muted-foreground">
                 Soru {currentStep} / {totalSteps}
               </div>
@@ -308,47 +477,46 @@ export function GenerateQuestions({ poolId }: GenerateQuestionsProps) {
                 </Button>
               </div>
             </div>
-
             {currentQuestion && (
               <Card className={cn(
                 "border-2 transition-colors",
                 currentQuestion.approved ? "border-green-500" : "border-muted"
               )}>
                 <CardContent className="pt-6 space-y-4">
-                  <div className="prose prose-sm max-w-none">
-                    <div dangerouslySetInnerHTML={{ __html: currentQuestion.questionText }} />
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                     <div dangerouslySetInnerHTML={{ __html: currentQuestion.questionText || '' }} />
                   </div>
-
                   <div className="space-y-2">
-                    {currentQuestion.options.map((option) => (
+                    {Array.isArray(currentQuestion.options) && currentQuestion.options.map((option) => (
                       <div
                         key={option.label}
                         className={cn(
-                          "p-3 rounded-lg",
+                          "p-3 rounded-lg border",
                           option.label === currentQuestion.correctAnswer
-                            ? "bg-green-50 border border-green-200"
-                            : "bg-gray-50 border border-gray-200"
+                            ? "bg-green-100 border-green-300 dark:bg-green-900/50 dark:border-green-700"
+                            : "bg-gray-50 border-gray-200 dark:bg-gray-800/50 dark:border-gray-700"
                         )}
                       >
                         <span className="font-medium mr-2">{option.label})</span>
-                        <span dangerouslySetInnerHTML={{ __html: option.text }} />
+                        <span dangerouslySetInnerHTML={{ __html: option.text || '' }} />
                       </div>
                     ))}
                   </div>
-
-                  <div className="prose prose-sm max-w-none">
-                    <h4>Açıklama</h4>
-                    <div dangerouslySetInnerHTML={{ __html: currentQuestion.explanation }} />
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4">
+                  {currentQuestion.explanation && (
+                    <div className="prose prose-sm max-w-none dark:prose-invert pt-4 border-t mt-4">
+                      <h4>Açıklama</h4>
+                      <div dangerouslySetInnerHTML={{ __html: currentQuestion.explanation }} />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-4 border-t mt-4">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">Zorluk:</span>
-                      <span className="text-sm">{currentQuestion.difficulty}</span>
+                      <span className="text-sm capitalize">{currentQuestion.difficulty}</span>
                     </div>
                     <Button
                       variant={currentQuestion.approved ? "destructive" : "secondary"}
                       onClick={() => toggleApproval(currentQuestion.id)}
+                      size="sm"
                     >
                       {currentQuestion.approved ? "Onayı Kaldır" : "Onayla"}
                     </Button>
@@ -356,11 +524,10 @@ export function GenerateQuestions({ poolId }: GenerateQuestionsProps) {
                 </CardContent>
               </Card>
             )}
-
-            {currentStep === totalSteps && (
-              <div className="flex justify-end pt-4">
+            {currentStep > 0 && generatedQuestions.some(q => q.approved) && (
+              <div className="flex justify-end pt-4 border-t mt-4">
                 <Button onClick={saveApprovedQuestions}>
-                  Onaylanan Soruları Kaydet
+                  Onaylanan Soruları Kaydet ({generatedQuestions.filter(q => q.approved).length})
                 </Button>
               </div>
             )}
@@ -369,4 +536,4 @@ export function GenerateQuestions({ poolId }: GenerateQuestionsProps) {
       </DialogContent>
     </Dialog>
   );
-} 
+}

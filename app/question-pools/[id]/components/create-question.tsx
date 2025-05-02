@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -51,10 +51,11 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface CreateQuestionProps {
-  id: number;
+  id: number | undefined; // Updated to allow undefined
+  onQuestionCreated: () => void;
 }
 
-export function CreateQuestion({ id }: CreateQuestionProps) {
+export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const form = useForm<FormData>({
@@ -66,6 +67,7 @@ export function CreateQuestion({ id }: CreateQuestionProps) {
         { text: "", label: "C" },
         { text: "", label: "D" },
       ],
+      correctAnswer: "A", // Provide a default value
       difficulty: "medium",
       explanation: "",
       tags: [],
@@ -94,7 +96,7 @@ export function CreateQuestion({ id }: CreateQuestionProps) {
       toast.success("Soru başarıyla eklendi");
       setOpen(false);
       form.reset();
-      router.refresh();
+      onQuestionCreated(); // Call the refresh function instead of router.refresh()
     } catch (error) {
       toast.error("Soru eklenirken bir hata oluştu");
     }
@@ -194,23 +196,30 @@ export function CreateQuestion({ id }: CreateQuestionProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Doğru Cevap</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Doğru cevabı seçin" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {fields.map((option) => (
-                        <SelectItem key={option.id} value={option.label}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {/* Use Controller for better type handling with Select */}
+                  <Controller
+                    control={form.control}
+                    name="correctAnswer"
+                    render={({ field }: { field: any }) => ( // Specify field type
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value} // Use field.value directly with Controller
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Doğru cevabı seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {fields.map((option) => (
+                            <SelectItem key={option.id} value={option.label}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
@@ -240,32 +249,39 @@ export function CreateQuestion({ id }: CreateQuestionProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Zorluk Seviyesi</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Zorluk seviyesi seçin" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="easy">Kolay</SelectItem>
-                      <SelectItem value="medium">Orta</SelectItem>
-                      <SelectItem value="hard">Zor</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Use Controller for difficulty as well */}
+                  <Controller
+                    control={form.control}
+                    name="difficulty"
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Zorluk seviyesi seçin" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="easy">Kolay</SelectItem>
+                          <SelectItem value="medium">Orta</SelectItem>
+                          <SelectItem value="hard">Zor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
 
             <div className="flex justify-end">
-              <Button type="submit">Ekle</Button>
+              <Button type="submit" disabled={id === undefined}>Ekle</Button>
             </div>
           </form>
         </Form>
       </DialogContent>
     </Dialog>
   );
-} 
+}

@@ -128,8 +128,9 @@ export function UpdateQuestion({ id, question }: UpdateQuestionProps) {
             Soru bilgilerini güncelleyin.
           </DialogDescription>
         </DialogHeader>
-        <Form form={form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* İç <form> etiketi kaldırıldı, onSubmit ve className Form bileşenine taşındı */}
+        <Form form={form} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4"> */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <FormField
@@ -290,9 +291,9 @@ export function UpdateQuestion({ id, question }: UpdateQuestionProps) {
             <div className="flex justify-end pt-4">
               <Button type="submit">Güncelle</Button>
             </div>
-          </form>
+          {/* </form> */}
         </Form>
       </DialogContent>
     </Dialog>
   );
-} 
+}

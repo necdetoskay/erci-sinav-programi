@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { db } from "@/lib/db";
+// import { db } from "@/lib/db"; // db importu kaldırıldı, artık pool title'a gerek yok
 
 const requestSchema = z.object({
   count: z.number().min(1).max(25),
+  promptText: z.string().min(10, { message: "Prompt en az 10 karakter olmalıdır." }), // promptText eklendi
   model: z.enum([
     "google/gemini-2.0-flash-exp:free",
     "deepseek/deepseek-chat-v3-0324:free",
@@ -22,21 +23,11 @@ export async function POST(
 ) {
   try {
     const body = await request.json();
-    const { count, model, difficulty } = requestSchema.parse(body);
+    // promptText destructure edildi, questionPool sorgusu kaldırıldı
+    const { count, promptText, model, difficulty } = requestSchema.parse(body);
 
-    // Soru havuzunu veritabanından al
-    const questionPool = await db.questionPool.findUnique({
-      where: {
-        id: parseInt(params.id)
-      }
-    });
-
-    if (!questionPool) {
-      return NextResponse.json(
-        { error: "Soru havuzu bulunamadı" },
-        { status: 404 }
-      );
-    }
+    // Soru havuzu kontrolü kaldırıldı, artık gerekli değil.
+    // ID hala başka amaçlar için kullanılabilir (örn. loglama), bu yüzden parametre kalabilir.
 
     const difficultyInTurkish = {
       easy: "kolay",
@@ -45,7 +36,8 @@ export async function POST(
     }[difficulty];
 
     const prompt = [
-      `Sen bir eğitim uzmanısın. "${questionPool.title}" konusu hakkında ${count} adet ${difficultyInTurkish} zorluk seviyesinde sınav sorusu oluşturman gerekiyor.`,
+      // questionPool.title yerine promptText kullanıldı
+      `Sen bir eğitim uzmanısın. "${promptText}" konusu hakkında ${count} adet ${difficultyInTurkish} zorluk seviyesinde sınav sorusu oluşturman gerekiyor.`,
       "Her soru için aşağıdaki gereksinimleri karşılamalısın:",
       "- Soru metni açık ve anlaşılır olmalı",
       "- Her soru için tam olarak 4 şık olmalı (A, B, C, D)",
@@ -93,45 +85,70 @@ export async function POST(
       }),
     });
 
+    // Log status and status text for debugging
+    console.log(`OpenRouter API Response Status: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
-      throw new Error("API yanıtı başarısız");
+      // Log the response body if the request failed
+      const errorBody = await response.text();
+      console.error("OpenRouter API Error Response:", errorBody);
+      throw new Error(`API yanıtı başarısız: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     let questions;
 
     try {
-      const content = data.choices[0].message.content;
+      // Check if choices exist and have content
+      if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+          console.error("Unexpected OpenRouter API response structure:", data);
+          throw new Error("API yanıtı beklenen yapıda değil");
+      }
       
+      const content = data.choices[0].message.content;
+      console.log("Raw OpenRouter Response Content:", content); // Log raw content
+
       const cleanContent = content
         .replace(/```json\n?/g, "")
         .replace(/```\n?/g, "")
         .trim();
+      console.log("Cleaned Content for Parsing:", cleanContent); // Log cleaned content
 
       try {
         const parsedContent = JSON.parse(cleanContent);
+        
+        // Add validation for parsedContent structure if needed
+        if (!parsedContent || !Array.isArray(parsedContent.questions)) {
+            console.error("Parsed content does not contain 'questions' array:", parsedContent);
+            throw new Error("API yanıtı 'questions' dizisini içermiyor");
+        }
+
         questions = parsedContent.questions;
 
         questions = questions.map((q: any) => ({
           ...q,
           id: uuidv4(),
         }));
-      } catch (parseError) {
-        console.error("JSON parse hatası:", parseError);
-        console.error("Temizlenmiş içerik:", cleanContent);
-        throw new Error("API yanıtı geçerli bir JSON formatında değil");
+      } catch (parseError: any) { // Catch specific error type
+        console.error("JSON parse hatası:", parseError.message);
+        console.error("Temizlenmiş içerik:", cleanContent); // Log content that failed parsing
+        // Provide a more specific error message
+        throw new Error(`API yanıtı geçerli bir JSON formatında değil. Hata: ${parseError.message}`);
       }
-    } catch (error) {
-      console.error("API yanıtı işlenirken hata:", error);
-      throw new Error("API yanıtı işlenirken hata oluştu");
+    } catch (error: any) { // Catch specific error type
+      console.error("API yanıtı işlenirken hata:", error.message);
+      // Propagate the specific error message if available
+      throw new Error(`API yanıtı işlenirken hata oluştu: ${error.message}`);
     }
 
     return NextResponse.json(questions);
-  } catch (error) {
-    console.error("Genel hata:", error);
+  } catch (error: any) { // Catch specific error type
+    console.error("Genel hata:", error); // Log the full error object
+    // Return a more informative error message if possible
+    const errorMessage = error instanceof Error ? error.message : "Bilinmeyen bir hata oluştu";
     return NextResponse.json(
-      { error: "Sorular üretilirken bir hata oluştu" },
+      { error: `Sorular üretilirken bir hata oluştu: ${errorMessage}` },
       { status: 500 }
     );
   }
-} 
+}

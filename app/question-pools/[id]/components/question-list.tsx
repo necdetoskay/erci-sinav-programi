@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, forwardRef, useImperativeHandle, Ref } from "react";
 import { PoolQuestion } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
@@ -33,10 +33,10 @@ import {
 import {
   SortableContext,
   arrayMove,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+} from "@dnd-kit/sortable"; // Corrected import path
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable"; // Corrected import path
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 
@@ -58,20 +58,24 @@ interface BasePoolQuestion {
   poolId: number;
 }
 
-interface ExtendedPoolQuestion extends BasePoolQuestion {
-  position?: number;
-  options: QuestionOption[];
+export interface ExtendedPoolQuestion extends BasePoolQuestion {
+  position: number; // Ensure position is always a number
+  options: Array<{ text: string; label: string; }>; // Define options structure
 }
 
 interface QuestionListProps {
   questions: ExtendedPoolQuestion[];
-  id: number;
+  id: number | undefined; // Updated to allow undefined
+}
+
+export interface QuestionListRef {
+  refreshQuestions: () => void;
 }
 
 interface SortableRowProps {
   question: ExtendedPoolQuestion;
   index: number;
-  id: number;
+  id: number | undefined; // Updated to allow undefined
 }
 
 function SortableRow({ question, index, id }: SortableRowProps) {
@@ -124,30 +128,30 @@ function SortableRow({ question, index, id }: SortableRowProps) {
                 <Eye className="h-4 w-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-96 space-y-4" align="start">
+            <PopoverContent className="w-96 space-y-4 dark:bg-popover"> {/* Removed align="start", Added dark:bg-popover */}
               <div>
-                <h4 className="font-medium mb-2">Soru Detayları</h4>
+                <h4 className="font-medium mb-2 dark:text-foreground">Soru Detayları</h4>
                 <div
-                  className="prose prose-sm max-w-none"
+                  className="max-w-none dark:text-gray-100" // Force light text color in dark mode
                   dangerouslySetInnerHTML={{ __html: question.questionText }}
                 />
               </div>
               <div className="space-y-2">
-                <h4 className="font-medium">Şıklar</h4>
+                <h4 className="font-medium dark:text-foreground">Şıklar</h4>
                 {question.options.map((option, optionIndex) => (
                   <div
                     key={optionIndex}
                     className={`flex items-start gap-2 p-2 rounded-md ${
                       String.fromCharCode(65 + optionIndex) === question.correctAnswer
-                        ? "bg-green-50"
-                        : "bg-gray-50"
+                        ? "bg-green-100 dark:bg-green-900/30" // Adjusted background for dark mode
+                        : "bg-gray-100 dark:bg-gray-800/30" // Adjusted background for dark mode
                     }`}
                   >
-                    <div className="font-medium min-w-[20px]">
+                    <div className="font-medium min-w-[20px] dark:text-foreground"> {/* Added dark mode text color */}
                       {String.fromCharCode(65 + optionIndex)}
                     </div>
                     <div
-                      className="prose prose-sm flex-1"
+                      className="flex-1 dark:text-gray-100" // Force light text color in dark mode
                       dangerouslySetInnerHTML={{ __html: option.text }}
                     />
                   </div>
@@ -155,9 +159,9 @@ function SortableRow({ question, index, id }: SortableRowProps) {
               </div>
               {question.explanation && (
                 <div>
-                  <h4 className="font-medium mb-2">Açıklama</h4>
+                  <h4 className="font-medium mb-2 dark:text-foreground">Açıklama</h4>
                   <div
-                    className="prose prose-sm max-w-none bg-muted p-2 rounded-md"
+                    className="max-w-none bg-muted dark:bg-muted/50 p-2 rounded-md dark:text-gray-100" // Force light text color in dark mode
                     dangerouslySetInnerHTML={{ __html: question.explanation }}
                   />
                 </div>
@@ -188,135 +192,163 @@ function SortableRow({ question, index, id }: SortableRowProps) {
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
-          <UpdateQuestion id={id} question={question} />
-          <DeleteQuestion id={id} questionId={question.id} />
+          {id !== undefined && (
+            <>
+              <UpdateQuestion id={id} question={question} />
+              <DeleteQuestion id={id} questionId={question.id} />
+            </>
+          )}
         </div>
       </TableCell>
     </TableRow>
   );
 }
 
-export function QuestionList({ questions: initialQuestions, id }: QuestionListProps) {
-  const [questions, setQuestions] = useState<ExtendedPoolQuestion[]>(initialQuestions);
-  const [isLoading, setIsLoading] = useState(false);
+export const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
+  ({ questions: initialQuestions, id }: QuestionListProps, ref: Ref<QuestionListRef>) => {
+    const [questions, setQuestions] = useState<ExtendedPoolQuestion[]>(
+      initialQuestions.map((q, index) => ({ ...q, position: q.position ?? index }))
+    );
+    const [isLoading, setIsLoading] = useState(false);
 
-  async function fetchQuestions() {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/question-pools/${id}/questions`);
-      if (!response.ok) {
-        throw new Error("Sorular yüklenirken bir hata oluştu");
+    async function fetchQuestions() {
+      if (id === undefined) {
+        console.warn("poolId is undefined, cannot fetch questions.");
+        return;
       }
-      const data = await response.json();
-      setQuestions(data);
-    } catch (error) {
-      console.error("Sorular yüklenirken bir hata oluştu:", error);
-      toast.error("Sorular yüklenirken bir hata oluştu");
-    } finally {
-      setIsLoading(false);
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/question-pools/${id}/questions`);
+        if (!response.ok) {
+          throw new Error("Sorular yüklenirken bir hata oluştu");
+        }
+        const data = await response.json();
+        setQuestions(data);
+      } catch (error) {
+        console.error("Sorular yüklenirken bir hata oluştu:", error);
+        toast.error("Sorular yüklenirken bir hata oluştu");
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }
 
-  useEffect(() => {
-    // İlk yükleme için soruları güncelle
-    setQuestions(initialQuestions);
+    // Expose fetchQuestions function to the parent component via ref
+    useImperativeHandle(ref, () => ({
+      refreshQuestions: fetchQuestions,
+    }));
 
-    // Her 5 saniyede bir güncelle
-    const interval = setInterval(fetchQuestions, 5000);
+    useEffect(() => {
+      setQuestions(initialQuestions);
+    }, [id, initialQuestions]);
 
-    return () => clearInterval(interval);
-  }, [id, initialQuestions]);
-
-  if (isLoading) {
-    return (
-      <div className="animate-pulse">
-        <div className="h-10 bg-muted rounded mb-4" />
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-muted rounded mb-2" />
-        ))}
-      </div>
+    const sensors = useSensors(
+      useSensor(PointerSensor, {
+        activationConstraint: {
+          distance: 5,
+        },
+      })
     );
-  }
 
-  if (questions.length === 0) {
-    return (
-      <div className="text-center py-10 text-muted-foreground">
-        Henüz soru eklenmemiş
-      </div>
-    );
-  }
+    function handleDragEnd(event: DragEndEvent) {
+      const { active, over } = event;
 
-  return (
-    <div className="space-y-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50%]">Soru</TableHead>
-            <TableHead>Zorluk</TableHead>
-            <TableHead>Oluşturulma</TableHead>
-            <TableHead className="text-right">İşlemler</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {questions.map((question) => (
-            <TableRow key={question.id}>
-              <TableCell>
-                <div dangerouslySetInnerHTML={{ __html: question.questionText.substring(0, 100) + "..." }} />
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">{question.difficulty}</Badge>
-              </TableCell>
-              <TableCell>
-                {formatDistanceToNow(new Date(question.createdAt), {
-                  addSuffix: true,
-                  locale: tr,
-                })}
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-[600px]">
-                      <div className="space-y-4">
-                        <div className="prose prose-sm max-w-none">
-                          <div dangerouslySetInnerHTML={{ __html: question.questionText }} />
-                        </div>
-                        <div className="space-y-2">
-                          {question.options.map((option) => (
-                            <div
-                              key={option.label}
-                              className={
-                                option.label === question.correctAnswer
-                                  ? "p-3 rounded-lg bg-green-50 border border-green-200"
-                                  : "p-3 rounded-lg bg-gray-50 border border-gray-200"
-                              }
-                            >
-                              <span className="font-medium mr-2">{option.label})</span>
-                              <span dangerouslySetInnerHTML={{ __html: option.text }} />
-                            </div>
-                          ))}
-                        </div>
-                        {question.explanation && (
-                          <div className="prose prose-sm max-w-none">
-                            <h4>Açıklama</h4>
-                            <div dangerouslySetInnerHTML={{ __html: question.explanation }} />
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                  <UpdateQuestion id={id} question={question} />
-                  <DeleteQuestion id={id} questionId={question.id} />
-                </div>
-              </TableCell>
-            </TableRow>
+      if (active.id !== over?.id) {
+        setQuestions((items) => {
+          const oldIndex = items.findIndex((item) => item.id === active.id);
+          const newIndex = items.findIndex((item) => item.id === over?.id);
+          const newOrder = arrayMove(items, oldIndex, newIndex);
+
+          // Update positions in the backend
+          updateQuestionPositions(newOrder);
+
+          return newOrder;
+        });
+      }
+    }
+
+    async function updateQuestionPositions(updatedQuestions: ExtendedPoolQuestion[]) {
+      if (id === undefined) {
+        console.warn("poolId is undefined, cannot update question positions.");
+        return;
+      }
+      try {
+        const response = await fetch(`/api/question-pools/${id}/reorder`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            questions: updatedQuestions.map((q, index) => ({
+              id: q.id,
+              position: index,
+            })),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Soru sıralaması güncellenirken bir hata oluştu");
+        }
+
+        toast.success("Soru sıralaması güncellendi");
+      } catch (error) {
+        console.error("Soru sıralaması güncellenirken bir hata oluştu:", error);
+        toast.error("Soru sıralaması güncellenirken bir hata oluştu");
+        // Revert to initial questions on error
+        setQuestions(initialQuestions);
+      }
+    }
+
+    if (isLoading) {
+      return (
+        <div className="animate-pulse">
+          <div className="h-10 bg-muted rounded mb-4" />
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 bg-muted rounded mb-2" />
           ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-} 
+        </div>
+      );
+    }
+
+    if (questions.length === 0) {
+      return (
+        <div className="text-center py-10 text-muted-foreground">
+          Henüz soru eklenmemiş
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={questions.map((q) => q.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12"></TableHead> {/* Handle for drag */}
+                  <TableHead className="w-[50%]">Soru</TableHead>
+                  <TableHead>Zorluk</TableHead>
+                  <TableHead>Oluşturulma</TableHead>
+                  <TableHead className="text-right">İşlemler</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {questions.map((question, index) => (
+                  <SortableRow key={question.id} question={question} index={index} id={id} />
+                ))}
+              </TableBody>
+            </Table>
+          </SortableContext>
+        </DndContext>
+      </div>
+    );
+  }
+);
+
+QuestionList.displayName = "QuestionList";

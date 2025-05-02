@@ -8,7 +8,7 @@ const questionPoolSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   subject: z.string().min(1, "Subject is required"),
-  grade: z.string().min(1, "Grade is required"),
+  // grade: z.string().min(1, "Grade is required"), // Prisma şemasından kaldırıldığı için buradan da kaldırıldı
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
 });
 
@@ -97,12 +97,16 @@ export async function POST(req: Request) {
       status: "ACTIVE"
     });
 
-    // QuestionPool oluştur
+    // QuestionPool oluştur - Sadece doğrulanmış ve gerekli alanları açıkça belirtelim
     const questionPool = await db.questionPool.create({
       data: {
-        ...validatedData,
-        userId: user.id,
-        status: "ACTIVE"
+        title: validatedData.title,
+        description: validatedData.description,
+        subject: validatedData.subject,
+        difficulty: validatedData.difficulty,
+        userId: user.id, // Bu ID'nin geçerli olduğundan emin olduk
+        status: "ACTIVE" // Varsayılan veya belirlenen durum
+        // grade alanı şemada olmadığı için eklenmiyor
       },
     });
 
@@ -130,4 +134,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-} 
+}

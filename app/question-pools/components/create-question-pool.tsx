@@ -37,7 +37,7 @@ const formSchema = z.object({
   title: z.string().min(1, "Başlık gereklidir"),
   description: z.string().optional(),
   subject: z.string().min(1, "Ders/Konu gereklidir"),
-  grade: z.string().min(1, "Sınıf seviyesi gereklidir"),
+  // grade: z.string().min(1, "Sınıf seviyesi gereklidir"), // Sınıf alanı kaldırıldı
   difficulty: z.enum(["easy", "medium", "hard"]),
 });
 
@@ -133,19 +133,7 @@ export function CreateQuestionPool() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="grade"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Eğitim Seviyesi</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Eğitim seviyesini giriniz" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Sınıf FormField kaldırıldı */}
             <FormField
               control={form.control}
               name="difficulty"
@@ -179,4 +167,4 @@ export function CreateQuestionPool() {
       </DialogContent>
     </Dialog>
   );
-} 
+}

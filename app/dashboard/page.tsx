@@ -1,6 +1,7 @@
 "use client"
 
-import { useUsers } from "@/app/context/UserContext"
+import { useEffect, useState } from "react"
+// import { useUsers } from "@/app/context/UserContext" // Removed unused import
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,31 +13,54 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { QuestionPool } from "@prisma/client" // Assuming QuestionPool type exists
+import { Exam } from "@prisma/client" // Assuming Exam type exists
 
 export default function Dashboard() {
-  const { users } = useUsers()
+  // const { users } = useUsers() // Removed user data fetching
+  const [questionPools, setQuestionPools] = useState<QuestionPool[]>([])
+  const [exams, setExams] = useState<Exam[]>([])
 
-  const activeUsers = users.filter((user) => user.status === "ACTIVE").length
-  const inactiveUsers = users.filter((user) => user.status === "INACTIVE").length
-  const adminUsers = users.filter((user) => user.role === "ADMIN").length
+  useEffect(() => {
+    // Fetch Question Pools
+    fetch("/api/question-pools")
+      .then((res) => res.json())
+      .then((data) => setQuestionPools(data))
+      .catch((error) => console.error("Error fetching question pools:", error))
 
-  const recentUsers = users.slice(0, 5)
+    // Fetch Exams (Assuming an endpoint exists, adjust if needed)
+    fetch("/api/admin/exams") // Adjust API endpoint if necessary
+      .then((res) => res.json())
+      .then((data) => setExams(data))
+      .catch((error) => console.error("Error fetching exams:", error))
+  }, [])
+
+  // Removed user statistics calculations
+  // const activeUsers = users.filter((user) => user.status === "ACTIVE").length
+  // const inactiveUsers = users.filter((user) => user.status === "INACTIVE").length
+  // const adminUsers = users.filter((user) => user.role === "ADMIN").length
+  // const recentUsers = users.slice(0, 5)
+
+  // Add recent question pools and exams
+  // Ensure data is an array before slicing
+  const recentQuestionPools = Array.isArray(questionPools) ? questionPools.slice(-5).reverse() : []; // Get last 5 and reverse for recent first
+  const recentExams = Array.isArray(exams) ? exams.slice(-5).reverse() : []; // Get last 5 and reverse for recent first
+
 
   return (
     <div className="container mx-auto">
       <h1 className="text-4xl font-bold mb-6">Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-2">Total Users</h3>
-          <p className="text-3xl font-bold">{users.length}</p>
+      {/* Removed user statistics cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Adjusted grid columns */}
+         {/* Soru Havuzu Kartı */}
+         <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-lg font-semibold mb-2 dark:text-gray-800">Toplam Soru Havuzu</h3>
+          <p className="text-3xl font-bold dark:text-gray-800">{questionPools.length}</p>
         </div>
+        {/* Sınav Kartı */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-2">Active Users</h3>
-          <p className="text-3xl font-bold">{activeUsers}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-2">Admin Users</h3>
-          <p className="text-3xl font-bold">{adminUsers}</p>
+          <h3 className="text-lg font-semibold mb-2 dark:text-gray-800">Toplam Sınav</h3>
+          <p className="text-3xl font-bold dark:text-gray-800">{exams.length}</p>
         </div>
       </div>
       <Tabs defaultValue="overview" className="space-y-4 mt-6">
@@ -47,102 +71,74 @@ export default function Dashboard() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Active Users
-                </CardTitle>
-                <Badge variant="default">{activeUsers}</Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {((activeUsers / users.length) * 100).toFixed(1)}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Percentage of total users
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Inactive Users
-                </CardTitle>
-                <Badge variant="secondary">{inactiveUsers}</Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {((inactiveUsers / users.length) * 100).toFixed(1)}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Percentage of total users
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Admin Users
-                </CardTitle>
-                <Badge>{adminUsers}</Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {((adminUsers / users.length) * 100).toFixed(1)}%
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Percentage of total users
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="grid gap-4 grid-cols-1">
-            <Card>
+          {/* Removed user statistics percentage cards */}
+          <div className="grid gap-4 grid-cols-1"> {/* Adjusted grid columns */}
+             {/* Removed Recent Users Table */}
+             {/* Recent Question Pools Table */}
+             <Card>
               <CardHeader>
-                <CardTitle>Recent Users</CardTitle>
+                <CardTitle>Son Eklenen Soru Havuzları</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Başlık</TableHead>
+                      <TableHead>Açıklama</TableHead>
+                      {/* Soru Sayısı sütunu kaldırıldı */}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentUsers.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.name}</TableCell>
-                        <TableCell>{user.email}</TableCell>
+                    {recentQuestionPools.length > 0 ? (
+                      recentQuestionPools.map((pool) => (
+                        <TableRow key={pool.id}>
+                          <TableCell>{pool.title}</TableCell> {/* name -> title */}
+                          <TableCell>{pool.description?.substring(0, 50)}{pool.description && pool.description.length > 50 ? "..." : ""}</TableCell>
+                          {/* Soru Sayısı hücresi kaldırıldı */}
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center">Henüz soru havuzu eklenmemiş.</TableCell> {/* colSpan güncellendi */}
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+            {/* Recent Exams Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Son Eklenen Sınavlar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Başlık</TableHead> {/* İsim -> Başlık */}
+                      <TableHead>Açıklama</TableHead>
+                      <TableHead>Durum</TableHead> {/* Add Status column */}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                  {/* Ensure recentExams is an array before mapping */}
+                  {Array.isArray(recentExams) && recentExams.length > 0 ? (
+                    recentExams.map((exam) => (
+                      <TableRow key={exam.id}>
+                        <TableCell>{exam.title}</TableCell> {/* name -> title */}
+                        <TableCell>{exam.description?.substring(0, 50)}{exam.description && exam.description.length > 50 ? "..." : ""}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={user.role === "ADMIN" ? "default" : "secondary"}
-                          >
-                            {user.role === "ADMIN" ? "Admin" : "User"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              user.status === "ACTIVE"
-                                ? "default"
-                                : user.status === "INACTIVE"
-                                ? "secondary"
-                                : "destructive"
-                            }
-                          >
-                            {user.status === "ACTIVE"
-                              ? "Active"
-                              : user.status === "INACTIVE"
-                              ? "Inactive"
-                              : "Deleted"}
+                          <Badge variant={exam.status === 'PUBLISHED' ? 'default' : 'secondary'}>
+                            {exam.status} {/* Display exam status */}
                           </Badge>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ))
+                  ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center">Henüz sınav eklenmemiş.</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -152,4 +148,4 @@ export default function Dashboard() {
       </Tabs>
     </div>
   )
-} 
+}

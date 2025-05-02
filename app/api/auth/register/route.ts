@@ -87,8 +87,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { message: 'An error occurred while creating your account' },
+      { message: 'An unexpected error occurred while creating your account. Please try again.' },
       { status: 500 }
     );
   }
-} 
+}

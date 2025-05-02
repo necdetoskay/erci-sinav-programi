@@ -10,12 +10,12 @@ import { UpdateQuestionPool } from "./update-question-pool";
 import { DeleteQuestionPool } from "./delete-question-pool";
 
 interface QuestionPoolHeaderProps {
-  initialData: QuestionPool;
+  initialData: QuestionPool | null;
 }
 
 export function QuestionPoolHeader({ initialData }: QuestionPoolHeaderProps) {
   const params = useParams();
-  const [questionPool, setQuestionPool] = useState<QuestionPool>(initialData);
+  const [questionPool, setQuestionPool] = useState<QuestionPool | null>(initialData);
   const [isLoading, setIsLoading] = useState(false);
 
   async function fetchQuestionPool() {
@@ -37,13 +37,22 @@ export function QuestionPoolHeader({ initialData }: QuestionPoolHeaderProps) {
   useEffect(() => {
     fetchQuestionPool();
 
-    // Her 5 saniyede bir güncelle
-    const interval = setInterval(fetchQuestionPool, 5000);
-
-    return () => clearInterval(interval);
+    // Otomatik güncelleme iptal edildi
+    // const interval = setInterval(fetchQuestionPool, 5000);
+    // return () => clearInterval(interval);
   }, [params.id]);
 
   if (isLoading) {
+    return (
+      <div className="animate-pulse">
+        <div className="h-8 w-64 bg-muted rounded mb-2" />
+        <div className="h-4 w-32 bg-muted rounded" />
+      </div>
+    );
+  }
+
+  // Eğer questionPool null ise, yükleniyor veya bulunamadı mesajı gösterilebilir
+  if (!questionPool) {
     return (
       <div className="animate-pulse">
         <div className="h-8 w-64 bg-muted rounded mb-2" />
@@ -65,8 +74,8 @@ export function QuestionPoolHeader({ initialData }: QuestionPoolHeaderProps) {
           </span>
           <span>•</span>
           <Badge variant="outline">{questionPool.subject}</Badge>
-          <span>•</span>
-          <Badge variant="outline">{questionPool.grade}</Badge>
+          {/* <span>•</span> // Sınıf kaldırıldığı için ayıraç kaldırıldı */}
+          {/* <Badge variant="outline">{questionPool.grade}</Badge> // Sınıf Badge kaldırıldı */}
           <span>•</span>
           <Badge variant="outline">{questionPool.difficulty}</Badge>
         </div>
@@ -77,4 +86,4 @@ export function QuestionPoolHeader({ initialData }: QuestionPoolHeaderProps) {
       </div>
     </div>
   );
-} 
+}

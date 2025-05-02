@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,19 +8,19 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String         @unique
   emailVerified DateTime?
   image         String?
   password      String?
-  role          Role      @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   accounts      Account[]
-  sessions      Session[]
   posts         Post[]
   questionPools QuestionPool[]
+  sessions      Session[]
 }
 
 model Account {
@@ -35,15 +29,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -59,12 +52,12 @@ model Session {
 model Post {
   id        String   @id @default(cuid())
   title     String
-  content   String   @db.Text
+  content   String
   published Boolean  @default(false)
-  author    User     @relation(fields: [authorId], references: [id])
   authorId  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id])
 }
 
 model VerificationToken {
@@ -75,6 +68,155 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+model Exam {
+  id               Int           @id @default(autoincrement())
+  title            String
+  description      String?
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @default(now()) @updatedAt
+  status           String        @default("draft")
+  duration_minutes Int           @default(60)
+  access_code      String?
+  exam_results     ExamResult[]
+  questions        Question[]
+  attempts         ExamAttempt[] // Added inverse relation for ExamAttempt
+}
+
+model Question {
+  id               Int                 @id @default(autoincrement())
+  exam_id          Int
+  question_text    String
+  options          Json
+  correct_answer   String
+  explanation      String?
+  difficulty       String              @default("medium")
+  position         Int?
+  created_at       DateTime            @default(now())
+  exam             Exam                @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+  attemptAnswers   ExamAttemptAnswer[] // Added inverse relation for ExamAttemptAnswer
+}
+
+model ExamResult {
+  id                Int       @id @default(autoincrement())
+  exam_id           Int
+  participant_name  String
+  participant_email String?
+  score             Int?
+  total_questions   Int?
+  start_time        DateTime?
+  end_time          DateTime?
+  answers           Json?
+  created_at        DateTime  @default(now())
+  exam              Exam      @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+}
+
+// Model for tracking individual exam attempts (for resuming exams)
+model ExamAttempt {
+  id                   String            @id @default(cuid())
+  examId               Int // Relation to Exam (using Int based on Exam model ID type)
+  exam                 Exam              @relation(fields: [examId], references: [id], onDelete: Cascade)
+  // Store participant details at the time of attempt
+  // Using participant_name/email from ExamResult for consistency, or add separate fields
+  participantName      String
+  participantEmail     String?
+  // Tracking progress
+  status               ExamAttemptStatus @default(STARTED)
+  currentQuestionIndex Int               @default(0) // Index of the last question presented
+  answers              Json? // Store answers as JSON: { "questionId": "selectedOptionKey", ... }
+  startTime            DateTime          @default(now())
+  lastActivityAt       DateTime          @updatedAt // Track last interaction
+  endTime              DateTime? // When the attempt was submitted or timed out
+  score                Float? // Calculated score (optional here, could be in ExamResult)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  // Relation to individual answers
+  attemptAnswers ExamAttemptAnswer[]
+
+  // Index for faster lookup of ongoing attempts
+  @@index([examId, participantEmail]) // Assuming email is a good identifier for resuming
+}
+
+// Model to store details for each answered question in an attempt
+model ExamAttemptAnswer {
+  id               String      @id @default(cuid())
+  examAttemptId    String // Relation to ExamAttempt
+  examAttempt      ExamAttempt @relation(fields: [examAttemptId], references: [id], onDelete: Cascade)
+  questionId       Int // Relation to Question
+  question         Question    @relation(fields: [questionId], references: [id], onDelete: Cascade) // Relation added
+  selectedAnswer   String // The option key selected by the user (e.g., "A", "B")
+  isCorrect        Boolean // Was the selected answer correct?
+  timeSpentSeconds Int // How many seconds the user spent on this question
+  answeredAt       DateTime    @default(now()) // When the answer was submitted
+
+  @@index([examAttemptId])
+  @@index([questionId])
+  @@unique([examAttemptId, questionId]) // Ensure only one answer per question per attempt
+}
+
+
+enum ExamAttemptStatus {
+  STARTED // Exam has begun
+  IN_PROGRESS // User is actively answering
+  PAUSED // User potentially closed the tab (can be inferred from lastActivityAt)
+  SUBMITTED // User finished the exam manually
+  TIMED_OUT // Exam time expired
+  GRADED // Score has been calculated (optional status)
+}
+
+model QuestionPool {
+  id          Int            @id @default(autoincrement())
+  title       String
+  description String?
+  subject     String
+  // grade       String // Sınıf alanı kaldırıldı
+  difficulty  String         @default("medium")
+  status      Status         @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  userId      String
+  questions   PoolQuestion[]
+  createdBy   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PoolQuestion {
+  id            Int          @id @default(autoincrement())
+  questionText  String
+  options       Json
+  correctAnswer String
+  explanation   String?
+  tags          String[]
+  difficulty    String       @default("medium")
+  position      Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  poolId        Int
+  pool          QuestionPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@index([poolId])
+}
+
+model ExamEntryAttempt {
+  id               String   @id @default(cuid())
+  examAccessCode   String
+  email            String
+  verificationCode String
+  expiresAt        DateTime
+  verified         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([examAccessCode, email])
+  @@index([verificationCode])
+}
+
+model Setting {
+  key       String   @id
+  value     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum Role {
   USER
   ADMIN
@@ -83,102 +225,4 @@ enum Role {
 enum Status {
   ACTIVE
   INACTIVE
-}
-
-// Sınav sistemi modelleri
-
-model Exam {
-  id               Int          @id @default(autoincrement())
-  title            String
-  description      String?      @db.Text
-  created_at       DateTime     @default(now())
-  updated_at       DateTime     @default(now()) @updatedAt
-  status           String       @default("draft") // 'draft' veya 'published'
-  duration_minutes Int          @default(60)
-  access_code      String?
-  questions        Question[]
-  exam_results     ExamResult[]
-}
-
-model Question {
-  id             Int      @id @default(autoincrement())
-  exam_id        Int
-  question_text  String   @db.Text
-  options        Json     // Seçenekler JSON dizisi olarak
-  correct_answer String   // 'A', 'B', 'C', 'D' gibi
-  explanation    String?  @db.Text
-  difficulty     String   @default("medium") // 'easy', 'medium', 'hard'
-  position       Int?
-  created_at     DateTime @default(now())
-  exam           Exam     @relation(fields: [exam_id], references: [id], onDelete: Cascade)
-}
-
-model ExamResult {
-  id                Int      @id @default(autoincrement())
-  exam_id           Int
-  participant_name  String
-  participant_email String?
-  score             Int?
-  total_questions   Int?
-  start_time        DateTime?
-  end_time          DateTime?
-  answers           Json?    // Verilen cevaplar JSON olarak
-  created_at        DateTime @default(now())
-  exam              Exam     @relation(fields: [exam_id], references: [id], onDelete: Cascade)
-}
-
-// Soru Havuzu modelleri
-model QuestionPool {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?   @db.Text
-  subject     String    // Ders/Konu
-  grade       String    // Sınıf seviyesi
-  difficulty  String    @default("medium") // 'easy', 'medium', 'hard'
-  status      Status    @default(ACTIVE)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  questions   PoolQuestion[]
-  createdBy   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-}
-
-model PoolQuestion {
-  id             Int          @id @default(autoincrement())
-  questionText   String       @db.Text
-  options        Json         // Seçenekler JSON dizisi olarak
-  correctAnswer  String       // 'A', 'B', 'C', 'D' gibi
-  explanation    String?      @db.Text
-  tags          String[]     // Soru etiketleri
-  difficulty     String       @default("medium")
-  position       Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  pool          QuestionPool @relation(fields: [poolId], references: [id], onDelete: Cascade)
-  poolId        Int
-
-  @@index([poolId])
-}
-
-// Sınav Giriş Doğrulama Modeli
-model ExamEntryAttempt {
-  id               String    @id @default(cuid())
-  examAccessCode   String    // Kullanıcının girdiği ilk kod (toplu maildeki)
-  email            String
-  verificationCode String    // E-postaya gönderilen kod
-  expiresAt        DateTime  // Doğrulama kodunun son kullanma tarihi
-  verified         Boolean   @default(false) // Kod doğrulandı mı?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-
-  @@index([examAccessCode, email])
-  @@index([verificationCode])
-}
-
-// Uygulama Ayarları Modeli
-model Setting {
-  key       String  @id // Ayar anahtarı (örn: "SMTP_HOST", "SMTP_PORT")
-  value     String? @db.Text // Ayar değeri
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }

@@ -30,7 +30,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               {children}
-              <Toaster />
+              <Toaster position="top-right" /> {/* position="top-right" eklendi */}
             </ThemeProvider>
           </UserProvider>
         </AuthProvider>

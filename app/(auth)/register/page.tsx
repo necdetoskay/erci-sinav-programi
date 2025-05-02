@@ -23,6 +23,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [backendError, setBackendError] = useState<string | null>(null); // State for backend errors
   
   const {
     register,
@@ -30,10 +31,14 @@ export default function RegisterPage() {
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    mode: 'onBlur', // Add mode to trigger validation on blur
   });
+
+  console.log("React Hook Form Errors:", errors); // Temporary log
 
   const onSubmit = async (formData: RegisterFormData) => {
     setIsLoading(true);
+    setBackendError(null); // Clear previous backend errors
 
     try {
       const response = await fetch('/api/auth/register', {
@@ -47,13 +52,19 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Something went wrong');
+        // Set backend error state instead of toasting
+        setBackendError(data.message || 'Something went wrong');
+        // Optionally still toast for visibility, but the main message is on the page
+        // toast.error(data.message || 'Something went wrong'); 
+        return; // Stop here if response is not ok
       }
 
       toast.success('Account created successfully');
       router.push('/login');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Something went wrong');
+      // Handle unexpected fetch errors or errors thrown before response.json()
+      setBackendError(error instanceof Error ? error.message : 'An unexpected client-side error occurred.');
+      // toast.error(error instanceof Error ? error.message : 'Something went wrong');
     } finally {
       setIsLoading(false);
     }
@@ -74,6 +85,14 @@ export default function RegisterPage() {
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+          {/* Display backend error message */}
+          {backendError && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <strong className="font-bold">Error:</strong>
+              <span className="block sm:inline"> {backendError}</span>
+            </div>
+          )}
+
           <div className="rounded-md shadow-sm -space-y-px">
             <div className="space-y-1">
               <label htmlFor="name" className="sr-only">
@@ -144,4 +163,4 @@ export default function RegisterPage() {
       </div>
     </div>
   );
-} 
+}

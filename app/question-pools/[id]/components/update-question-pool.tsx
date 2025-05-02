@@ -39,7 +39,7 @@ const formSchema = z.object({
   title: z.string().min(1, "Başlık gereklidir"),
   description: z.string().optional(),
   subject: z.string().min(1, "Ders gereklidir"),
-  grade: z.coerce.number().min(1).max(12),
+  // grade: z.coerce.number().min(1).max(12), // Sınıf alanı kaldırıldı
   difficulty: z.enum(["easy", "medium", "hard"]),
   status: z.enum(["draft", "published", "archived"]),
 });
@@ -59,9 +59,14 @@ export function UpdateQuestionPool({ data }: UpdateQuestionPoolProps) {
       title: data.title,
       description: data.description || "",
       subject: data.subject,
-      grade: data.grade,
-      difficulty: data.difficulty,
-      status: data.status,
+      // Gelen verinin türünü şemaya uygun hale getir
+      // grade: Number(data.grade) || 9, // Sınıf alanı kaldırıldı
+      difficulty: ["easy", "medium", "hard"].includes(data.difficulty)
+        ? (data.difficulty as "easy" | "medium" | "hard")
+        : "medium", // difficulty'nin enum'a uyduğundan emin ol, değilse 'medium' ata
+      status: ["draft", "published", "archived"].includes(data.status)
+        ? (data.status as "draft" | "published" | "archived")
+        : "draft", // status'un enum'a uyduğundan emin ol, değilse 'draft' ata
     },
   });
 
@@ -101,8 +106,9 @@ export function UpdateQuestionPool({ data }: UpdateQuestionPoolProps) {
             Soru havuzu bilgilerini güncelleyin.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* İç <form> etiketi kaldırıldı, onSubmit ve className Form bileşenine taşındı */}
+        <Form form={form} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4"> */}
             <FormField
               control={form.control}
               name="title"
@@ -145,33 +151,7 @@ export function UpdateQuestionPool({ data }: UpdateQuestionPoolProps) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="grade"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Sınıf</FormLabel>
-                  <Select
-                    onValueChange={(value) => field.onChange(Number(value))}
-                    defaultValue={field.value.toString()}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sınıf seçin" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {Array.from({ length: 12 }, (_, i) => (
-                        <SelectItem key={i + 1} value={(i + 1).toString()}>
-                          {i + 1}. Sınıf
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Sınıf FormField kaldırıldı */}
 
             <FormField
               control={form.control}
@@ -228,9 +208,9 @@ export function UpdateQuestionPool({ data }: UpdateQuestionPoolProps) {
             <div className="flex justify-end">
               <Button type="submit">Güncelle</Button>
             </div>
-          </form>
+          {/* </form> */}
         </Form>
       </DialogContent>
     </Dialog>
   );
-} 
+}

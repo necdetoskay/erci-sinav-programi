@@ -25,7 +25,7 @@ export async function GET(
     const questionPool = await db.questionPool.findUnique({
       where: {
         id: parseInt(params.id),
-        userId: session.user.id,
+        // userId: session.user.id, // Removed user check
       },
       include: {
         questions: true,
@@ -63,7 +63,7 @@ export async function PATCH(
     const questionPool = await db.questionPool.update({
       where: {
         id: parseInt(params.id),
-        userId: session.user.id,
+        // userId: session.user.id, // Removed user check
       },
       data: validatedData,
     });
@@ -95,7 +95,7 @@ export async function DELETE(
     await db.questionPool.delete({
       where: {
         id: parseInt(params.id),
-        userId: session.user.id,
+        // userId: session.user.id, // Removed user check
       },
     });
 
@@ -107,4 +107,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

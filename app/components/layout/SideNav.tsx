@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Users, Settings, BookOpen, PenTool } from "lucide-react"
+import { LayoutDashboard, Users, Settings, BookOpen, PenTool, ClipboardCheckIcon } from "lucide-react" // ClipboardCheckIcon eklendi
 
 const sidebarNavItems = [
   {
@@ -29,8 +29,13 @@ const sidebarNavItems = [
   },
   {
     title: "Ayarlar",
-    href: "/dashboard/settings",
+    href: "/dashboard/settings", // Not: Bu yol /settings olabilir.
     icon: Settings,
+  },
+  {
+    title: "Öğrenci Sınav Girişi (Test)",
+    href: "/exam/enter-email",
+    icon: ClipboardCheckIcon, // Test linki eklendi
   },
 ]
 
@@ -55,4 +60,4 @@ export function SideNav() {
       })}
     </nav>
   )
-} 
+}

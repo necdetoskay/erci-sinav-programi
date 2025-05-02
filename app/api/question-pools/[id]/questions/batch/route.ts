@@ -12,7 +12,11 @@ const questionSchema = z.object({
   ),
   correctAnswer: z.string(),
   explanation: z.string(),
-  difficulty: z.enum(["easy", "medium", "hard"]),
+  // Bileşenden gelen İngilizce küçük harf zorluk seviyelerini kabul et
+  difficulty: z.enum(["easy", "medium", "hard"]), 
+  // ID ve approved alanları isteğe bağlı olarak eklenebilir, ancak Prisma'ya gönderilmeyecek
+  id: z.string().optional(),
+  approved: z.boolean().optional(),
 });
 
 const requestSchema = z.object({
@@ -26,7 +30,22 @@ export async function POST(
   try {
     const body = await request.json();
     const { questions } = requestSchema.parse(body);
-    const poolId = parseInt(params.id);
+    // poolId'yi number'a çevirirken hata kontrolü ekleyelim
+    const poolId = parseInt(params.id, 10);
+    if (isNaN(poolId)) {
+       return NextResponse.json({ error: "Geçersiz Soru Havuzu ID" }, { status: 400 });
+    }
+
+    // // Türkçe zorluğu İngilizce'ye çeviren fonksiyon (Artık gerekli değil, çünkü Zod zaten İngilizce bekliyor)
+    // const mapDifficultyToEnglish = (difficulty: "Kolay" | "Orta" | "Zor"): "easy" | "medium" | "hard" => {
+    //     switch (difficulty) {
+    //         case "Kolay": return "easy";
+    //         case "Orta": return "medium";
+    //         case "Zor": return "hard";
+    //         default: return "medium"; // Varsayılan
+    //     }
+    // };
+    // Prisma'ya doğrudan gelen İngilizce değeri gönder
 
     // Tüm soruları tek bir transaction içinde kaydet
     const savedQuestions = await prisma.$transaction(
@@ -34,11 +53,12 @@ export async function POST(
         prisma.poolQuestion.create({
           data: {
             questionText: question.questionText,
-            options: question.options,
+            options: question.options, // Prisma'nın JSON olarak işlemesi beklenir
             correctAnswer: question.correctAnswer,
             explanation: question.explanation,
-            difficulty: question.difficulty,
-            poolId: poolId,
+            // Zorluk seviyesini doğrudan kullan (artık İngilizce geliyor)
+            difficulty: question.difficulty, 
+            poolId: poolId, // Alan adı schema ile eşleşecek şekilde düzeltildi (poolId)
           },
         })
       )
@@ -52,4 +72,4 @@ export async function POST(
       { status: 500 }
     );
   }
-} 
+}

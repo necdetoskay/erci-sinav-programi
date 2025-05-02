@@ -10,14 +10,18 @@ import {
   SettingsIcon,
   LogOutIcon,
   BookOpenIcon,
+  ClipboardCheckIcon, // Yeni ikonu import et
+  FileTextIcon, // Soru Havuzu için daha standart bir ikon
 } from 'lucide-react';
 
+// Navigasyon öğelerini ekran görüntüsüne göre düzenle ve test linkini sona ekle
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Sınavlar', href: '/admin/exams', icon: BookOpenIcon },
-  { name: 'Properties', href: '/properties', icon: Building2Icon },
-  { name: 'Tenants', href: '/tenants', icon: UsersIcon },
-  { name: 'Settings', href: '/settings', icon: SettingsIcon },
+  { name: 'Sınavlar', href: '/admin/exams', icon: BookOpenIcon }, // Yönetici sınavları
+  { name: 'Kullanıcılar', href: '/users', icon: UsersIcon }, // Kullanıcılar sayfası (varsayım)
+  { name: 'Soru Havuzu', href: '/question-pools', icon: FileTextIcon }, // Soru Havuzu ikonu değiştirildi
+  { name: 'Ayarlar', href: '/settings', icon: SettingsIcon },
+  { name: 'Öğrenci Sınav Girişi (Test)', href: '/exam/enter-email', icon: ClipboardCheckIcon }, // Test linki en sonda
 ];
 
 export function Sidebar() {
@@ -61,4 +65,4 @@ export function Sidebar() {
       </div>
     </div>
   );
-} 
+}

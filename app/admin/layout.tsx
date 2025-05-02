@@ -1,5 +1,6 @@
 "use client";
 
+import { Header } from "@/components/layout/header"; // Header'ı import et
 import { AdminSideNav } from "../components/layout/AdminSideNav"
 import { Toaster } from "@/components/ui/sonner"
 
@@ -21,11 +22,12 @@ export default function AdminLayout({
       </div>
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
-        <main className="flex-1 overflow-y-auto">
+        <Header /> {/* Header bileşenini ekle */}
+        <main className="flex-1 overflow-y-auto p-6"> {/* Padding ekleyelim */}
           {children}
         </main>
         <Toaster />
       </div>
     </div>
   )
-} 
+}

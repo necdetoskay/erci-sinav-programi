@@ -31,6 +31,20 @@ const FormFieldContext = React.createContext<FormFieldContextValue>(
   {} as FormFieldContextValue
 )
 
+// Adım 1: Yeni Context Tanımla
+type FormFieldStateContextValue = {
+  id: string;
+  name: string;
+  formItemId: string;
+  formDescriptionId: string;
+  formMessageId: string;
+  error?: FieldError; // react-hook-form'dan FieldError tipini import etmemiz gerekebilir, şimdilik any varsayalım
+};
+
+const FormFieldStateContext = React.createContext<FormFieldStateContextValue | null>(null);
+
+
+// Adım 2: FormField'ı Güncelle
 const FormField = <
   TFieldValues extends FieldValues = FieldValues,
   TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
@@ -39,33 +53,56 @@ const FormField = <
 }: ControllerProps<TFieldValues, TName>) => {
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
-      <Controller {...props} />
+      <Controller
+        {...props}
+        render={({ field, fieldState, formState }) => {
+          const itemContext = React.useContext(FormItemContext); // id'yi almak için
+          if (!itemContext) {
+             // FormItem içinde değilse veya context sağlanmadıysa hata ver
+             // Bu durum normalde olmamalı ama bir güvenlik önlemi
+             throw new Error("FormField must be used within a FormItem");
+          }
+          const id = itemContext.id;
+          const contextValue: FormFieldStateContextValue = {
+            id,
+            name: props.name,
+            formItemId: `${id}-form-item`,
+            formDescriptionId: `${id}-form-item-description`,
+            formMessageId: `${id}-form-item-message`,
+            error: fieldState.error, // fieldState'ten hatayı al
+          };
+          // Controller'ın render prop'u bir React elementi döndürmeli
+          // Orijinal props.render'ı çağırırken field, fieldState, formState geç
+          // ve yeni context'i sağla
+          const renderResult = props.render({ field, fieldState, formState });
+          return (
+            <FormFieldStateContext.Provider value={contextValue}>
+              {renderResult}
+            </FormFieldStateContext.Provider>
+          );
+        }}
+      />
     </FormFieldContext.Provider>
-  )
-}
+  );
+};
 
+
+// Adım 3: useFormField'ı Güncelle
 const useFormField = () => {
-  const fieldContext = React.useContext(FormFieldContext)
-  const itemContext = React.useContext(FormItemContext)
-  const { getFieldState, formState } = useFormContext()
+  // const fieldContext = React.useContext(FormFieldContext) // Artık gerekli değil
+  // const itemContext = React.useContext(FormItemContext) // Artık gerekli değil, id FormFieldStateContext'ten geliyor
+  const fieldStateContext = React.useContext(FormFieldStateContext);
 
-  const fieldState = getFieldState(fieldContext.name, formState)
-
-  if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>")
+  if (!fieldStateContext) {
+    throw new Error("useFormField should be used within <FormField>");
   }
 
-  const { id } = itemContext
+  // Gerekli değerleri yeni context'ten al
+  return fieldStateContext;
+};
 
-  return {
-    id,
-    name: fieldContext.name,
-    formItemId: `${id}-form-item`,
-    formDescriptionId: `${id}-form-item-description`,
-    formMessageId: `${id}-form-item-message`,
-    ...fieldState,
-  }
-}
+// FieldError tipini react-hook-form'dan import etmeyi unutma
+import { FieldError } from "react-hook-form";
 
 type FormItemContextValue = {
   id: string
@@ -174,16 +211,23 @@ type FormProps<T extends z.ZodType<any, any>> = {
   children: React.ReactNode;
 } & Omit<React.FormHTMLAttributes<HTMLFormElement>, "children">
 
+// Bu bileşen artık gerçek <form> etiketini render ediyor
+// ve onSubmit gibi props'ları doğru şekilde iletiyor.
 function FormComponent<T extends z.ZodType<any, any>>({
   form,
   children,
-  ...props
-}: FormProps<T>) {
+  onSubmit, // onSubmit prop'unu ekle
+  className, // className prop'unu ekle
+  ...props // Diğer HTML form özellikleri
+}: FormProps<T> & { onSubmit?: React.FormEventHandler<HTMLFormElement>, className?: string }) { // onSubmit ve className tiplerini ekle
   return (
     <FormRoot {...form}>
-      {children}
+      {/* Form etiketini burada render et ve props'ları ilet */}
+      <form onSubmit={onSubmit} className={className} {...props}>
+        {children}
+      </form>
     </FormRoot>
-  )
+  );
 }
 
 export {
