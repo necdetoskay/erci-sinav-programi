@@ -49,7 +49,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    console.log("Session:", JSON.stringify(session, null, 2));
+    // console.log("Session:", JSON.stringify(session, null, 2)); // Removed log
     
     // Session kontrolü
     if (!session) {
@@ -86,16 +86,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized - User not found in database" }, { status: 401 });
     }
 
-    console.log("Found user:", JSON.stringify(user, null, 2));
+    // console.log("Found user:", JSON.stringify(user, null, 2)); // Removed log
 
     const json = await req.json();
     const validatedData = questionPoolSchema.parse(json);
 
-    console.log("Creating question pool with data:", {
-      ...validatedData,
-      userId: user.id,
-      status: "ACTIVE"
-    });
+    // console.log("Creating question pool with data:", { // Removed log
+    //   ...validatedData,
+    //   userId: user.id,
+    //   status: "ACTIVE"
+    // });
 
     // QuestionPool oluştur - Sadece doğrulanmış ve gerekli alanları açıkça belirtelim
     const questionPool = await db.questionPool.create({
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log("Created question pool:", JSON.stringify(questionPool, null, 2));
+    // console.log("Created question pool:", JSON.stringify(questionPool, null, 2)); // Removed log
 
     return NextResponse.json(questionPool, { status: 201 });
   } catch (error) {

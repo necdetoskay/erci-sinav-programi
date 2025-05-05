@@ -36,7 +36,7 @@ export default function EnterExamCodePage() {
       return;
     }
 
-    console.log('Sorgulanan Bilgiler:', { firstName: trimmedFirstName, lastName: trimmedLastName, examCode: trimmedExamCode });
+    // console.log('Sorgulanan Bilgiler:', { firstName: trimmedFirstName, lastName: trimmedLastName, examCode: trimmedExamCode }); // Removed log
 
     // --- API Çağrısı Bölümü ---
     try {

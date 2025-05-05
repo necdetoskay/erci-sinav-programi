@@ -12,7 +12,7 @@ export async function GET() {
       })
     }
 
-    console.log('Sending request to OpenRouter...')
+    // console.log('Sending request to OpenRouter...'); // Removed log
     
     // OpenRouter bağlantısını test et
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -35,8 +35,8 @@ export async function GET() {
       })
     })
 
-    console.log('Response status:', response.status)
-    console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+    // console.log('Response status:', response.status); // Removed log
+    // console.log('Response headers:', Object.fromEntries(response.headers.entries())); // Removed log
 
     if (!response.ok) {
       const responseText = await response.text()
@@ -52,7 +52,7 @@ export async function GET() {
     }
 
     const responseText = await response.text()
-    console.log('Response text:', responseText)
+    // console.log('Response text:', responseText); // Removed log
 
     try {
       const data = JSON.parse(responseText)
@@ -98,4 +98,4 @@ export async function GET() {
       }
     )
   }
-} 
+}

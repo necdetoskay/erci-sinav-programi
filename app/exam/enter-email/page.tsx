@@ -41,7 +41,7 @@ function EnterEmailContent() {
 
     try {
       // TODO: API isteği yapılacak (/api/exam/request-verification)
-      console.log('API İsteği Gönderiliyor:', { email, examCode });
+      // console.log('API İsteği Gönderiliyor:', { email, examCode }); // Removed log
       // const response = await fetch('/api/exam/request-verification', {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
@@ -54,7 +54,7 @@ function EnterEmailContent() {
       // }
 
       // const result = await response.json();
-      // console.log('API Yanıtı:', result);
+      // // console.log('API Yanıtı:', result); // Removed log
 
       toast.success("Doğrulama Kodu Gönderildi", {
          description: "Lütfen e-posta kutunuzu kontrol edin.",

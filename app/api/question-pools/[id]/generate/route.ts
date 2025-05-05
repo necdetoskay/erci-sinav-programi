@@ -86,7 +86,7 @@ export async function POST(
     });
 
     // Log status and status text for debugging
-    console.log(`OpenRouter API Response Status: ${response.status} ${response.statusText}`);
+    // console.log(`OpenRouter API Response Status: ${response.status} ${response.statusText}`); // Removed log
 
     if (!response.ok) {
       // Log the response body if the request failed
@@ -106,13 +106,13 @@ export async function POST(
       }
       
       const content = data.choices[0].message.content;
-      console.log("Raw OpenRouter Response Content:", content); // Log raw content
+      // console.log("Raw OpenRouter Response Content:", content); // Removed log
 
       const cleanContent = content
         .replace(/```json\n?/g, "")
         .replace(/```\n?/g, "")
         .trim();
-      console.log("Cleaned Content for Parsing:", cleanContent); // Log cleaned content
+      // console.log("Cleaned Content for Parsing:", cleanContent); // Removed log
 
       try {
         const parsedContent = JSON.parse(cleanContent);

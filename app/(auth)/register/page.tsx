@@ -34,7 +34,7 @@ export default function RegisterPage() {
     mode: 'onBlur', // Add mode to trigger validation on blur
   });
 
-  console.log("React Hook Form Errors:", errors); // Temporary log
+  // console.log("React Hook Form Errors:", errors); // Removed log
 
   const onSubmit = async (formData: RegisterFormData) => {
     setIsLoading(true);

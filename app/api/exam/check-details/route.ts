@@ -10,7 +10,7 @@ const CheckDetailsSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  console.log("[API /api/exam/check-details] Request received."); // Log request start
+  // console.log("[API /api/exam/check-details] Request received."); // Removed log
   try {
     const body = await request.json();
     const validation = CheckDetailsSchema.safeParse(body);
@@ -25,10 +25,10 @@ export async function POST(request: Request) {
     }
 
     const { firstName, lastName, examCode } = validation.data;
-    console.log(`[API /api/exam/check-details] Received data: firstName=${firstName}, lastName=${lastName}, examCode=${examCode}`); // Log incoming data
+    // console.log(`[API /api/exam/check-details] Received data: firstName=${firstName}, lastName=${lastName}, examCode=${examCode}`); // Removed log
 
     // 1. Sınav koduna göre sınavı bul
-    console.log(`[API /api/exam/check-details] Querying database for exam with access_code: ${examCode}`); // Log before query
+    // console.log(`[API /api/exam/check-details] Querying database for exam with access_code: ${examCode}`); // Removed log
     const exam = await prisma.exam.findFirst({
       where: {
         access_code: examCode, // Schema'daki doğru alan adı (snake_case)
@@ -42,11 +42,11 @@ export async function POST(request: Request) {
         }
       }
     });
-    console.log(`[API /api/exam/check-details] Prisma query result for access_code ${examCode}:`, exam ? `Found exam ID: ${exam.id}` : 'Not found'); // Log Prisma result concisely
+    // console.log(`[API /api/exam/check-details] Prisma query result for access_code ${examCode}:`, exam ? `Found exam ID: ${exam.id}` : 'Not found'); // Removed log
 
     // 2. Sınav var mı kontrol et
     if (!exam) {
-      console.log(`[API /api/exam/check-details] No exam found for access_code ${examCode}. Returning 404.`); // Log 404 reason
+      // console.log(`[API /api/exam/check-details] No exam found for access_code ${examCode}. Returning 404.`); // Removed log
       return NextResponse.json({ message: 'Geçersiz sınav kodu.' }, { status: 404 });
     }
 
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
     // 5. Başarılı: Sınav ID'sini döndür
     const questionCount = exam.questions.length;
-    console.log(`[API /api/exam/check-details] Exam found. ID: ${exam.id}, Title: ${exam.title}, Question Count: ${questionCount}. Returning 200.`); // Log success
+    // console.log(`[API /api/exam/check-details] Exam found. ID: ${exam.id}, Title: ${exam.title}, Question Count: ${questionCount}. Returning 200.`); // Removed log
 
     return NextResponse.json({
         message: 'Sınav bulundu.',

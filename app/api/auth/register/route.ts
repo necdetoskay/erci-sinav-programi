@@ -26,21 +26,21 @@ export async function POST(req: Request) {
     const { name, email, password } = validationResult.data;
 
     // Check if user already exists using Prisma ORM
-    console.log(`[Register Route] Checking for existing user with email (ORM): ${email}`); 
+    // console.log(`[Register Route] Checking for existing user with email (ORM): ${email}`); // Removed log
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
-    console.log(`[Register Route] Result of findUnique (ORM):`, existingUser); 
+    // console.log(`[Register Route] Result of findUnique (ORM):`, existingUser); // Removed log
 
     // Check if user already exists using Raw SQL
-    console.log(`[Register Route] Checking for existing user with email (Raw SQL): ${email}`);
+    // console.log(`[Register Route] Checking for existing user with email (Raw SQL): ${email}`); // Removed log
     const rawResult: any[] = await prisma.$queryRaw`SELECT * FROM "User" WHERE email = ${email}`;
-    console.log(`[Register Route] Result of $queryRaw (Raw SQL):`, rawResult);
+    // console.log(`[Register Route] Result of $queryRaw (Raw SQL):`, rawResult); // Removed log
 
 
     if (existingUser) {
       // Decision still based on ORM result for now, but we have raw log
-      console.log(`[Register Route] Found existing user (ORM). ID: ${existingUser.id}`); 
+      // console.log(`[Register Route] Found existing user (ORM). ID: ${existingUser.id}`); // Removed log
       return NextResponse.json(
         { message: 'User with this email already exists' },
         { status: 400 }

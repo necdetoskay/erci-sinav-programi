@@ -18,6 +18,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup, // Import SelectGroup for separators
+  SelectLabel, // Import SelectLabel for group labels
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,21 +49,11 @@ function shuffleArray<T>(array: T[]): T[] {
 // Zod şeması (API'nin beklediği alanlara göre güncellenebilir)
 const formSchema = z.object({
   promptText: z.string().min(10, { message: "Prompt en az 10 karakter olmalıdır." }),
-  count: z.coerce.number().min(1, "En az 1 soru üretilmeli").max(10, "En fazla 10 soru üretilebilir"), // API limiti 10
-  // optionsPerQuestion: z.coerce.number().min(2).max(6), // API bunu bekliyor, ekleyelim
-  model: z.enum([
-    // "google/gemini-2.0-flash-exp:free", // Eski değeri kaldır
-    "gemini-1.5-flash-latest", // Çalışan modeli ekle
-    "deepseek/deepseek-chat-v3-0324:free",
-    "meta-llama/llama-4-scout:free",
-    "qwen/qwen3-235b-a22b:free",
-    "deepseek-ai/deepseek-coder-33b-instruct",
-    // "google/gemini-pro", // Eski model kaldırıldı
-    "gemini-2.5-pro-exp-03-25", // Yeni model enum'a eklendi
-    "meta-llama/llama-4-scout-17b-16e-instruct" // Groq modeli eklendi
-  ]),
-  // difficulty API tarafından doğrudan kullanılmıyor, prompt'a eklenebilir
-  difficulty: z.enum(["easy", "medium", "hard"])
+  count: z.coerce.number().min(1, "En az 1 soru üretilmeli"),
+  optionsPerQuestion: z.coerce.number().min(2).max(6),
+  selectedModel: z.string().min(1, { message: "Lütfen bir model seçin." }), // Seçilen modelin ID'si veya adı
+  difficulty: z.enum(["easy", "medium", "hard"]),
+  // optionsPerQuestion: z.coerce.number().min(2).max(6) // This is part of apiSchema now
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -80,6 +72,25 @@ type GeneratedQuestion = {
   approved?: boolean;
 };
 
+// Hardcoded model list (based on generate-from-text API route and user request)
+const HARDCODED_MODELS = [
+  { id: "gpt-4o", name: "OpenAI GPT-4o" },
+  { id: "google/gemini-pro", name: "Google Gemini Pro" }, // Added based on API route
+  { id: "google/gemini-2.0-flash-exp:free", name: "Google Gemini Flash 2.0 (Free)" }, // Added based on user request/API route
+  { id: "deepseek/deepseek-chat-v3-0324:free", name: "DeepSeek Chat V3 (Free)" },
+  { id: "google/gemma-3-27b-it:free", name: "Gemma 3" }, // Was already present
+  { id: "mistralai/mistral-nemo:free", name: "Mistral Nemo" }, // Was already present
+  // Add Groq models handled by the API routing
+  { id: "llama3-8b-8192", name: "Groq Llama3 8B" }, // Uncommented and fixed
+  { id: "mixtral-8x7b-32768", name: "Groq Mixtral 8x7B" }// Uncommented and fixed
+  // Add OpenAI models
+
+  // { id: "gpt-4-turbo", name: "OpenAI GPT-4 Turbo" }, // Example if you want to add more
+  // { id: "deepseek-ai/deepseek-coder-33b-instruct", name: "DeepSeek Coder 33B Instruct" }, // Keep commented for now
+  // { id: 'anthropic/claude-3-sonnet:beta', name: 'Claude 3 Sonnet' }, // Example from test page
+];
+
+
 interface GenerateQuestionsProps {
   poolId: number | undefined;
   poolTitle: string | undefined;
@@ -97,25 +108,31 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
   const [promptText, setPromptText] = useState(poolTitle || "");
   const [count, setCount] = useState(1);
   const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard">("medium");
-  // Varsayılan modeli de çalışanla değiştir
-  const [model, setModel] = useState("gemini-1.5-flash-latest"); 
+  const [selectedModel, setSelectedModel] = useState(HARDCODED_MODELS[0]?.id || "google/gemini-pro"); // Default to first model name, fallback to gemini-pro
   const [optionsPerQuestion, setOptionsPerQuestion] = useState(4); // Seçenek sayısı için state
   const [formErrors, setFormErrors] = useState<z.ZodIssue[]>([]);
+
+  // AI Providers state removed
+
 
   useEffect(() => {
     setPromptText(poolTitle || "");
   }, [poolTitle]);
 
+  // Fetch AI Providers useEffect removed
+
+
   const resetFormAndState = () => {
     setPromptText(poolTitle || "");
     setCount(1);
     setDifficulty("medium");
-    setModel("google/gemini-2.0-flash-exp:free");
+    setSelectedModel(HARDCODED_MODELS[0]?.id || "google/gemini-pro"); // Reset to default model name, fallback to gemini-pro
     setOptionsPerQuestion(4); // Seçenek sayısını da sıfırla
     setCurrentStep(0);
     setGeneratedQuestions([]);
     setIsGenerating(false);
     setFormErrors([]);
+    // AI states reset in useEffect when open is false
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -276,11 +293,11 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
       promptText,
       count,
       difficulty, // Bu API'ye doğrudan gönderilmiyor, prompt'a eklenebilir
-      model,
+      selectedModel, // Seçilen modelin ID'si veya adı
       optionsPerQuestion // API'nin beklediği alan
     };
 
-    // Zod şemasını API'nin beklediği alanlara göre güncelleyelim
+    // Zod şeması (API'nin beklediği alanlara göre güncellenebilir)
     const apiSchema = formSchema.extend({
         optionsPerQuestion: z.coerce.number().min(2).max(6)
     });
@@ -294,86 +311,103 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
     }
 
     const validatedData = validationResult.data;
-    console.log("onSubmit triggered with data:", validatedData);
+    // console.log("onSubmit triggered with data:", validatedData); // Removed log
+
+    // Model/Provider lookup logic removed
+
 
     try {
       setIsGenerating(true);
       const apiUrl = "/api/generate-questions"; // Doğru API adresini kullan
-      console.log(`Calling API: ${apiUrl}`);
+      const generatedQuestionsArray: GeneratedQuestion[] = [];
 
-      // API'nin beklediği payload'ı oluştur
-      const apiPayload = {
-        content: validatedData.promptText, // promptText -> content
-        numberOfQuestions: validatedData.count, // count -> numberOfQuestions
-        optionsPerQuestion: validatedData.optionsPerQuestion,
-        model: validatedData.model,
-        // difficulty prompt'a eklenebilir veya API'de işlenebilir
-      };
+      for (let i = 0; i < validatedData.count; i++) {
+        // console.log(`Calling API for question ${i + 1}/${validatedData.count}`); // Removed log
 
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(apiPayload),
-      });
-      console.log("API Response Status:", response.status);
+        const apiPayload = {
+          content: validatedData.promptText, // promptText -> content
+          numberOfQuestions: 1, // Her çağrıda 1 soru iste
+          optionsPerQuestion: validatedData.optionsPerQuestion,
+          // Pass the selected model name directly
+          model: validatedData.selectedModel, // Pass the model name string
+          // apiKey removed, handled by backend based on model name
+          // difficulty prompt'a eklenebilir veya API'de işlenebilir
+        };
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(apiPayload),
+        });
+        // console.log(`API Response Status for question ${i + 1}:`, response.status); // Removed log
 
-      const responseData = await response.json();
+        const responseData = await response.json();
 
-      if (!response.ok || !responseData.success) {
-        console.error("API Error Response Body:", responseData);
-        throw new Error(responseData.error || `Sorular üretilirken bir hata oluştu (Status: ${response.status})`);
+        if (!response.ok || !responseData.success) {
+          console.error(`API Error Response Body for question ${i + 1}:`, responseData);
+          // Hata durumunda döngüyü kır ve hata mesajı göster
+          throw new Error(responseData.error || `Soru ${i + 1} üretilirken bir hata oluştu (Status: ${response.status})`);
+        }
+
+        // console.log(`API raw response text for question ${i + 1}:`, responseData.questions); // Removed log
+
+        // API'den gelen metni parse et (tek soru bekleniyor)
+        const parsedQuestions = parseGeneratedText(responseData.questions, 1, validatedData.difficulty); // count 1 olarak parse et
+        // console.log(`Parsed Question ${i + 1}:`, JSON.stringify(parsedQuestions, null, 2)); // Removed log
+
+        if (parsedQuestions.length > 0) {
+          // Başarılı bir şekilde parse edilen ilk soruyu ekle
+          generatedQuestionsArray.push({ ...parsedQuestions[0], approved: false });
+        } else {
+          console.warn(`Could not parse question ${i + 1} from API response.`);
+          // Parse edilemezse boş bir soru ekleyebilir veya atlayabiliriz. Şimdilik atlayalım.
+        }
       }
 
-      console.log("API raw response text:", responseData.questions); // API'den gelen ham metni logla
+      // Tüm sorular başarıyla üretildiyse state'i güncelle
+      if (generatedQuestionsArray.length > 0) {
+         // Shuffle options for each parsed question before setting state
+         const questionsWithShuffledOptions = generatedQuestionsArray.map(shuffleQuestionOptions);
+         setGeneratedQuestions(questionsWithShuffledOptions);
+         setCurrentStep(1); // Onaylama adımına geç
+         // console.log("Moved to step 1"); // Removed log
+         toast.success(`${generatedQuestionsArray.length} adet soru üretildi. Lütfen inceleyin.`);
+      } else {
+         toast.error("Hiç soru üretilemedi. Lütfen prompt'u veya modeli kontrol edin.");
+      }
 
-      // API'den gelen metni parse et
-      const parsedQuestions = parseGeneratedText(responseData.questions, validatedData.count, validatedData.difficulty);
-      console.log("Parsed Questions:", JSON.stringify(parsedQuestions, null, 2)); // Parse edilen soruları logla
-
-      if (parsedQuestions.length === 0 && validatedData.count > 0) {
-           console.error("Parsed questions array is empty despite successful API call.");
-           toast.error("API yanıtı işlenemedi veya boş döndü. Yanıt formatını kontrol edin.");
-           // Hata durumunda bile boş diziyle state'i güncelleyebiliriz veya hata mesajı gösterebiliriz.
-            setGeneratedQuestions([]);
-       } else {
-           // Shuffle options for each parsed question before setting state
-           const questionsWithShuffledOptions = parsedQuestions.map(shuffleQuestionOptions);
-           setGeneratedQuestions(questionsWithShuffledOptions.map(q => ({ ...q, approved: false })));
-       }
-
-       setCurrentStep(1); // Onaylama adımına geç
-      console.log("Moved to step 1");
 
     } catch (error) {
       console.error("Error in handleGenerateClick:", error);
       toast.error(error instanceof Error ? error.message : "Sorular üretilirken bilinmeyen bir hata oluştu");
+      setGeneratedQuestions([]); // Hata durumunda listeyi temizle
+      setCurrentStep(0); // Hata durumunda forma geri dön
     } finally {
       setIsGenerating(false);
-      console.log("handleGenerateClick finished");
+      // console.log("handleGenerateClick finished"); // Removed log
     }
   };
 
 
   async function saveApprovedQuestions() {
      // ... (saveApprovedQuestions kodu aynı kalıyor, ancak API endpoint'i kontrol edilmeli) ...
-     console.log("saveApprovedQuestions triggered");
+     // console.log("saveApprovedQuestions triggered"); // Removed log
     try {
       const approvedQuestions = generatedQuestions.filter(q => q.approved);
-      console.log("Approved questions:", approvedQuestions);
+      // console.log("Approved questions:", approvedQuestions); // Removed log
       if (approvedQuestions.length === 0) {
         toast.error("Lütfen en az bir soru onaylayın");
         return;
       }
       // Doğru API endpoint'ini kullandığımızdan emin olalım
       const batchApiUrl = `/api/question-pools/${poolId}/questions/batch`;
-      console.log(`Calling API: ${batchApiUrl}`);
+      // console.log(`Calling API: ${batchApiUrl}`); // Removed log
       const response = await fetch(batchApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // API'nin beklediği payload'ı kontrol et
         body: JSON.stringify({ questions: approvedQuestions }),
       });
-      console.log("Save Batch API Response Status:", response.status);
+      // console.log("Save Batch API Response Status:", response.status); // Removed log
       if (!response.ok) {
          const errorBody = await response.text();
          console.error("Save Batch API Error Response Body:", errorBody);
@@ -456,7 +490,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
                    name="count"
                    type="number"
                    min={1}
-                   max={10} // API limitine göre ayarlandı
+                   max={50} // API limitine göre ayarlandı
                    value={count}
                    onChange={(e) => setCount(parseInt(e.target.value, 10) || 1)}
                    required
@@ -501,23 +535,25 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
               {/* Model */}
                <div className="space-y-2">
                  <Label htmlFor="model">Model</Label>
-                 <Select name="model" value={model} onValueChange={setModel}>
-                    <SelectTrigger id="model" className={getError('model') ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Model seçin" />
+                 <Select
+                    name="model"
+                    value={selectedModel} // Value is now the model name string
+                    onValueChange={setSelectedModel} // Updates state with model name string
+                    disabled={HARDCODED_MODELS.length === 0} // Disable if no models
+                 >
+                    <SelectTrigger id="model" className={getError('selectedModel') ? 'border-red-500' : ''}>
+                      <SelectValue placeholder={HARDCODED_MODELS.length === 0 ? "Model Yok" : "Model Seçin"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {/* Eski değeri çalışanla değiştir ve metni güncelle */}
-                      <SelectItem value="gemini-1.5-flash-latest">Gemini 1.5 Flash</SelectItem> 
-                      <SelectItem value="deepseek/deepseek-chat-v3-0324:free">DeepSeek Chat v3</SelectItem>
-                      <SelectItem value="meta-llama/llama-4-scout:free">Llama 4 Scout</SelectItem>
-                      <SelectItem value="qwen/qwen3-235b-a22b:free">Qwen 3</SelectItem>
-                      <SelectItem value="deepseek-ai/deepseek-coder-33b-instruct">DeepSeek Coder</SelectItem>
-                      {/* <SelectItem value="google/gemini-pro">Gemini Pro</SelectItem>  Eski model kaldırıldı */}
-                      <SelectItem value="gemini-2.5-pro-exp-03-25">Gemini 2.5 Pro Exp</SelectItem> {/* Yeni model eklendi */}
-                      <SelectItem value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</SelectItem> {/* Groq modeli eklendi */}
+                       {/* Iterate over the hardcoded list */}
+                       {HARDCODED_MODELS.map(model => (
+                         <SelectItem key={model.id} value={model.id}> {/* Value is the model name string */}
+                           {model.name} {/* Display user-friendly name */}
+                         </SelectItem>
+                       ))}
                     </SelectContent>
                   </Select>
-                  {getError('model') && <p className="text-sm text-red-600">{getError('model')}</p>}
+                  {getError('selectedModel') && <p className="text-sm text-red-600">{getError('selectedModel')}</p>}
               </div>
             </div>
 
@@ -525,7 +561,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
               <Button
                 type="button"
                 onClick={handleGenerateClick}
-                disabled={isGenerating || poolId === undefined}
+                disabled={isGenerating || poolId === undefined || HARDCODED_MODELS.length === 0 || !selectedModel} // Disable if no models or no model selected
               >
                 {isGenerating ? "Üretiliyor..." : "Soru Üret"}
               </Button>

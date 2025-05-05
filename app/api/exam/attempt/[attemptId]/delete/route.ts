@@ -7,7 +7,7 @@ export async function DELETE(
     request: Request,
     { params }: { params: { attemptId: string } }
 ) {
-    console.log(`[API DELETE /api/exam/attempt/${params.attemptId}] Request received.`);
+    // console.log(`[API DELETE /api/exam/attempt/${params.attemptId}] Request received.`); // Removed log
     // Optional: Add authentication/authorization check if needed
     // const session = await getServerSession(authOptions);
     // if (!session || !session.user) {
@@ -19,11 +19,11 @@ export async function DELETE(
     try {
         const attemptId = params.attemptId;
         if (!attemptId) {
-            console.log("[API DELETE /api/exam/attempt] Missing attemptId.");
+            // console.log("[API DELETE /api/exam/attempt] Missing attemptId."); // Removed log
             return NextResponse.json({ message: 'Attempt ID is required.' }, { status: 400 });
         }
 
-        console.log(`[API DELETE /api/exam/attempt/${attemptId}] Attempting to delete attempt.`);
+        // console.log(`[API DELETE /api/exam/attempt/${attemptId}] Attempting to delete attempt.`); // Removed log
 
         // Check if the attempt exists before trying to delete
         const attemptExists = await prisma.examAttempt.findUnique({
@@ -32,7 +32,7 @@ export async function DELETE(
         });
 
         if (!attemptExists) {
-            console.log(`[API DELETE /api/exam/attempt/${attemptId}] Attempt not found.`);
+            // console.log(`[API DELETE /api/exam/attempt/${attemptId}] Attempt not found.`); // Removed log
             return NextResponse.json({ message: 'Exam attempt not found.' }, { status: 404 });
         }
 
@@ -41,7 +41,7 @@ export async function DELETE(
             where: { id: attemptId },
         });
 
-        console.log(`[API DELETE /api/exam/attempt/${attemptId}] Successfully deleted attempt.`);
+        // console.log(`[API DELETE /api/exam/attempt/${attemptId}] Successfully deleted attempt.`); // Removed log
         return NextResponse.json({ message: 'Exam attempt deleted successfully.' }, { status: 200 });
 
     } catch (error) {

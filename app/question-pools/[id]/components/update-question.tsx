@@ -273,12 +273,12 @@ export function UpdateQuestion({ id, question }: UpdateQuestionProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Açıklama</FormLabel>
-                      <FormControl>
-                        <RichTextEditor
-                          content={field.value}
-                          onChange={field.onChange}
-                          placeholder="Çözüm açıklamasını yazın..."
-                          className="min-h-[80px]"
+                                  <FormControl>
+                                    <RichTextEditor
+                                      content={field.value || ''}
+                                      onChange={field.onChange}
+                                      placeholder="Çözüm açıklamasını yazın..."
+                                      className="min-h-[80px]"
                         />
                       </FormControl>
                       <FormMessage />

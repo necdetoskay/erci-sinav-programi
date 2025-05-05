@@ -27,11 +27,11 @@ const sidebarNavItems = [
     href: "/dashboard/users",
     icon: Users,
   },
-  {
-    title: "Ayarlar",
-    href: "/dashboard/settings", // Not: Bu yol /settings olabilir.
-    icon: Settings,
-  },
+  // {
+  //   title: "Ayarlar",
+  //   href: "/dashboard/settings", // Not: Bu yol /settings olabilir.
+  //   icon: Settings,
+  // }, // Ayarlar linki kaldırıldı
   {
     title: "Öğrenci Sınav Girişi (Test)",
     href: "/exam/enter-email",

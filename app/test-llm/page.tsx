@@ -100,7 +100,7 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
 
       // Metni önce alıp sonra JSON.parse etmeye çalışalım
       const responseText = await response.text()
-      console.log('Raw API response:', responseText)
+      // console.log('Raw API response:', responseText); // Removed log
       
       try {
         const data = JSON.parse(responseText)
@@ -319,4 +319,4 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
       </Card>
     </div>
   )
-} 
+}

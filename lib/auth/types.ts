@@ -11,13 +11,13 @@ declare module "next-auth" {
   }
 
   interface User extends DefaultUser {
-    role?: string;
+    role: string; // Make role required to match Session.user.role
   }
 }
 
 // Extend the JWT type
 declare module "next-auth/jwt" {
   interface JWT {
-    role?: string;
+    role: string; // Make role required to match User.role and Session.user.role
   }
-} 
+}

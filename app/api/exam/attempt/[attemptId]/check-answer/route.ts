@@ -17,7 +17,7 @@ export async function POST(
   { params }: { params: { attemptId: string } }
 ) {
   const attemptId = params.attemptId;
-  console.log(`[API check-answer] Received request for attemptId: ${attemptId}`); // Log entry
+  // console.log(`[API check-answer] Received request for attemptId: ${attemptId}`); // Removed log
 
   if (!attemptId) {
     console.error("[API check-answer] Attempt ID is missing."); // Log error
@@ -28,11 +28,10 @@ export async function POST(
   try {
     requestBody = await request.json();
   } catch (error) {
-    return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
-    console.error("[API check-answer] Failed to parse JSON body:", error); // Log error
+    // console.error("[API check-answer] Failed to parse JSON body:", error); // Keep error log
     return NextResponse.json({ message: 'Invalid JSON body' }, { status: 400 });
   }
-  console.log("[API check-answer] Request body parsed:", requestBody); // Log parsed body
+  // console.log("[API check-answer] Request body parsed:", requestBody); // Removed log
 
   // İstek gövdesini doğrula
   const validationResult = checkAnswerSchema.safeParse(requestBody);
@@ -42,18 +41,18 @@ export async function POST(
   }
 
   const { questionId, selectedAnswer, timeSpentSeconds } = validationResult.data;
-  console.log(`[API check-answer] Validated data: questionId=${questionId}, selectedAnswer=${selectedAnswer}, timeSpentSeconds=${timeSpentSeconds}`); // Log validated data
+  // console.log(`[API check-answer] Validated data: questionId=${questionId}, selectedAnswer=${selectedAnswer}, timeSpentSeconds=${timeSpentSeconds}`); // Removed log
 
   try {
     // 1. Sınav denemesini bul ve durumunu kontrol et
-    console.log(`[API check-answer] Finding exam attempt with ID: ${attemptId}`); // Log before findUnique
+    // console.log(`[API check-answer] Finding exam attempt with ID: ${attemptId}`); // Removed log
     const examAttempt = await prisma.examAttempt.findUnique({
       where: { id: attemptId },
       include: {
         exam: true, // Sınav süresini kontrol etmek için
       },
     });
-    console.log(`[API check-answer] Found exam attempt:`, examAttempt ? `Status: ${examAttempt.status}` : 'Not Found'); // Log findUnique result
+    // console.log(`[API check-answer] Found exam attempt:`, examAttempt ? `Status: ${examAttempt.status}` : 'Not Found'); // Removed log
 
     if (!examAttempt) {
       console.error(`[API check-answer] Exam attempt not found for ID: ${attemptId}`); // Log error
@@ -61,7 +60,7 @@ export async function POST(
     }
 
     // Sınavın bitip bitmediğini veya zaman aşımına uğrayıp uğramadığını kontrol et
-    console.log(`[API check-answer] Checking attempt status: ${examAttempt.status}`); // Log status check
+    // console.log(`[API check-answer] Checking attempt status: ${examAttempt.status}`); // Removed log
     if (examAttempt.status === ExamAttemptStatus.SUBMITTED || examAttempt.status === ExamAttemptStatus.TIMED_OUT) {
       // Eğer bitmişse, mevcut cevabı (varsa) döndürerek durumu koru
       const existingAnswer = await prisma.examAttemptAnswer.findUnique({
@@ -80,7 +79,7 @@ export async function POST(
     }
 
     // Zaman aşımı kontrolü (ekstra güvenlik katmanı)
-    console.log(`[API check-answer] Checking for timeout...`); // Log timeout check
+    // console.log(`[API check-answer] Checking for timeout...`); // Removed log
     const examDurationMs = examAttempt.exam.duration_minutes * 60 * 1000;
     const elapsedTimeMs = Date.now() - new Date(examAttempt.startTime).getTime();
     if (elapsedTimeMs > examDurationMs) {
@@ -93,11 +92,11 @@ export async function POST(
     }
 
     // 2. Soruyu bul
-    console.log(`[API check-answer] Finding question with ID: ${questionId}`); // Log before findUnique
+    // console.log(`[API check-answer] Finding question with ID: ${questionId}`); // Removed log
     const question = await prisma.question.findUnique({
       where: { id: questionId },
     });
-    console.log(`[API check-answer] Found question:`, question ? `Correct Answer: ${question.correct_answer}` : 'Not Found'); // Log findUnique result
+    // console.log(`[API check-answer] Found question:`, question ? `Correct Answer: ${question.correct_answer}` : 'Not Found'); // Removed log
 
     if (!question || !question.correct_answer) { // correct_answer'ın null olmadığını kontrol et
       console.error(`[API check-answer] Question or correct answer not found for QID: ${questionId}`); // Log error
@@ -105,13 +104,13 @@ export async function POST(
     }
 
     // 3. Cevabı kontrol et (Case-insensitive and trimmed comparison)
-    console.log(`[API check-answer] Comparing answer for QID ${questionId}...`); // Log comparison start
+    // console.log(`[API check-answer] Comparing answer for QID ${questionId}...`); // Removed log
     const correctAnswerCleaned = question.correct_answer.trim().toUpperCase();
     const selectedAnswerCleaned = selectedAnswer.trim().toUpperCase();
     const isCorrect = correctAnswerCleaned === selectedAnswerCleaned;
 
-    console.log(`Comparing Answer for QID ${questionId}: DB='${question.correct_answer}' (Cleaned: '${correctAnswerCleaned}') vs Selected='${selectedAnswer}' (Cleaned: '${selectedAnswerCleaned}')`);
-    console.log(`Comparison Result (isCorrect): ${isCorrect}`);
+    // console.log(`Comparing Answer for QID ${questionId}: DB='${question.correct_answer}' (Cleaned: '${correctAnswerCleaned}') vs Selected='${selectedAnswer}' (Cleaned: '${selectedAnswerCleaned}')`); // Removed log
+    // console.log(`Comparison Result (isCorrect): ${isCorrect}`); // Removed log
 
     // 4. Cevap detaylarını veritabanına kaydet veya güncelle (upsert)
     await prisma.examAttemptAnswer.upsert({
@@ -136,7 +135,7 @@ export async function POST(
       },
     });
     // Add logging after upsert
-    console.log(`[API check-answer] Upserted answer for attempt ${attemptId}, question ${questionId}. isCorrect: ${isCorrect}`);
+    // console.log(`[API check-answer] Upserted answer for attempt ${attemptId}, question ${questionId}. isCorrect: ${isCorrect}`); // Removed log
 
 
     // 5. ExamAttempt'in genel cevaplarını güncelle (isteğe bağlı ama faydalı)

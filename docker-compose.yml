@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  postgresql:
+  erci_sinav_db:
     image: postgres:15
-    container_name: auth-postgres
+    container_name: erci-app-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: P@ssw0rd
@@ -19,17 +19,47 @@ services:
       timeout: 5s
       retries: 5
 
-  pgadmin:
+  erci_sinav_pgadmin:
     image: dpage/pgadmin4
-    container_name: auth-pgadmin
+    container_name: erci-app-pgadmin
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
-      - "5050:80"
+      - "5051:80"
     depends_on:
-      - postgresql
+      erci_sinav_db: # Updated dependency
+        condition: service_healthy # Wait for postgresql to be healthy
     restart: unless-stopped
 
+  erci_sinav_app:
+    container_name: erci-sinav-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DATABASE_URL
+    ports:
+      - "3000:3000"
+    depends_on:
+      erci_sinav_db: # Updated dependency
+        condition: service_healthy # Wait for postgresql to be healthy
+    env_file:
+      - .env # Load environment variables from .env file
+    restart: unless-stopped
+    # Optional: Add a healthcheck for the Next.js app
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:3000"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 30s # Give the app time to start
+
+    # Use `pnpm start` or `node server.js` if using standalone output
+    # CMD ["pnpm", "start"] # Comment out the original CMD
+
+    # Set the entrypoint to our custom script
+    entrypoint: ["/usr/local/bin/docker-entrypoint.sh"]
+
 volumes:
-  postgres_data: 
+  postgres_data:

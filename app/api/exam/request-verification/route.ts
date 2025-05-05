@@ -98,7 +98,7 @@ export async function POST(request: Request) {
 
     // TODO: E-posta gönderme işlemini burada yap
     // await sendVerificationEmail(email, verificationCode);
-    console.log(`Doğrulama Kodu (${email} için): ${verificationCode}`); // Geçici olarak loglama
+    // console.log(`Doğrulama Kodu (${email} için): ${verificationCode}`); // Removed log
 
     return NextResponse.json({ message: 'Doğrulama kodu başarıyla gönderildi.' }, { status: 200 });
 

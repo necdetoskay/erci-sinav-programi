@@ -256,22 +256,22 @@ export default function Dashboard() {
                 {isLoadingStats ? (
                    <div className="flex justify-center items-center h-60">Yükleniyor...</div>
                 ) : stats && stats.participantStats.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={350}> {/* Increased height */}
-                    <BarChart data={stats.participantStats} margin={{ top: 5, right: 30, left: 20, bottom: 70 }}> {/* Increased bottom margin */}
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" /> {/* Lighter grid */}
+                  <ResponsiveContainer width="100%" height={350}>
+                    <BarChart data={stats.participantStats} margin={{ top: 5, right: 30, left: 20, bottom: 70 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                       <XAxis
                         dataKey="displayName"
-                        angle={-60} // More angle for potentially long names
+                        angle={-60}
                         textAnchor="end"
                         interval={0}
-                        tick={{ fontSize: 10 }} // Smaller font size for labels
-                        height={80} // Increased height for angled labels
+                        tick={{ fontSize: 10 }}
+                        height={80}
                       />
                       <YAxis
                         domain={[0, 100]}
                         tickFormatter={(value) => `${value}%`}
                         tick={{ fontSize: 11 }}
-                        label={{ value: 'Başarı (%)', angle: -90, position: 'insideLeft', offset: -10, style: {fontSize: '12px', fill: '#666'} }} // Adjusted label
+                        label={{ value: 'Başarı (%)', angle: -90, position: 'insideLeft', offset: -10, style: {fontSize: '12px', fill: '#666'} }}
                       />
                       <Tooltip
                         cursor={{ fill: 'rgba(206, 206, 206, 0.2)' }}
@@ -280,10 +280,7 @@ export default function Dashboard() {
                         contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: '1px solid #ddd', padding: '8px 12px' }}
                       />
                       <Legend verticalAlign="top" height={36}/>
-                      {/* Teal color, rounded top, slightly larger bar, animation */}
                       <Bar dataKey="averageScore" name="Ortalama Başarı" fill="#2dd4bf" radius={[4, 4, 0, 0]} barSize={40} animationDuration={800}>
-                         {/* Optional: Add labels on top of bars */}
-                         {/* <LabelList dataKey="averageScore" position="top" formatter={(value: number) => `${value.toFixed(0)}%`} fontSize={11} fill="#333" /> */}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>

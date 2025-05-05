@@ -1,0 +1,4 @@
+-- This migration adds the default AI model settings fields to the Setting model.
+-- The default values based on environment variables should be handled in application logic, not here.
+-- Removing problematic SQL that attempted to use environment variables directly.
+-- The schema changes are handled by Prisma based on the schema.prisma file.

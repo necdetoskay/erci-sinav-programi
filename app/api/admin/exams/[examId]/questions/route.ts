@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { PrismaClient, Prisma } from '@prisma/client'; // Import both PrismaClient and Prisma
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { Session } from 'next-auth';
 
 // GET: Sınavın sorularını listeler
@@ -74,7 +75,7 @@ export async function POST(
     }
     
     // Mevcut soruları sil ve yeniden oluştur (transactional)
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Mevcut soruları sil
       await tx.question.deleteMany({
         where: { exam_id: examId },
@@ -111,4 +112,4 @@ export async function POST(
       { status: 500 }
     );
   }
-} 
+}

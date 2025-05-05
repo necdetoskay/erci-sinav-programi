@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react"; // Import Suspense
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -21,18 +21,49 @@ const errorTypes: Record<string, string> = {
   DatabaseConnectivity: "Veritabanı bağlantı hatası. Lütfen daha sonra tekrar deneyin.",
 };
 
-export default function ErrorPage() {
+// New component to handle search params and display error
+function ErrorDisplay() {
   const searchParams = useSearchParams();
-  const [error, setError] = useState<string>(searchParams?.get("error") || "default");
+  const [error, setError] = useState<string>("default");
   const [errorMessage, setErrorMessage] = useState<string>(errorTypes["default"]);
 
   useEffect(() => {
-    // Get the error message that corresponds to the error code
     const code = searchParams?.get("error") || "default";
     setError(code);
     setErrorMessage(errorTypes[code] || errorTypes["default"]);
   }, [searchParams]);
 
+  return (
+    <div className="rounded-md bg-red-50 p-4 mb-6">
+      <div className="flex">
+        <div className="flex-shrink-0">
+          <svg
+            className="h-5 w-5 text-red-400"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </div>
+        <div className="ml-3">
+          <h3 className="text-sm font-medium text-red-800">
+            {error}
+          </h3>
+          <div className="mt-2 text-sm text-red-700">
+            <p>{errorMessage}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ErrorPage() {
   return (
     <div className="flex min-h-screen flex-col justify-center py-12 sm:px-6 lg:px-8 bg-gray-100">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -43,32 +74,10 @@ export default function ErrorPage() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <div className="rounded-md bg-red-50 p-4 mb-6">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg
-                  className="h-5 w-5 text-red-400"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  {error}
-                </h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>{errorMessage}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Wrap the component using searchParams in Suspense */}
+          <Suspense fallback={<div className="text-center p-4">Yükleniyor...</div>}>
+            <ErrorDisplay />
+          </Suspense>
 
           <div className="flex justify-center">
             <Link
@@ -82,4 +91,4 @@ export default function ErrorPage() {
       </div>
     </div>
   );
-} 
+}

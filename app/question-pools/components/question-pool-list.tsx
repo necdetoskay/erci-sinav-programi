@@ -43,11 +43,10 @@ export function QuestionPoolList({ questionPools }: QuestionPoolListProps) {
             </CardHeader>
             <CardContent>
               <div className="flex justify-between text-sm text-muted-foreground">
-                <div>
-                  <p>{pool.subject}</p>
-                  <p>{pool.grade}</p>
-                </div>
-                <div className="text-right">
+                 <div>
+                   <p>{pool.subject}</p>
+                 </div>
+                 <div className="text-right">
                   <p>{pool.questions.length} Soru</p>
                   <p className="capitalize">{pool.difficulty}</p>
                 </div>
@@ -58,4 +57,4 @@ export function QuestionPoolList({ questionPools }: QuestionPoolListProps) {
       ))}
     </div>
   );
-} 
+}

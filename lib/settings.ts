@@ -19,33 +19,11 @@ export async function getSettings(): Promise<AppSettings> {
       }
     });
 
-    // Fallback to environment variables for essential SMTP settings if not in DB
-    const smtpKeys: (keyof AppSettings)[] = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_SECURE', 'EMAIL_FROM'];
-    smtpKeys.forEach(key => {
-        if (!settings[key]) {
-            const envValue = process.env[key];
-            if (envValue) {
-                settings[key] = envValue;
-            }
-        }
-    });
-
-
     return settings;
   } catch (error) {
     console.error("Error fetching settings:", error);
     // Return empty object or throw error depending on desired behavior
-    // Falling back completely to ENV vars in case of DB error might be an option
-     const settings: AppSettings = {};
-     const smtpKeys: (keyof AppSettings)[] = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_SECURE', 'EMAIL_FROM'];
-     smtpKeys.forEach(key => {
-         const envValue = process.env[key];
-         if (envValue) {
-             settings[key] = envValue;
-         }
-     });
-     console.warn("Falling back to environment variables for SMTP settings due to database error.");
-     return settings;
+    return {}; // Return empty object on error
   }
 }
 

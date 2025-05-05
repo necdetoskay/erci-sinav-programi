@@ -15,7 +15,7 @@ const modelEnum = z.enum([
 
 const requestSchema = z.object({
   prompt: z.string().min(10, { message: "Prompt en az 10 karakter olmalıdır." }), // contextText yerine prompt
-  numQuestions: z.number().min(1).max(25),
+  numQuestions: z.number().min(1),
   difficulty: z.enum(["Kolay", "Orta", "Zor"]), // Zorluk string enum olarak alındı
   model: modelEnum,
 });
@@ -107,7 +107,7 @@ export async function POST(
       }),
     });
 
-    console.log(`OpenRouter API Response Status: ${response.status} ${response.statusText}`);
+    // console.log(`OpenRouter API Response Status: ${response.status} ${response.statusText}`); // Removed log
 
     if (!response.ok) {
       const errorBody = await response.text();
@@ -145,13 +145,13 @@ export async function POST(
     }
 
     const content = data.choices[0].message.content;
-    console.log("Raw OpenRouter Response Content:", content);
+    // console.log("Raw OpenRouter Response Content:", content); // Removed log
 
     const cleanContent = content
       .replace(/```json\n?/g, "")
       .replace(/```\n?/g, "")
       .trim();
-    console.log("Cleaned Content for Parsing:", cleanContent);
+    // console.log("Cleaned Content for Parsing:", cleanContent); // Removed log
 
     try {
       const parsedContent = JSON.parse(cleanContent);

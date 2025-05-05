@@ -27,6 +27,12 @@ import { Card, CardContent } from "@/components/ui/card"; // Card importları ek
 import { cn } from "@/lib/utils"; // cn import edildi
 import { AILoading } from "@/components/ui/ai-loading"; // AILoading import edildi
 import { v4 as uuidv4 } from "uuid"; // UUID import edildi (API'den gelmiyorsa diye)
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"; // Tooltip importları eklendi
 
 // GeneratedQuestion tipi tanımlandı (generate-questions.tsx'den alındı)
 type GeneratedQuestion = {
@@ -275,10 +281,19 @@ export function GenerateQuestionsFromText({
   return (
     // Dialog onOpenChange güncellendi
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {/* Buton adı güncellendi */}
-        <Button variant="outline">Prompt ile Soru Üret</Button>
-      </DialogTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              {/* Buton adı güncellendi */}
+              <Button variant="outline">Metinden Soru Üret</Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>açılan formda yapıştırılan metin üzerinden sorular üretilir</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       {/* Dialog boyutu ayarlandı */}
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -318,7 +333,6 @@ export function GenerateQuestionsFromText({
                 id="num-questions"
                 type="number"
                 min="1"
-                max="25" // Üst limit eklendi
                 value={numQuestions}
                 onChange={(e) => setNumQuestions(parseInt(e.target.value, 10) || 1)}
                 className="col-span-3"

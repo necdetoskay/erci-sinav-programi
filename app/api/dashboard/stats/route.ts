@@ -16,11 +16,11 @@ interface ParticipantStats {
 }
 
 export async function GET(request: Request) {
-  console.log("[API /api/dashboard/stats] Request received.");
+  // console.log("[API /api/dashboard/stats] Request received."); // Removed log
   try {
     // 1. Get total number of attempts
     const totalAttempts = await prisma.examAttempt.count();
-    console.log(`[API /api/dashboard/stats] Total attempts: ${totalAttempts}`);
+    // console.log(`[API /api/dashboard/stats] Total attempts: ${totalAttempts}`); // Removed log
 
     // 2. Get number of unique participants (based on email)
     // Use distinct count aggregation
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
         distinct: ['participantEmail'],
      });
      const uniqueParticipants = distinctEmails.length;
-     console.log(`[API /api/dashboard/stats] Unique participants: ${uniqueParticipants}`);
+     // console.log(`[API /api/dashboard/stats] Unique participants: ${uniqueParticipants}`); // Removed log
 
 
     // 3. Get number of completed attempts
@@ -58,10 +58,10 @@ export async function GET(request: Request) {
         },
       },
     });
-    console.log(`[API /api/dashboard/stats] Completed attempts: ${completedAttempts}`);
+    // console.log(`[API /api/dashboard/stats] Completed attempts: ${completedAttempts}`); // Removed log
 
     // 4. Calculate detailed participant statistics
-    console.log("[API /api/dashboard/stats] Fetching completed attempts with answers...");
+    // console.log("[API /api/dashboard/stats] Fetching completed attempts with answers..."); // Removed log
     const completedAttemptsWithAnswers = await prisma.examAttempt.findMany({
         where: {
             status: {
@@ -75,13 +75,13 @@ export async function GET(request: Request) {
         //     // attemptAnswers: true
         // }
     });
-    console.log(`[API /api/dashboard/stats] Found ${completedAttemptsWithAnswers.length} completed attempt records (email filter removed).`);
+    // console.log(`[API /api/dashboard/stats] Found ${completedAttemptsWithAnswers.length} completed attempt records (email filter removed).`); // Removed log
 
     // If completed attempts exist, fetch their answers separately
     let allAnswers: ExamAttemptAnswer[] = [];
     if (completedAttemptsWithAnswers.length > 0) {
         const attemptIds = completedAttemptsWithAnswers.map(a => a.id);
-        console.log(`[API /api/dashboard/stats] Fetching answers separately for attempt IDs:`, attemptIds);
+        // console.log(`[API /api/dashboard/stats] Fetching answers separately for attempt IDs:`, attemptIds); // Removed log
         allAnswers = await prisma.examAttemptAnswer.findMany({
             where: {
                 examAttemptId: {
@@ -89,9 +89,9 @@ export async function GET(request: Request) {
                 }
             }
         });
-        console.log(`[API /api/dashboard/stats] Found ${allAnswers.length} answer records separately.`);
+        // console.log(`[API /api/dashboard/stats] Found ${allAnswers.length} answer records separately.`); // Removed log
         // Log raw answers for debugging
-        console.log("[API /api/dashboard/stats] Raw separate answers data:", JSON.stringify(allAnswers, null, 2));
+        // console.log("[API /api/dashboard/stats] Raw separate answers data:", JSON.stringify(allAnswers, null, 2)); // Removed log
     }
 
     // Group answers by attemptId for easier lookup
@@ -112,7 +112,7 @@ export async function GET(request: Request) {
         const isEmail = !!attempt.participantEmail;
 
         const attemptAnswers = answersByAttemptId.get(attempt.id) || []; // Get answers from the map
-        console.log(`[API /api/dashboard/stats] Processing attempt ${attempt.id} for identifier '${identifier}'. Found ${attemptAnswers.length} answers.`);
+        // console.log(`[API /api/dashboard/stats] Processing attempt ${attempt.id} for identifier '${identifier}'. Found ${attemptAnswers.length} answers.`); // Removed log
 
         let stats = participantStatsMap.get(identifier);
 
@@ -154,7 +154,7 @@ export async function GET(request: Request) {
         return stats;
     });
 
-    console.log(`[API /api/dashboard/stats] Calculated detailed stats for ${detailedParticipantStats.length} participants.`);
+    // console.log(`[API /api/dashboard/stats] Calculated detailed stats for ${detailedParticipantStats.length} participants.`); // Removed log
 
 
     // Prepare the final response data including both overall and detailed stats
@@ -167,7 +167,7 @@ export async function GET(request: Request) {
       participantStats: detailedParticipantStats, // Add detailed stats
     };
 
-    console.log("[API /api/dashboard/stats] Successfully calculated stats:", responseData);
+    // console.log("[API /api/dashboard/stats] Successfully calculated stats:", responseData); // Removed log
     return NextResponse.json(responseData, { status: 200 });
 
   } catch (error) {

@@ -51,20 +51,28 @@ const FormField = <
 >({
   ...props
 }: ControllerProps<TFieldValues, TName>) => {
+  // useContext'i render prop'unun dışına taşı
+  const itemContext = React.useContext(FormItemContext);
+  if (!itemContext) {
+    // FormItem içinde değilse veya context sağlanmadıysa hata ver
+    // Bu durum normalde olmamalı ama bir güvenlik önlemi
+    throw new Error("FormField must be used within a FormItem");
+  }
+  const id = itemContext.id;
+
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller
         {...props}
         render={({ field, fieldState, formState }) => {
-          const itemContext = React.useContext(FormItemContext); // id'yi almak için
-          if (!itemContext) {
-             // FormItem içinde değilse veya context sağlanmadıysa hata ver
-             // Bu durum normalde olmamalı ama bir güvenlik önlemi
-             throw new Error("FormField must be used within a FormItem");
-          }
-          const id = itemContext.id;
+          // id'yi dışarıdan al, burada useContext kullanma
+          // if (!itemContext) { // Bu kontrol artık yukarıda yapıldı
+          //    // FormItem içinde değilse veya context sağlanmadıysa hata ver
+          //    // Bu durum normalde olmamalı ama bir güvenlik önlemi
+          // }
+          // const id = itemContext.id; // id artık dışarıdan geliyor
           const contextValue: FormFieldStateContextValue = {
-            id,
+            id, // Dışarıdan alınan id'yi kullan
             name: props.name,
             formItemId: `${id}-form-item`,
             formDescriptionId: `${id}-form-item-description`,

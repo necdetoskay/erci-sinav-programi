@@ -38,7 +38,12 @@ export async function POST(
         }
 
         // Zaten bitmişse işlem yapma
-        if ([ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT, ExamAttemptStatus.GRADED].includes(attempt.status)) {
+        const finishedStatuses: ExamAttemptStatus[] = [
+            ExamAttemptStatus.SUBMITTED,
+            ExamAttemptStatus.TIMED_OUT,
+            ExamAttemptStatus.GRADED
+        ];
+        if (finishedStatuses.includes(attempt.status)) {
              return NextResponse.json({ message: 'Bu sınav denemesi zaten tamamlanmış.', attemptStatus: attempt.status }, { status: 409 }); // 409 Conflict
         }
 

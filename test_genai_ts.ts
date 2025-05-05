@@ -32,7 +32,7 @@ async function main() {
   ];
 
   try {
-    console.log("Sending request to Gemini API via TypeScript SDK...");
+    // console.log("Sending request to Gemini API via TypeScript SDK..."); // Removed log
     
     // ai.models üzerinden generateContentStream çağrısını yap
     const response = await ai.models.generateContentStream({
@@ -40,7 +40,7 @@ async function main() {
       contents,
     });
 
-    console.log("\nAPI Response (Streaming):");
+    // console.log("\nAPI Response (Streaming):"); // Removed log
     let fullResponse = "";
     // Doğrudan response (async generator) üzerinden gelen parçaları işle
     for await (const chunk of response) { 
@@ -51,8 +51,8 @@ async function main() {
           fullResponse += chunkText;
         }
     }
-    console.log("\n\nStreaming finished.");
-    // console.log("\nFull Response Text:\n", fullResponse); // İsterseniz tam yanıtı sonda görebilirsiniz
+    // console.log("\n\nStreaming finished."); // Removed log
+    // // console.log("\nFull Response Text:\n", fullResponse); // Removed log
 
   } catch (error) {
     console.error("\nAn error occurred:", error);

@@ -10,7 +10,6 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role?: string;
-      status?: string;
     }
   }
 
@@ -24,4 +23,4 @@ declare module "next-auth/jwt" {
     id: string;
     role: Role;
   }
-} 
+}

@@ -74,7 +74,7 @@ export async function GET(
         const session = await getServerSession(authOptions);
         // Use session email if available, otherwise null (handle cases where exam might be public?)
         const participantEmail = session?.user?.email ?? null;
-        console.log(`[API start] Participant Name: ${participantName}, Email from session: ${participantEmail}`);
+        // console.log(`[API start] Participant Name: ${participantName}, Email from session: ${participantEmail}`); // Removed log
 
 
         // 1. Sınavı ve sorularını getir

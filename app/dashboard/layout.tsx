@@ -12,7 +12,7 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
-      <div className="hidden border-r bg-background md:block md:w-64">
+      <div className="border-r bg-background md:block md:w-64">
         <div className="flex h-16 items-center border-b px-6">
           <h1 className="text-lg font-bold">Erci Sınav Programı</h1>
         </div>
@@ -36,4 +36,4 @@ export default function DashboardLayout({
       </div>
     </div>
   )
-} 
+}

@@ -43,18 +43,18 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (!user || !user.password) {
-            console.log('No user found or no password:', credentials.email);
+            // console.log('No user found or no password:', credentials.email); // Removed log
             throw new Error('No user found with this email');
           }
 
           const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
 
           if (!isPasswordValid) {
-            console.log('Invalid password for user:', credentials.email);
+            // console.log('Invalid password for user:', credentials.email); // Removed log
             throw new Error('Invalid password');
           }
 
-          console.log('Login successful for user:', credentials.email);
+          // console.log('Login successful for user:', credentials.email); // Removed log
           return user;
         } catch (error) {
           console.error("Authentication error:", error);
@@ -66,7 +66,7 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user, account }) {
       try {
-        console.log("JWT Callback - Input:", { token, user, account });
+        // console.log("JWT Callback - Input:", { token, user, account }); // Removed log
         
         if (user) {
           // User bilgilerini token'a ekle
@@ -76,7 +76,7 @@ export const authOptions: NextAuthOptions = {
           token.name = user.name;
         }
 
-        console.log("JWT Callback - Output token:", token);
+        // console.log("JWT Callback - Output token:", token); // Removed log
         return token as ExtendedJWT;
       } catch (error) {
         console.error("JWT Callback Error:", error);
@@ -85,7 +85,7 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       try {
-        console.log("Session Callback - Input:", { session, token });
+        // console.log("Session Callback - Input:", { session, token }); // Removed log
         
         if (session.user && token) {
           // Token'dan gelen bilgileri session'a ekle
@@ -95,7 +95,7 @@ export const authOptions: NextAuthOptions = {
           session.user.name = token.name as string | null;
         }
 
-        console.log("Session Callback - Output session:", session);
+        // console.log("Session Callback - Output session:", session); // Removed log
         return session as ExtendedSession;
       } catch (error) {
         console.error("Session Callback Error:", error);

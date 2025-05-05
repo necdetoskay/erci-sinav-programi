@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-console.log("Compiling API route: /api/users/[id]/route.ts"); // Added log to force recompile
+// console.log("Compiling API route: /api/users/[id]/route.ts"); // Removed log
 
 // Handler for DELETE /api/users/[id]
 export async function DELETE(
@@ -23,7 +23,7 @@ export async function DELETE(
       where: { id: id },
     });
 
-    console.log(`[API] Deleted user with ID: ${id}`);
+    // console.log(`[API] Deleted user with ID: ${id}`); // Removed log
     // Return a success response with no content
     return new NextResponse(null, { status: 204 }); 
 
@@ -93,7 +93,7 @@ export async function PUT(
       }
     });
 
-    console.log(`[API] Updated user with ID: ${id}`);
+    // console.log(`[API] Updated user with ID: ${id}`); // Removed log
     return NextResponse.json(updatedUser);
 
   } catch (error: any) {

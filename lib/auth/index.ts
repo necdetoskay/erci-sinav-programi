@@ -1,10 +1,9 @@
 import NextAuth from "next-auth";
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { db, checkDatabaseConnection } from "@/db";
+import { PrismaAdapter } from "@next-auth/prisma-adapter"; // Use the correct adapter for next-auth v4
+import { db, checkDatabaseConnection } from "@/db"; // db is now PrismaClient
 import CredentialsProvider from "next-auth/providers/credentials";
-import bcrypt from "bcrypt";
-import { eq } from "drizzle-orm";
-import { schema } from "@/db";
+import bcrypt from "bcryptjs"; // Use bcryptjs as per package.json
+// No longer need eq or schema from Drizzle
 import { Session } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import { User } from "next-auth";
@@ -37,14 +36,14 @@ const authConfig: AuthOptions = {
             throw new Error("Database connection error");
           }
 
-          // Find the user by email
-          const [user] = await db.select()
-            .from(schema.users)
-            .where(eq(schema.users.email, credentials.email))
-            .limit(1);
+          // Find the user by email using Prisma
+          const user = await db.user.findUnique({
+            where: { email: credentials.email },
+          });
 
-          // If user not found, return null
+          // If user not found or doesn't have a password (e.g., OAuth user), return null
           if (!user || !user.password) {
+            // console.log(`User not found or password missing for email: ${credentials.email}`); // Removed log
             return null;
           }
 
@@ -52,6 +51,7 @@ const authConfig: AuthOptions = {
           const passwordMatch = await bcrypt.compare(credentials.password, user.password);
 
           if (!passwordMatch) {
+            // console.log(`Password mismatch for email: ${credentials.email}`); // Removed log
             return null;
           }
 
@@ -71,7 +71,7 @@ const authConfig: AuthOptions = {
       }
     })
   ],
-  adapter: DrizzleAdapter(db),
+  adapter: PrismaAdapter(db), // Use PrismaAdapter with the PrismaClient instance
   session: {
     strategy: "jwt" as const,
   },
@@ -105,4 +105,4 @@ const authConfig: AuthOptions = {
 };
 
 // Export the handlers, auth, signIn, and signOut from NextAuth
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig); 
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);

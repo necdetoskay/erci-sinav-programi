@@ -44,7 +44,7 @@ function VerifyCodeContent() {
 
     try {
       // TODO: API isteği yapılacak (/api/exam/verify-code)
-      console.log('API İsteği Gönderiliyor:', { email, examCode, verificationCode });
+      // console.log('API İsteği Gönderiliyor:', { email, examCode, verificationCode }); // Removed log
       // const response = await fetch('/api/exam/verify-code', {
       //   method: 'POST',
       //   headers: { 'Content-Type': 'application/json' },
@@ -57,7 +57,7 @@ function VerifyCodeContent() {
       // }
 
       // const result = await response.json(); // Belki sınav ID'si veya token döner
-      // console.log('API Yanıtı:', result);
+      // // console.log('API Yanıtı:', result); // Removed log
 
       toast.success("Doğrulama Başarılı", {
          description: "Sınava yönlendiriliyorsunuz...",

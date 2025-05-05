@@ -215,7 +215,66 @@ model Setting {
   value     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // General Settings
+  applicationTitle String?
+  defaultLanguage  String?
+  timeZone         String?
+
+  // Exam Settings
+  defaultExamDuration Int?
+  defaultPassingScore Int?
+  enableQuestionRandomization Boolean?
+  allowMultipleExamAttempts Boolean?
+  maximumAllowedAttempts Int?
+  showCorrectAnswersAfterExam Boolean?
+
+  // User Management Settings
+  allowNewUserRegistration Boolean?
+  requireAdminApprovalForNewUsers Boolean?
+  defaultUserRole String?
+
+  // Security Settings
+  minimumPasswordLength Int?
+  requireSpecialCharactersInPasswords Boolean?
+  sessionTimeoutDuration Int?
+
+  // AI Settings
+  // Removed old AI Settings fields
+  // openRouterApiKey String?
+  // openRouterModelName String?
+  // groqApiKey String?
+  // groqModelName String?
+
+  // New AI Settings fields
+  // Removed old AI Settings fields
+  // aiApiKey String?
+  // aiModels String? // Store models as a string (e.g., comma-separated or newline-separated)
+
+  faviconUrl String? // Added faviconUrl field
 }
+
+// New models for modular AI settings
+model AiProvider {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // e.g., "OpenRouter", "Groq"
+  apiKey    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  models    AiModel[]
+}
+
+model AiModel {
+  id         Int      @id @default(autoincrement())
+  name       String
+  providerId Int
+  provider   AiProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([providerId, name]) // Ensure model names are unique per provider
+}
+
 
 enum Role {
   USER

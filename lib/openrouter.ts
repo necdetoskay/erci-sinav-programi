@@ -174,10 +174,10 @@ export async function testQuestionGeneration() {
       numberOfQuestions: 2, 
       model: 'anthropic/claude-3-sonnet:beta'
     })
-    console.log('Generated Questions:', result)
+    // console.log('Generated Questions:', result); // Removed log
     return result
   } catch (error) {
     console.error('Test failed:', error)
     throw error
   }
-} 
+}

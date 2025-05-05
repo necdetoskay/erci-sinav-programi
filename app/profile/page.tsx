@@ -30,13 +30,9 @@ export default function ProfilePage() {
               <h3 className="font-medium mb-2">Rol</h3>
               <p className="text-muted-foreground capitalize">{session?.user?.role || "Kullanıcı"}</p>
             </div>
-            <div>
-              <h3 className="font-medium mb-2">Durum</h3>
-              <p className="text-muted-foreground capitalize">{session?.user?.status || "Aktif"}</p>
-            </div>
           </div>
         </CardContent>
       </Card>
     </div>
   )
-} 
+}

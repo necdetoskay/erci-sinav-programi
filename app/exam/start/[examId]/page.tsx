@@ -87,7 +87,7 @@ export default function ExamStartPage() {
     const finishExam = useCallback(async (timedOut = false) => {
         if (finishCalled.current) return;
         finishCalled.current = true;
-        console.log(`Finishing exam (Attempt: ${attemptId}, Timed Out: ${timedOut})...`, selectedAnswers);
+        // console.log(`Finishing exam (Attempt: ${attemptId}, Timed Out: ${timedOut})...`, selectedAnswers); // Removed log
         setIsFinishing(true);
         try {
             const response = await fetch(`/api/exam/attempt/${attemptId}/finish`, {
@@ -125,7 +125,7 @@ export default function ExamStartPage() {
             // Sadece henüz cevaplanmamışsa zamanlayıcıyı başlat/sıfırla
             if (!answerCheckResult[currentQuestion.id]) {
                 questionStartTimeRef.current = Date.now();
-                console.log(`Timer started/reset for question ${currentQuestion.id} at ${questionStartTimeRef.current}`);
+                // console.log(`Timer started/reset for question ${currentQuestion.id} at ${questionStartTimeRef.current}`); // Removed log
             }
         }
     }, [currentQuestion, answerCheckResult]); // Depend on currentQuestion and answerCheckResult
@@ -138,7 +138,7 @@ export default function ExamStartPage() {
             setExamData(null);
             setAttemptId(null);
             const apiUrl = `/api/exam/${examId}/start?code=${encodeURIComponent(accessCode || '')}&firstName=${encodeURIComponent(firstName || '')}&lastName=${encodeURIComponent(lastName || '')}`;
-            console.log(`Fetching data from: ${apiUrl}`);
+            // console.log(`Fetching data from: ${apiUrl}`); // Removed log
             try {
                 const response = await fetch(apiUrl);
                 const data = await response.json();
@@ -150,9 +150,9 @@ export default function ExamStartPage() {
                 const fetchedExamData: ExamData = data; // Tip ExamData olarak güncellendi (status içeriyor)
 
                 // Gelen verinin options formatını kontrol et (debug için)
-                if (fetchedExamData.questions && fetchedExamData.questions.length > 0) {
-                    console.log("INITIAL QUESTION OPTIONS RECEIVED:", JSON.stringify(fetchedExamData.questions[0].options, null, 2));
-                }
+                // if (fetchedExamData.questions && fetchedExamData.questions.length > 0) {
+                //     console.log("INITIAL QUESTION OPTIONS RECEIVED:", JSON.stringify(fetchedExamData.questions[0].options, null, 2)); // Removed log
+                // }
                 setExamData(fetchedExamData);
                 setAttemptId(fetchedExamData.attemptId); // attemptId backend'den geliyor
                 setCurrentQuestionIndex(fetchedExamData.currentQuestionIndex ?? 0);
@@ -167,12 +167,12 @@ export default function ExamStartPage() {
                     const endTimeMs = startTimeMs + durationMs;
                     const remainingMs = Math.max(0, endTimeMs - Date.now());
                     setTimeLeft(Math.floor(remainingMs / 1000));
-                    console.log(`Timer started/resumed. Remaining time: ${Math.floor(remainingMs / 1000)}s`);
+                    // console.log(`Timer started/resumed. Remaining time: ${Math.floor(remainingMs / 1000)}s`); // Removed log
                 } else if (fetchedExamData.status === 'COMPLETED') {
                     setTimeLeft(0); // Tamamlanmışsa süre 0
-                    console.log("Exam already completed. Timer not started.");
+                    // console.log("Exam already completed. Timer not started."); // Removed log
                 } else {
-                    console.error("API'den başlangıç zamanı alınamadı!");
+                    // console.error("API'den başlangıç zamanı alınamadı!"); // Keep error log
                     // Başlangıç zamanı yoksa, süreyi tamdan başlat.
                     // Bu blok zaten status 'COMPLETED' olmadığında çalışır.
                     setTimeLeft(fetchedExamData.duration_minutes * 60);
@@ -198,7 +198,7 @@ export default function ExamStartPage() {
     // İlerlemeyi kaydetme fonksiyonu
     const saveProgress = async (currentIndex: number, currentAnswers: { [key: number]: string }) => {
         if (!attemptId) return;
-        console.log(`Saving progress for attempt ${attemptId}...`);
+        // console.log(`Saving progress for attempt ${attemptId}...`); // Removed log
         try {
             const response = await fetch(`/api/exam/attempt/${attemptId}/update`, {
                 method: 'PATCH',
@@ -207,9 +207,9 @@ export default function ExamStartPage() {
             });
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'İlerleme kaydedilemedi.');
-            console.log('Progress saved:', data.updatedAt);
+            // console.log('Progress saved:', data.updatedAt); // Removed log
         } catch (err: any) {
-            console.error("İlerleme kaydetme hatası:", err);
+            // console.error("İlerleme kaydetme hatası:", err); // Keep error log
             toast.error("Kaydetme Hatası", { description: err.message || 'İlerleme kaydedilirken bir hata oluştu.' });
         }
     };
@@ -222,7 +222,7 @@ export default function ExamStartPage() {
         if (timeLeft <= 0) {
             // Sadece zamanlayıcı aktifken ve sınav bitmemişken otomatik bitir
             if (!finishCalled.current && !isReadOnly) {
-                 console.log("Süre bitti, sınav bitiriliyor...");
+                 // console.log("Süre bitti, sınav bitiriliyor..."); // Removed log
                  toast.info("Süre Doldu", { description: "Sınav süreniz sona erdi. Cevaplarınız kaydediliyor..." });
                  finishExam(true);
             }
@@ -237,7 +237,7 @@ export default function ExamStartPage() {
     // Cevap seçildiğinde çalışacak fonksiyon (Sadece tamamlanmamışsa çalışır)
     const handleAnswerChange = async (questionId: number, selectedOptionLetter: string) => {
         if (isReadOnly || answerCheckResult[questionId] || isCheckingAnswer === questionId) {
-            console.log(`Question ${questionId} is read-only, already answered or being checked.`);
+            // console.log(`Question ${questionId} is read-only, already answered or being checked.`); // Removed log
             return;
         }
         if (!questionStartTimeRef.current && !isReadOnly) { // Sadece readOnly değilse zamanı başlat
@@ -248,14 +248,14 @@ export default function ExamStartPage() {
         const timeSpentSeconds = questionStartTimeRef.current
             ? Math.round((Date.now() - questionStartTimeRef.current) / 1000)
             : 0;
-        console.log(`Time spent on question ${questionId}: ${timeSpentSeconds}s`);
+        // console.log(`Time spent on question ${questionId}: ${timeSpentSeconds}s`); // Removed log
 
         const newAnswers = { ...selectedAnswers, [questionId]: selectedOptionLetter };
         setSelectedAnswers(newAnswers);
         setIsCheckingAnswer(questionId);
 
         try {
-            console.log(`Checking answer for question ${questionId}, option ${selectedOptionLetter}, time ${timeSpentSeconds}s`);
+            // console.log(`Checking answer for question ${questionId}, option ${selectedOptionLetter}, time ${timeSpentSeconds}s`); // Removed log
             const response = await fetch(`/api/exam/attempt/${attemptId}/check-answer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

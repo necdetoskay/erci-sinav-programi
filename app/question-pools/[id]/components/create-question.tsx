@@ -231,11 +231,11 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Açıklama</FormLabel>
-                  <FormControl>
-                    <RichTextEditor
-                      content={field.value}
-                      onChange={field.onChange}
-                      placeholder="Çözüm açıklamasını yazın..."
+                                  <FormControl>
+                                    <RichTextEditor
+                                      content={field.value || ''}
+                                      onChange={field.onChange}
+                                      placeholder="Çözüm açıklamasını yazın..."
                     />
                   </FormControl>
                   <FormMessage />

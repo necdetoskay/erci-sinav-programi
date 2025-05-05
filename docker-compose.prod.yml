@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  erci_sinav_db:
+    image: postgres:15
+    container_name: erci-app-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: P@ssw0rd
+      POSTGRES_DB: kentkonutdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  erci_sinav_pgadmin:
+    image: dpage/pgadmin4
+    container_name: erci-app-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5051:80"
+    depends_on:
+      erci_sinav_db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  erci_sinav_app:
+    image: necdetoskay/erci-sinav-app:latest # Use the image from Docker Hub
+    container_name: erci-sinav-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      erci_sinav_db:
+        condition: service_healthy
+    env_file:
+      - ../../vscode/erci-sinav-programi/.env # Load environment variables from .env file
+    restart: unless-stopped
+    # Optional: Add a healthcheck for the Next.js app
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:3000"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 30s # Give the app time to start
+
+    # Use `pnpm start` or `node server.js` if using standalone output
+    # CMD ["pnpm", "start"] # Comment out the original CMD
+
+    # Set the entrypoint to our custom script
+    entrypoint: ["/usr/local/bin/docker-entrypoint.sh"]
+
+volumes:
+  postgres_data:
