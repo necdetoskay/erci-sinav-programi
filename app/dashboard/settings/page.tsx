@@ -1,117 +1,93 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
+import React, { useState, useEffect, Suspense } from 'react';
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UISettings } from './components/UISettings';
+import { AppSettings } from './components/AppSettings';
+import { ProviderManagement } from './components/ProviderManagement';
+import { ModelManagement } from './components/ModelManagement';
+import { Provider, Model } from './components/types';
 
-const SettingsPage = () => {
-  const [emailServer, setEmailServer] = useState('');
-  const [emailPort, setEmailPort] = useState('');
-  const [emailUsername, setEmailUsername] = useState('');
-  const [emailPassword, setEmailPassword] = useState('');
-  const [emailFrom, setEmailFrom] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+function SettingsContent() {
+  // Aktif tab state'i
+  const [activeTab, setActiveTab] = useState<string>("ui");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const settings = {
-      SMTP_HOST: emailServer,
-      SMTP_PORT: emailPort,
-      SMTP_USER: emailUsername,
-      SMTP_PASS: emailPassword,
-      EMAIL_FROM: emailFrom,
-    };
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      });
+  // Yapay zeka provider ve model state'leri
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [models, setModels] = useState<Model[]>([]);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
 
-      if (response.ok) {
-        console.log('Settings saved successfully!');
-        // TODO: Add user feedback (e.g., a toast notification)
-      } else {
-        console.error('Failed to save settings.');
-        // TODO: Add user feedback for error
+  // Veritabanından provider ve model verilerini yükle
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Provider'ları getir
+        const providersResponse = await fetch('/api/ai-providers');
+        if (!providersResponse.ok) {
+          throw new Error('Provider verilerini getirme hatası');
+        }
+        const providersData = await providersResponse.json();
+        setProviders(providersData);
+
+        // Modelleri getir
+        const modelsResponse = await fetch('/api/ai-models');
+        if (!modelsResponse.ok) {
+          throw new Error('Model verilerini getirme hatası');
+        }
+        const modelsData = await modelsResponse.json();
+        setModels(modelsData);
+      } catch (error) {
+        console.error('Veri yükleme hatası:', error);
       }
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      // TODO: Add user feedback for error
-    }
-  };
-
-  const handleSendTestEmail = async () => {
-    const settings = {
-      SMTP_HOST: emailServer,
-      SMTP_PORT: emailPort,
-      SMTP_USER: emailUsername,
-      SMTP_PASS: emailPassword,
-      EMAIL_FROM: emailFrom,
     };
 
-    try {
-      const response = await fetch('/api/settings/test-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings),
-      });
-
-      if (response.ok) {
-        console.log('Test email sent successfully!');
-        // TODO: Add user feedback (e.g., a toast notification)
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to send test email:', errorData.error);
-        // TODO: Add user feedback for error
-      }
-    } catch (error: any) {
-      console.error('Error sending test email:', error);
-      // TODO: Add user feedback for error
-    }
-  };
+    fetchData();
+  }, []);
 
   return (
-    <div className="container max-w-md mx-auto py-12">
-      <h1 className="text-2xl font-bold mb-4">Email Settings</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="emailServer">Email Server</Label>
-          <Input id="emailServer" type="text" placeholder="smtp.example.com" value={emailServer} onChange={(e) => setEmailServer(e.target.value)} />
-        </div>
-        <div>
-          <Label htmlFor="emailPort">Email Port</Label>
-          <Input id="emailPort" type="number" placeholder="587" value={emailPort} onChange={(e) => setEmailPort(e.target.value)} />
-        </div>
-        <div>
-          <Label htmlFor="emailUsername">Email Username</Label>
-          <Input id="emailUsername" type="text" placeholder="username@example.com" value={emailUsername} onChange={(e) => setEmailUsername(e.target.value)} />
-        </div>
-        <div className="relative">
-          <Label htmlFor="emailPassword">Email Password</Label>
-          <Input id="emailPassword" type={showPassword ? "text" : "password"} placeholder="Password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute inset-y-0 right-0 flex items-center px-3 mt-6 text-sm leading-5"
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-        <div>
-          <Label htmlFor="emailFrom">Email From Address</Label>
-          <Input id="emailFrom" type="email" placeholder="noreply@example.com" value={emailFrom} onChange={(e) => setEmailFrom(e.target.value)} />
-        </div>
-        <Button type="submit">Save Changes</Button>
-        <Button type="button" onClick={handleSendTestEmail}>Send Test Email</Button>
-      </form>
+    <div className="container mx-auto py-6">
+      <h1 className="text-3xl font-bold mb-6">Ayarlar</h1>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="ui">Kullanıcı Arayüzü</TabsTrigger>
+          <TabsTrigger value="app">Uygulama</TabsTrigger>
+          <TabsTrigger value="ai">Yapay Zeka</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ui" className="space-y-4">
+          <UISettings />
+        </TabsContent>
+
+        <TabsContent value="app" className="space-y-4">
+          <AppSettings />
+        </TabsContent>
+
+        <TabsContent value="ai" className="space-y-6">
+          <ProviderManagement
+            providers={providers}
+            setProviders={setProviders}
+            selectedProviderId={selectedProviderId}
+            setSelectedProviderId={setSelectedProviderId}
+          />
+
+          <ModelManagement
+            models={models}
+            setModels={setModels}
+            providers={providers}
+            selectedProviderId={selectedProviderId}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
 
-export default SettingsPage;
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>Loading settings...</div>}>
+      <SettingsContent />
+    </Suspense>
+  );
+}

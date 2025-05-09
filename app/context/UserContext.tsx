@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react"; // Added useEffect
 import { toast } from "sonner"; // Import toast for error notifications
 
-type UserRole = "ADMIN" | "USER";
+type UserRole = "ADMIN" | "USER" | "PERSONEL";
 // Assuming Status enum is defined elsewhere or imported if needed by API response
 // If not, adjust User interface based on actual API response structure
 type UserStatus = "ACTIVE" | "INACTIVE" | "DELETED"; // Match potential statuses
@@ -90,7 +90,7 @@ export function UserProvider({ children }: UserProviderProps) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       ...data,
-      name: data.name, 
+      name: data.name,
       email: data.email, // Added email for consistency
       role: data.role,   // Added role for consistency
       // password should not be stored in frontend state
@@ -168,7 +168,7 @@ export function UserProvider({ children }: UserProviderProps) {
       console.error("Error deleting user:", error);
       toast.error(error instanceof Error ? error.message : "An unknown error occurred while deleting the user.");
       // Optionally re-fetch users to ensure consistency if delete fails
-      // fetchUsers(); 
+      // fetchUsers();
     }
   };
   // --- End Placeholder functions ---

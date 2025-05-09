@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+// Sınav tipi
+interface Exam {
+  id: number;
+  title: string;
+  description: string | null;
+  duration_minutes: number;
+  access_code: string;
+  status: string;
+  created_at: Date;
+  updated_at: Date;
+  _count: {
+    exam_results: number;
+    questions: number;
+  };
+}
+
 // GET: Sınav listesini döndürür
 export async function GET(request: Request) {
   try {
@@ -8,11 +24,11 @@ export async function GET(request: Request) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const skip = (page - 1) * limit;
-    
+
     // Toplam sınav sayısını al
     const totalCount = await db.exam.count();
     const totalPages = Math.ceil(totalCount / limit);
-    
+
     // Sınavları al
     const exams = await db.exam.findMany({
       skip,
@@ -36,14 +52,14 @@ export async function GET(request: Request) {
         }
       }
     });
-    
+
     // Katılımcı sayılarını ekle
-    const formattedExams = exams.map(exam => ({
+    const formattedExams = exams.map((exam: any) => ({
       ...exam,
       participantCount: exam._count.exam_results,
       totalParticipants: 0, // Bu değer şu an için 0 olarak ayarlanacak
     }));
-    
+
     return NextResponse.json({
       exams: formattedExams,
       totalPages,
@@ -60,22 +76,22 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, description, duration_minutes, access_code } = body;
-    
+    const { title, description, duration_minutes, access_code, status } = body;
+
     if (!title?.trim()) {
       return NextResponse.json({ error: 'Sınav adı zorunludur' }, { status: 400 });
     }
-    
+
     const newExam = await db.exam.create({
       data: {
         title,
         description: description || '',
         duration_minutes: duration_minutes || 60,
         access_code: access_code || generateExamCode(),
-        status: 'draft',
+        status: status || 'draft',
       }
     });
-    
+
     return NextResponse.json(newExam);
   } catch (error) {
     console.error('Error creating exam:', error);
@@ -88,4 +104,4 @@ function generateExamCode(): string {
   const timestamp = Date.now().toString();
   const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
   return timestamp.slice(-6) + random;
-} 
+}

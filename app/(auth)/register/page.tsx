@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -20,7 +21,7 @@ const registerSchema = z.object({
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
-export default function RegisterPage() {
+function RegisterFormComponent() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [backendError, setBackendError] = useState<string | null>(null); // State for backend errors
@@ -162,5 +163,17 @@ export default function RegisterPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+function RegisterPageContent() {
+  return <RegisterFormComponent />;
+}
+
+export default function RegisterPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

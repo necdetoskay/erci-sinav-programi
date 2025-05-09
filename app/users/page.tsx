@@ -1,5 +1,6 @@
 "use client"
 
+import { Suspense } from "react";
 import { useUsers } from "@/app/context/UserContext"
 import { Layout } from '@/components/layout/layout';
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
+import { LoadingLink } from "@/components/ui/loading-link";
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -26,7 +27,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-export default function Users() {
+function UsersContent() {
   const { users, deleteUser } = useUsers()
 
   // Corrected handleDelete to accept string ID and show specific error
@@ -48,7 +49,7 @@ export default function Users() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-4xl font-bold">Users</h1>
           <Button asChild>
-            <Link href="/users/new">Add User</Link>
+            <LoadingLink href="/users/new">Add User</LoadingLink>
           </Button>
         </div>
         <div className="bg-white rounded-lg shadow">
@@ -76,7 +77,7 @@ export default function Users() {
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/users/${user.id}`}>Edit</Link>
+                        <LoadingLink href={`/users/${user.id}`}>Edit</LoadingLink>
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -109,4 +110,12 @@ export default function Users() {
       </div>
     </Layout>
   )
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={<div>Loading users...</div>}>
+      <UsersContent />
+    </Suspense>
+  );
 }

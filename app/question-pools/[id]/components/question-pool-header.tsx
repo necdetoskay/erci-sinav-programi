@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { QuestionPool } from "@prisma/client";
+import { QuestionPool } from "@/types/prisma";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -18,23 +18,23 @@ export function QuestionPoolHeader({ initialData }: QuestionPoolHeaderProps) {
   const [questionPool, setQuestionPool] = useState<QuestionPool | null>(initialData);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function fetchQuestionPool() {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/question-pools/${params.id}`);
-      if (!response.ok) {
-        throw new Error("Soru havuzu yüklenirken bir hata oluştu");
-      }
-      const data = await response.json();
-      setQuestionPool(data);
-    } catch (error) {
-      console.error("Soru havuzu yüklenirken bir hata oluştu:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   useEffect(() => {
+    async function fetchQuestionPool() {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/question-pools/${params.id}`);
+        if (!response.ok) {
+          throw new Error("Soru havuzu yüklenirken bir hata oluştu");
+        }
+        const data = await response.json();
+        setQuestionPool(data);
+      } catch (error) {
+        console.error("Soru havuzu yüklenirken bir hata oluştu:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
     fetchQuestionPool();
 
     // Otomatik güncelleme iptal edildi

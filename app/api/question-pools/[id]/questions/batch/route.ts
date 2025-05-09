@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/session";
 
 const questionSchema = z.object({
   questionText: z.string(),
@@ -13,7 +14,7 @@ const questionSchema = z.object({
   correctAnswer: z.string(),
   explanation: z.string(),
   // Bileşenden gelen İngilizce küçük harf zorluk seviyelerini kabul et
-  difficulty: z.enum(["easy", "medium", "hard"]), 
+  difficulty: z.enum(["easy", "medium", "hard"]),
   // ID ve approved alanları isteğe bağlı olarak eklenebilir, ancak Prisma'ya gönderilmeyecek
   id: z.string().optional(),
   approved: z.boolean().optional(),
@@ -24,16 +25,34 @@ const requestSchema = z.object({
 });
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // Kullanıcı oturumunu kontrol et
+    const session = await getSession(request);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { questions } = requestSchema.parse(body);
     // poolId'yi number'a çevirirken hata kontrolü ekleyelim
     const poolId = parseInt(params.id, 10);
     if (isNaN(poolId)) {
        return NextResponse.json({ error: "Geçersiz Soru Havuzu ID" }, { status: 400 });
+    }
+
+    // Soru havuzunun kullanıcıya ait olup olmadığını kontrol et
+    const questionPool = await prisma.questionPool.findUnique({
+      where: {
+        id: poolId,
+        userId: session.user.id,
+      },
+    });
+
+    if (!questionPool) {
+      return NextResponse.json({ error: "Soru havuzu bulunamadı veya erişim izniniz yok" }, { status: 403 });
     }
 
     // // Türkçe zorluğu İngilizce'ye çeviren fonksiyon (Artık gerekli değil, çünkü Zod zaten İngilizce bekliyor)
@@ -57,7 +76,7 @@ export async function POST(
             correctAnswer: question.correctAnswer,
             explanation: question.explanation,
             // Zorluk seviyesini doğrudan kullan (artık İngilizce geliyor)
-            difficulty: question.difficulty, 
+            difficulty: question.difficulty,
             poolId: poolId, // Alan adı schema ile eşleşecek şekilde düzeltildi (poolId)
           },
         })

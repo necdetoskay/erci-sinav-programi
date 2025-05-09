@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
             Reset your password
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Enter your email address and we'll send you a link to reset your
+            Enter your email address and we&#39;ll send you a link to reset your
             password.
           </p>
         </div>
@@ -80,4 +81,12 @@ export default function ForgotPasswordPage() {
       </div>
     </div>
   );
-} 
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ForgotPasswordContent />
+    </Suspense>
+  );
+}

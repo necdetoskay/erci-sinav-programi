@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { ExamAttemptStatus } from '@prisma/client';
+
+import { ExamAttemptStatus } from "@/types/prisma";
 
 // Gelen istek body'si için şema (isteğe bağlı, belki bitirme nedenini belirtebiliriz)
 const FinishAttemptSchema = z.object({
@@ -38,7 +39,9 @@ export async function POST(
         }
 
         // Zaten bitmişse işlem yapma
-        if ([ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT, ExamAttemptStatus.GRADED].includes(attempt.status)) {
+        if (attempt.status === ExamAttemptStatus.SUBMITTED ||
+            attempt.status === ExamAttemptStatus.TIMED_OUT ||
+            attempt.status === ExamAttemptStatus.GRADED) {
              return NextResponse.json({ message: 'Bu sınav denemesi zaten tamamlanmış.', attemptStatus: attempt.status }, { status: 409 }); // 409 Conflict
         }
 

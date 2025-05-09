@@ -27,8 +27,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { useFieldArray, useForm, Controller } from "react-hook-form";
+import { Textarea } from "@/components/ui/textarea";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -51,23 +51,25 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface CreateQuestionProps {
-  id: number | undefined; // Updated to allow undefined
+  id: number | undefined;
   onQuestionCreated: () => void;
 }
 
 export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      questionText: "",
       options: [
         { text: "", label: "A" },
         { text: "", label: "B" },
         { text: "", label: "C" },
         { text: "", label: "D" },
       ],
-      correctAnswer: "A", // Provide a default value
+      correctAnswer: "A",
       difficulty: "medium",
       explanation: "",
       tags: [],
@@ -80,25 +82,38 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
   });
 
   async function onSubmit(data: FormData) {
+    if (!id) {
+      toast.error("Soru havuzu ID'si gereklidir");
+      return;
+    }
+
     try {
+      console.log("Gönderilen veri:", data); // Debug log
+
       const response = await fetch(`/api/question-pools/${id}/questions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          questionPoolId: id,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Soru eklenirken bir hata oluştu");
+        const errorData = await response.json();
+        console.error("API Hatası:", errorData); // Debug log
+        throw new Error(errorData.message || "Soru eklenirken bir hata oluştu");
       }
 
       toast.success("Soru başarıyla eklendi");
       setOpen(false);
       form.reset();
-      onQuestionCreated(); // Call the refresh function instead of router.refresh()
+      onQuestionCreated();
     } catch (error) {
-      toast.error("Soru eklenirken bir hata oluştu");
+      console.error("Form hatası:", error); // Debug log
+      toast.error(error instanceof Error ? error.message : "Soru eklenirken bir hata oluştu");
     }
   }
 
@@ -107,15 +122,20 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
       <DialogTrigger asChild>
         <Button>Yeni Soru</Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-y-auto bg-background text-foreground border-border"
+        onPointerDownOutside={(e) => {
+          // Dışarı tıklamayı engelle
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Yeni Soru Ekle</DialogTitle>
           <DialogDescription>
             Soru bilgilerini girin. Soru metni ve şıklarda zengin metin düzenleyici kullanabilirsiniz.
           </DialogDescription>
         </DialogHeader>
-        <Form form={form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Form form={form} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="questionText"
@@ -123,10 +143,11 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
                 <FormItem>
                   <FormLabel>Soru Metni</FormLabel>
                   <FormControl>
-                    <RichTextEditor
-                      content={field.value}
-                      onChange={field.onChange}
+                    <Textarea
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
                       placeholder="Soru metnini yazın..."
+                      className="min-h-[100px] resize-y"
                     />
                   </FormControl>
                   <FormMessage />
@@ -136,7 +157,7 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <FormLabel>Şıklar</FormLabel>
+                <div className="font-medium">Şıklar</div>
                 <Button
                   type="button"
                   variant="outline"
@@ -152,6 +173,7 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
                   Şık Ekle
                 </Button>
               </div>
+
               {fields.map((field, index) => (
                 <div key={field.id} className="flex items-start gap-4">
                   <div className="w-12 pt-8 text-center font-medium">
@@ -164,10 +186,11 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <RichTextEditor
-                              content={field.value}
-                              onChange={field.onChange}
+                            <Textarea
+                              value={field.value}
+                              onChange={(e) => field.onChange(e.target.value)}
                               placeholder="Şık metnini yazın..."
+                              className="resize-y"
                             />
                           </FormControl>
                           <FormMessage />
@@ -196,30 +219,20 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Doğru Cevap</FormLabel>
-                  {/* Use Controller for better type handling with Select */}
-                  <Controller
-                    control={form.control}
-                    name="correctAnswer"
-                    render={({ field }: { field: any }) => ( // Specify field type
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value} // Use field.value directly with Controller
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Doğru cevabı seçin" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {fields.map((option) => (
-                            <SelectItem key={option.id} value={option.label}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
+                  <Select onValueChange={field.onChange} defaultValue={field.value || 'A'}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Doğru cevabı seçin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {fields.map((option) => (
+                        <SelectItem key={option.id} value={option.label}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -232,10 +245,11 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
                 <FormItem>
                   <FormLabel>Açıklama</FormLabel>
                   <FormControl>
-                    <RichTextEditor
-                      content={field.value}
-                      onChange={field.onChange}
+                    <Textarea
+                      value={field.value || ''}
+                      onChange={(e) => field.onChange(e.target.value)}
                       placeholder="Çözüm açıklamasını yazın..."
+                      className="min-h-[100px] resize-y"
                     />
                   </FormControl>
                   <FormMessage />
@@ -249,37 +263,28 @@ export function CreateQuestion({ id, onQuestionCreated }: CreateQuestionProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Zorluk Seviyesi</FormLabel>
-                  {/* Use Controller for difficulty as well */}
-                  <Controller
-                    control={form.control}
-                    name="difficulty"
-                    render={({ field }) => (
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Zorluk seviyesi seçin" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="easy">Kolay</SelectItem>
-                          <SelectItem value="medium">Orta</SelectItem>
-                          <SelectItem value="hard">Zor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
+                  <Select onValueChange={field.onChange} defaultValue={field.value || 'medium'}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Zorluk seviyesi seçin" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="easy">Kolay</SelectItem>
+                      <SelectItem value="medium">Orta</SelectItem>
+                      <SelectItem value="hard">Zor</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={id === undefined}>Ekle</Button>
+              <Button type="submit" disabled={!id}>
+                Ekle
+              </Button>
             </div>
-          </form>
         </Form>
       </DialogContent>
     </Dialog>

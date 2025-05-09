@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"; // Corrected: Use named import
 import { hash } from "bcryptjs";
-import { Status } from "@prisma/client";
 
 // Tüm kullanıcıları getir
 export async function GET() {
@@ -9,14 +8,14 @@ export async function GET() {
     // Fetch all users (removed status filter as it doesn't exist on User model)
     const users = await prisma.user.findMany({
       // where: { // Removed status filter
-      //   status: Status.ACTIVE, 
+      //   status: Status.ACTIVE,
       // },
       select: { // Removed status field
         id: true,
         name: true,
         email: true,
         role: true,
-        // status: true, 
+        // status: true,
         createdAt: true,
         updatedAt: true,
       },

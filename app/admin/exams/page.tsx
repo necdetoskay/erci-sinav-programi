@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,7 +35,7 @@ interface Exam {
   totalParticipants?: number;
 }
 
-export default function ExamsPage() {
+function ExamsTable() {
   const router = useRouter();
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,24 +158,24 @@ export default function ExamsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Sınav Adı</TableHead>
-                    <TableHead>Sınav Kodu</TableHead> {/* Yeni sütun başlığı */}
-                    <TableHead>Durum</TableHead>
-                    <TableHead>Katılım</TableHead>
-                    <TableHead className="text-right">İşlem</TableHead>
+                    <TableHead className="text-gray-900">Sınav Adı</TableHead>
+                    <TableHead className="text-gray-900">Sınav Kodu</TableHead>
+                    <TableHead className="text-gray-900">Durum</TableHead>
+                    <TableHead className="text-gray-900">Katılım</TableHead>
+                    <TableHead className="text-right text-gray-900">İşlem</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {exams.map((exam) => (
                     <TableRow key={exam.id}>
-                      <TableCell className="font-medium">{exam.title}</TableCell>
-                      <TableCell>{exam.access_code}</TableCell> {/* Sınav kodunu göster */}
+                      <TableCell className="font-medium text-gray-900">{exam.title}</TableCell>
+                      <TableCell className="text-gray-900">{exam.access_code}</TableCell>
                       <TableCell>
                         <Badge variant={exam.status === 'published' ? 'default' : 'secondary'}>
                           {exam.status === 'published' ? 'Yayında' : 'Taslak'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-gray-900">
                         {exam.status === 'published' ? 
                           `${exam.participantCount}/${exam.totalParticipants || 'Sınırsız'}` : 
                           '0/0'}
@@ -256,5 +257,13 @@ export default function ExamsPage() {
           )}
       </div> {/* bg-white div kapanışı */}
     </div>
+  );
+}
+
+export default function ExamsPage() {
+  return (
+    <Suspense fallback={<div>Loading exams...</div>}>
+      <ExamsTable />
+    </Suspense>
   );
 }

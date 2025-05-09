@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { useState, useEffect, Suspense } from 'react';
+export const dynamic = 'force-dynamic'; // Force dynamic rendering (Ensuring it's present)
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
@@ -16,12 +16,11 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginFormComponent() {
   const router = useRouter();
-  const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const {
     register,
     handleSubmit,
@@ -30,31 +29,57 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  // Check if user is already logged in
   useEffect(() => {
-    if (status === 'authenticated' && session) {
-      router.replace('/dashboard');
-    }
-  }, [status, session, router]);
+    async function checkSession() {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            router.replace('/dashboard');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check session:', error);
+      }
+    };
+
+    checkSession();
+  }, [router]);
 
   const onSubmit = async (formData: LoginFormData) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      if (result?.error) {
-        setError(result.error);
-        toast.error(result.error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMessage = data.error || 'Authentication failed';
+        setError(errorMessage);
+        toast.error(errorMessage);
         return;
       }
 
-      if (result?.ok) {
-        toast.success('Logged in successfully');
+      toast.success('Logged in successfully');
+
+      // Redirect based on user role
+      if (data.redirectTo) {
+        router.push(data.redirectTo);
+      } else {
+        router.push('/dashboard');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Something went wrong';
@@ -65,10 +90,7 @@ export default function LoginPage() {
     }
   };
 
-  // If the user is already logged in, show loading state
-  if (status === 'loading') {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
+  // No need for loading state check here as we're using our own state
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -151,4 +173,19 @@ export default function LoginPage() {
       </div>
     </div>
   );
-} 
+}
+
+// It's good practice to wrap the page content that might use searchParams
+// or other client-side hooks within a component, and then wrap that component
+// with Suspense in the default export.
+function LoginPageContent() {
+  return <LoginFormComponent />;
+}
+
+export default function LoginPageWrapper() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}

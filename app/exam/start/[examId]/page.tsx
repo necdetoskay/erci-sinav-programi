@@ -117,7 +117,7 @@ export default function ExamStartPage() {
         } finally {
             setIsFinishing(false);
         }
-    }, [attemptId, selectedAnswers, examId, router]);
+    }, [attemptId, selectedAnswers, router]); // examId removed from dependencies as it's not needed
 
     // Soru değiştiğinde veya ilk yüklendiğinde soruya başlama zamanını kaydet
     useEffect(() => {
@@ -232,7 +232,7 @@ export default function ExamStartPage() {
             setTimeLeft(prevTime => (prevTime ? prevTime - 1 : 0));
         }, 1000);
         return () => clearInterval(intervalId);
-    }, [timeLeft, finishExam]);
+    }, [timeLeft, finishExam, isReadOnly]);
 
     // Cevap seçildiğinde çalışacak fonksiyon (Sadece tamamlanmamışsa çalışır)
     const handleAnswerChange = async (questionId: number, selectedOptionLetter: string) => {

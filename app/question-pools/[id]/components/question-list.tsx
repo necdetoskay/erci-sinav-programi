@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, forwardRef, useImperativeHandle, Ref } from "react";
-import { PoolQuestion } from "@prisma/client";
+import { PoolQuestion } from "@/types/prisma";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -331,7 +331,7 @@ export const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12"></TableHead> {/* Handle for drag */}
+                  <TableHead className="w-12">{/* Sıra */}</TableHead>
                   <TableHead className="w-[50%]">Soru</TableHead>
                   <TableHead>Zorluk</TableHead>
                   <TableHead>Oluşturulma</TableHead>

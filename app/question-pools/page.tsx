@@ -1,7 +1,9 @@
+import { Suspense } from "react";
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { Metadata } from "next";
-import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { getServerSession } from "@/lib/session";
 import { QuestionPoolList } from "./components/question-pool-list";
 import { CreateQuestionPool } from "./components/create-question-pool";
 
@@ -10,9 +12,9 @@ export const metadata: Metadata = {
   description: "Soru havuzlarınızı yönetin",
 };
 
-export default async function QuestionPoolsPage() {
-  const session = await auth();
-  
+async function QuestionPoolsContent() {
+  const session = await getServerSession();
+
   if (!session?.user) {
     redirect("/auth/login");
   }
@@ -40,8 +42,16 @@ export default async function QuestionPoolsPage() {
         </div>
         <CreateQuestionPool />
       </div>
-      
+
       <QuestionPoolList questionPools={questionPools} />
     </div>
   );
-} 
+}
+
+export default function QuestionPoolsPage() {
+  return (
+    <Suspense fallback={<div>Loading question pools...</div>}>
+      <QuestionPoolsContent />
+    </Suspense>
+  );
+}

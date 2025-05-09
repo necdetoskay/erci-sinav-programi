@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getApiKey } from '@/lib/api-key-service';
 // SDK importlarını kaldırıp fetch'e geri dönüyoruz.
 
 // Google Gemini API için fetch kullanan yardımcı fonksiyon (Orijinal Hali)
@@ -154,24 +155,61 @@ async function callGroqAPI(apiKey: string, model: string, prompt: string): Promi
 }
 
 
-// OpenRouter API için yardımcı fonksiyon (Değişiklik Yok)
+// OpenRouter API için yardımcı fonksiyon (Meta Llama 4 Maverick desteği eklendi)
 async function callOpenRouterAPI(apiKey: string, model: string, prompt: string): Promise<{ success: boolean; questions?: string; error?: string; status: number }> {
     console.log(`Calling OpenRouter API with model ${model}`);
     try {
+        // Model Llama 4 Maverick mi kontrol et
+        // URL'den gelen model adını temizle (https:// gibi kısımları kaldır)
+        let cleanedModelName = model;
+
+        // URL formatını temizle
+        if (cleanedModelName.includes('openrouter.ai/')) {
+            // URL formatındaki model adını temizle
+            const match = cleanedModelName.match(/openrouter\.ai\/(.+)/);
+            if (match && match[1]) {
+                cleanedModelName = match[1];
+            }
+        }
+        console.log('Cleaned Model Name:', cleanedModelName);
+
+        const isLlama4Maverick = cleanedModelName.toLowerCase().includes('maverick');
+        const isGemini2Flash = cleanedModelName.toLowerCase().includes('gemini-2.0-flash');
+
+        // İstek gövdesini hazırla
+        const requestBody: any = {
+            model: cleanedModelName, // Temizlenmiş model adını kullan
+            temperature: 0.7,
+            max_tokens: 2000
+        };
+
+        // Llama 4 Maverick veya Gemini 2.0 Flash için multimodal format
+        if (isLlama4Maverick || isGemini2Flash) {
+            console.log(`Using multimodal format for ${isLlama4Maverick ? 'Llama 4 Maverick' : 'Gemini 2.0 Flash'}`);
+            requestBody.messages = [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: prompt }
+                    ]
+                }
+            ];
+        } else {
+            // Standart format
+            requestBody.messages = [{ role: 'user', content: prompt }];
+        }
+
+        console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000', // Gerekliyse ekleyin
-                'X-Title': 'Akilli Sinav Sistemi' // Gerekliyse ekleyin
+                'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
+                'X-Title': 'Akilli Sinav Sistemi'
             },
-            body: JSON.stringify({
-                model: model,
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.7,
-                max_tokens: 2000
-            })
+            body: JSON.stringify(requestBody)
         });
 
         const responseDataText = await response.text();
@@ -249,7 +287,18 @@ export async function POST(req: Request) {
     }
 
     // Prompt oluşturma...
-    const prompt = `Aşağıdaki içerik hakkında ${numberOfQuestions} adet çoktan seçmeli soru üret. Her soru için ${optionsPerQuestion} seçenek olmalı (A, B, C, ...) ve doğru cevabı belirtmelisin. Ayrıca her doğru cevap için kısa bir açıklama ekle.
+    // Şık sayısını 4 ile sınırla
+    const actualOptionsCount = Math.min(4, optionsPerQuestion);
+
+    const prompt = `Aşağıdaki içerik hakkında ${numberOfQuestions} adet çoktan seçmeli soru üret.
+
+ÖNEMLİ KURALLAR:
+1. Her soru için SADECE 4 seçenek olmalı (A, B, C, D) - daha fazla değil, daha az değil.
+2. E, F veya başka harflerle şık OLUŞTURMA. Sadece A, B, C, D şıklarını kullan.
+3. Doğru cevap da sadece A, B, C veya D olabilir.
+4. Her doğru cevap için kısa bir açıklama ekle.
+5. Markdown formatı kullanma, düz metin olarak yanıt ver.
+6. Yanıtında ** işaretleri kullanma.
 
 İçerik:
 ${content}
@@ -259,48 +308,109 @@ ${content}
 A) Seçenek A
 B) Seçenek B
 C) Seçenek C
-${optionsPerQuestion > 3 ? 'D) Seçenek D' : ''}
-${optionsPerQuestion > 4 ? 'E) Seçenek E' : ''}
-${optionsPerQuestion > 5 ? 'F) Seçenek F' : ''}
+D) Seçenek D
 Doğru Cevap: B
-Açıklama: B'nin doğru cevap olmasının kısa açıklaması.`;
+Açıklama: B'nin doğru cevap olmasının kısa açıklaması.
+
+TEKRAR UYARI: Sadece A, B, C, D şıklarını kullan. Başka şık ekleme. Markdown formatı kullanma ve ** işaretleri kullanma.`;
 
     let result: { success: boolean; questions?: string; error?: string; status: number };
 
     // Model adına göre hangi API'nin çağrılacağını belirle
     const lowerCaseModel = model.toLowerCase();
-    const isGoogleModel = lowerCaseModel.includes('gemini');
-    // Groq modellerini kontrol et (örneğin 'llama' içeriyorsa veya belirli bir Groq modeli ise)
-    const isGroqModel = lowerCaseModel.includes('llama') || lowerCaseModel.includes('mixtral') || model === 'meta-llama/llama-4-scout-17b-16e-instruct'; // Groq'un desteklediği diğer modeller eklenebilir
+    console.log('Original Model:', model);
+    console.log('Lowercase Model:', lowerCaseModel);
 
-    if (isGoogleModel) {
-      const apiKey = process.env.GOOGLE_API_KEY;
+    // Gemini 2.0 Flash modeli için özel kontrol
+    const isGemini2Flash = lowerCaseModel.includes('gemini-2.0-flash');
+    console.log('Is Gemini 2.0 Flash Model:', isGemini2Flash);
+
+    // Diğer Gemini modelleri için kontrol
+    const isGoogleModel = lowerCaseModel.includes('gemini') && !isGemini2Flash;
+    console.log('Is Google Model (non-Flash):', isGoogleModel);
+
+    // Maverick modelini OpenRouter üzerinden çalıştır
+    const isMaverickModel = lowerCaseModel.includes('maverick');
+    console.log('Is Maverick Model:', isMaverickModel);
+
+    // Groq modellerini kontrol et (Llama 4 Maverick hariç)
+    const isGroqModel = (!isMaverickModel && lowerCaseModel.includes('llama')) ||
+                        lowerCaseModel.includes('mixtral') ||
+                        model === 'meta-llama/llama-4-scout-17b-16e-instruct'; // Groq'un desteklediği diğer modeller eklenebilir
+    console.log('Is Groq Model:', isGroqModel);
+
+    if (isGemini2Flash) {
+      // Gemini 2.0 Flash modeli için OpenRouter API'sini kullan
+      console.log(`Routing to OpenRouter for Gemini 2.0 Flash model: ${model}`);
+
+      // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
+      let apiKey = await getApiKey('Open Router', 'OPENROUTER_API_KEY');
       if (!apiKey) {
-        console.error('Google API Key (GOOGLE_API_KEY) is not configured.');
+        console.error('OpenRouter API Key is not configured in database or environment variables.');
+        return NextResponse.json({ success: false, error: 'OpenRouter API anahtarı yapılandırılmamış.' }, { status: 500 });
+      }
+
+      // API anahtarının formatını kontrol et ve düzelt
+      if (apiKey && !apiKey.startsWith('sk-or-')) {
+        console.log('API anahtarı doğru formatta değil, düzeltiliyor...');
+        if (apiKey.startsWith('Bearer ')) {
+          apiKey = apiKey.substring(7);
+        }
+        if (!apiKey.startsWith('sk-or-')) {
+          apiKey = `sk-or-v1-${apiKey}`;
+        }
+      }
+
+      // Gemini 2.0 Flash için multimodal format kullan
+      result = await callOpenRouterAPI(apiKey, model, prompt);
+    } else if (isGoogleModel) {
+      // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
+      const apiKey = await getApiKey('Google Gemini', 'GOOGLE_API_KEY') || process.env.GOOGLE_API_KEY;
+      if (!apiKey) {
+        console.error('Google API Key is not configured in database or environment variables.');
         return NextResponse.json({ success: false, error: 'Google API anahtarı yapılandırılmamış.' }, { status: 500 });
       }
       // Google API'sine gönderilecek temiz model adını al
       let geminiModelName = model.toLowerCase().startsWith('google/') ? model.substring(7) : model;
       geminiModelName = geminiModelName.startsWith('models/') ? geminiModelName.substring(7) : geminiModelName;
-      
+
       console.log(`Routing to Google Gemini with cleaned model name: ${geminiModelName}`);
       result = await callGoogleGeminiAPI(apiKey, geminiModelName, prompt);
     } else if (isGroqModel) { // Groq kontrolü eklendi
-        const apiKey = process.env.GROQ_API_KEY;
-        if (!apiKey) {
-          console.error('Groq API Key (GROQ_API_KEY) is not configured.');
-          return NextResponse.json({ success: false, error: 'Groq API anahtarı yapılandırılmamış.' }, { status: 500 });
-        }
-        console.log(`Routing to Groq with model name: ${model}`);
-        result = await callGroqAPI(apiKey, model, prompt); // callGroqAPI çağrılıyor
+      // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
+      const apiKey = await getApiKey('Groq', 'GROQ_API_KEY') || process.env.GROQ_API_KEY;
+      if (!apiKey) {
+        console.error('Groq API Key is not configured in database or environment variables.');
+        return NextResponse.json({ success: false, error: 'Groq API anahtarı yapılandırılmamış.' }, { status: 500 });
+      }
+      console.log(`Routing to Groq with model name: ${model}`);
+      result = await callGroqAPI(apiKey, model, prompt); // callGroqAPI çağrılıyor
     } else {
       // Diğer tüm modeller için OpenRouter'ı kullan (varsayılan)
       console.log(`Routing to OpenRouter with model name: ${model}`);
-      const apiKey = process.env.OPENROUTER_API_KEY;
+
+      // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
+      let apiKey = await getApiKey('Open Router', 'OPENROUTER_API_KEY');
       if (!apiKey) {
-        console.error('OpenRouter API Key (OPENROUTER_API_KEY) is not configured.');
+        console.error('OpenRouter API Key is not configured in database or environment variables.');
         return NextResponse.json({ success: false, error: 'OpenRouter API anahtarı yapılandırılmamış.' }, { status: 500 });
       }
+
+      // API anahtarının formatını kontrol et ve düzelt
+      // OpenRouter API anahtarları genellikle "sk-or-v1-..." ile başlar
+      if (apiKey && !apiKey.startsWith('sk-or-')) {
+        console.log('API anahtarı doğru formatta değil, düzeltiliyor...');
+        // Eğer API anahtarı "Bearer " ile başlıyorsa, bu kısmı kaldır
+        if (apiKey.startsWith('Bearer ')) {
+          apiKey = apiKey.substring(7);
+        }
+        // Eğer API anahtarı "sk-or-" ile başlamıyorsa, ekle
+        if (!apiKey.startsWith('sk-or-')) {
+          apiKey = `sk-or-v1-${apiKey}`;
+        }
+        console.log('Düzeltilmiş API Key (ilk 10 karakter):', apiKey.substring(0, 10) + '...');
+      }
+
       result = await callOpenRouterAPI(apiKey, model, prompt);
     }
 

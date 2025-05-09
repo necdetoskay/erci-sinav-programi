@@ -185,7 +185,13 @@ export function AddFromPool({ examId, onQuestionsAdded }: AddFromPoolProps) {
           Soru Havuzundan Ekle
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Dışarı tıklamayı engelle
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>
             {step === "pools" ? "Soru Havuzu Seç" : "Soru Seç"}
@@ -345,4 +351,4 @@ export function AddFromPool({ examId, onQuestionsAdded }: AddFromPoolProps) {
       </DialogContent>
     </Dialog>
   );
-} 
+}

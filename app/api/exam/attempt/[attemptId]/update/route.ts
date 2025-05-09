@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { ExamAttemptStatus } from '@prisma/client';
+
+import { ExamAttemptStatus } from "@/types/prisma";
 
 // Gelen istek body'si için şema
 const UpdateAttemptSchema = z.object({

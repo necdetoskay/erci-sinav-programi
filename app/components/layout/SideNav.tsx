@@ -1,63 +1,152 @@
 "use client"
 
-import Link from "next/link"
+import { LoadingLink } from "@/components/ui/loading-link";
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Users, Settings, BookOpen, PenTool, ClipboardCheckIcon } from "lucide-react" // ClipboardCheckIcon eklendi
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
+  BookOpen,
+  PenTool,
+  ClipboardCheckIcon,
+  BarChart,
+  Shield,
+  ChevronDown,
+  ChevronRight
+} from "lucide-react"
+import { useState } from "react"
 
-const sidebarNavItems = [
+// Menü grupları
+const sidebarNavGroups = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
+    title: "Ana Sayfa",
+    items: [
+      {
+        title: "Dashboard",
+        href: "/dashboard",
+        icon: LayoutDashboard,
+      },
+    ],
   },
   {
-    title: "Sınavlar",
-    href: "/admin/exams",
-    icon: BookOpen,
+    title: "Sınav Yönetimi",
+    items: [
+      {
+        title: "Sınavlar",
+        href: "/admin/exams",
+        icon: BookOpen,
+      },
+      {
+        title: "Soru Havuzları",
+        href: "/question-pools",
+        icon: PenTool,
+      },
+      {
+        title: "Sınav Sonuçları",
+        href: "/dashboard/exam-results",
+        icon: BarChart,
+      },
+    ],
   },
   {
-    title: "Soru Havuzu",
-    href: "/question-pools",
-    icon: PenTool,
+    title: "Kullanıcı Yönetimi",
+    items: [
+      {
+        title: "Kullanıcılar",
+        href: "/dashboard/users",
+        icon: Users,
+      },
+      {
+        title: "Rol Yönetimi",
+        href: "/dashboard/roles",
+        icon: Shield,
+      },
+    ],
   },
   {
-    title: "Kullanıcılar",
-    href: "/dashboard/users",
-    icon: Users,
+    title: "Sistem",
+    items: [
+      {
+        title: "Ayarlar",
+        href: "/dashboard/settings",
+        icon: Settings,
+      },
+      {
+        title: "Öğrenci Sınav Girişi (Test)",
+        href: "/exam/enter-email",
+        icon: ClipboardCheckIcon,
+      },
+      {
+        title: "Sınav Giriş Sayfası",
+        href: "/exam",
+        icon: ClipboardCheckIcon,
+      },
+    ],
   },
-  {
-    title: "Ayarlar",
-    href: "/dashboard/settings", // Not: Bu yol /settings olabilir.
-    icon: Settings,
-  },
-  {
-    title: "Öğrenci Sınav Girişi (Test)",
-    href: "/exam/enter-email",
-    icon: ClipboardCheckIcon, // Test linki eklendi
-  },
-]
+];
 
 export function SideNav() {
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    // Başlangıçta tüm grupları açık olarak ayarla
+    const initialState: Record<string, boolean> = {};
+    sidebarNavGroups.forEach((group) => {
+      // Aktif sayfanın bulunduğu grubu otomatik olarak aç
+      const isActiveGroup = group.items.some(
+        (item) => pathname === item.href || pathname.startsWith(item.href + "/")
+      );
+      initialState[group.title] = isActiveGroup;
+    });
+    return initialState;
+  });
+
+  const toggleGroup = (groupTitle: string) => {
+    setOpenGroups((prev) => ({
+      ...prev,
+      [groupTitle]: !prev[groupTitle],
+    }));
+  };
 
   return (
-    <nav className="grid items-start gap-2">
-      {sidebarNavItems.map((item) => {
-        const Icon = item.icon
-        return (
-          <Link key={item.href} href={item.href}>
-            <Button
-              variant={pathname === item.href || pathname.startsWith(item.href + "/") ? "secondary" : "ghost"}
-              className="w-full justify-start gap-2"
-            >
-              <Icon className="h-4 w-4" />
-              {item.title}
-            </Button>
-          </Link>
-        )
-      })}
+    <nav className="space-y-1">
+      {sidebarNavGroups.map((group) => (
+        <div key={group.title} className="mb-4">
+          <button
+            onClick={() => toggleGroup(group.title)}
+            className="flex items-center w-full text-sm font-medium text-muted-foreground hover:text-foreground mb-1 px-2"
+          >
+            {openGroups[group.title] ? (
+              <ChevronDown className="h-4 w-4 mr-1" />
+            ) : (
+              <ChevronRight className="h-4 w-4 mr-1" />
+            )}
+            {group.title}
+          </button>
+
+          {openGroups[group.title] && (
+            <div className="grid items-start gap-1 pl-4">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+
+                return (
+                  <LoadingLink key={item.href} href={item.href}>
+                    <Button
+                      variant={isActive ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-2 h-9"
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.title}
+                    </Button>
+                  </LoadingLink>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
     </nav>
-  )
+  );
 }

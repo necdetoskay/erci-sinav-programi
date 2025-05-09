@@ -120,7 +120,13 @@ export function AddQuestion({ examId, onQuestionAdded }: AddQuestionProps) {
           Yeni Soru Ekle
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent
+        className="max-w-3xl"
+        onPointerDownOutside={(e) => {
+          // Dışarı tıklamayı engelle
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Yeni Soru Ekle</DialogTitle>
           <DialogDescription>
@@ -228,4 +234,4 @@ export function AddQuestion({ examId, onQuestionAdded }: AddQuestionProps) {
       </DialogContent>
     </Dialog>
   );
-} 
+}

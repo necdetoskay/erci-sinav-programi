@@ -65,7 +65,19 @@ export function CreateQuestionPool() {
       });
 
       if (!response.ok) {
-        throw new Error("Soru havuzu oluşturulurken bir hata oluştu");
+        // Oturum hatası kontrolü
+        if (response.status === 401) {
+          toast.error("Oturum süreniz doldu. Lütfen yeniden giriş yapın.");
+          // Oturum yenileme sayfasına yönlendir
+          setTimeout(() => {
+            router.push("/auth/refresh");
+          }, 2000);
+          return;
+        }
+
+        // Diğer hatalar için
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || "Soru havuzu oluşturulurken bir hata oluştu");
       }
 
       toast.success("Soru havuzu başarıyla oluşturuldu");
@@ -73,7 +85,8 @@ export function CreateQuestionPool() {
       form.reset();
       router.refresh();
     } catch (error) {
-      toast.error("Soru havuzu oluşturulurken bir hata oluştu");
+      console.error("Error creating question pool:", error);
+      toast.error(error instanceof Error ? error.message : "Soru havuzu oluşturulurken bir hata oluştu");
     }
   }
 
@@ -82,7 +95,12 @@ export function CreateQuestionPool() {
       <DialogTrigger asChild>
         <Button>Yeni Soru Havuzu</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent
+        onPointerDownOutside={(e) => {
+          // Dışarı tıklamayı engelle
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Yeni Soru Havuzu Oluştur</DialogTitle>
           <DialogDescription>

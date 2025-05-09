@@ -32,7 +32,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { PoolQuestion } from "@prisma/client";
+import { PoolQuestion } from "@/types/prisma";
 
 type QuestionOption = {
   text: string;
@@ -66,12 +66,12 @@ interface UpdateQuestionProps {
 export function UpdateQuestion({ id, question }: UpdateQuestionProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       questionText: question.questionText || "",
-      options: Array.isArray(question.options) 
+      options: Array.isArray(question.options)
         ? question.options.map((option, index) => ({
             text: option.text || "",
             label: String.fromCharCode(65 + index),
@@ -121,7 +121,13 @@ export function UpdateQuestion({ id, question }: UpdateQuestionProps) {
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => {
+          // Dışarı tıklamayı engelle
+          e.preventDefault();
+        }}
+      >
         <DialogHeader className="space-y-2">
           <DialogTitle>Soruyu Düzenle</DialogTitle>
           <DialogDescription>
@@ -275,7 +281,7 @@ export function UpdateQuestion({ id, question }: UpdateQuestionProps) {
                       <FormLabel>Açıklama</FormLabel>
                       <FormControl>
                         <RichTextEditor
-                          content={field.value}
+                          content={field.value || ""}
                           onChange={field.onChange}
                           placeholder="Çözüm açıklamasını yazın..."
                           className="min-h-[80px]"

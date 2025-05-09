@@ -1,7 +1,6 @@
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateText, Message as CoreMessage } from 'ai'
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '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'
+// Artık API anahtarını veritabanından alacağız, bu sabit değer sadece fallback
 const SITE_URL = process.env.SITE_URL || 'http://localhost:3001'
 const SITE_NAME = 'Akıllı Sınav Sistemi'
 
@@ -42,11 +41,6 @@ interface GenerateQuestionsParams {
   model: ModelType
 }
 
-// Initialize the OpenRouter client
-const openrouter = createOpenRouter({
-  apiKey: OPENROUTER_API_KEY
-})
-
 export async function generateQuestions({
   content,
   difficulty,
@@ -74,10 +68,27 @@ Doğru Cevap: B
 Açıklama: B'nin doğru cevap olmasının kısa açıklaması.`
 
   try {
+    let apiKey = process.env.OPENROUTER_API_KEY;
+
+    if (!apiKey) {
+      console.error('OpenRouter API key is not configured. Please set the OPENROUTER_API_KEY environment variable.');
+      throw new Error('OpenRouter API anahtarı yapılandırılmamış. Lütfen OPENROUTER_API_KEY çevre değişkenini ayarlayın.');
+    }
+
+    // API anahtarının formatını kontrol et ve düzelt (llm-status/route.ts ile aynı mantık)
+    if (apiKey && !apiKey.startsWith('sk-or-')) {
+      if (apiKey.startsWith('Bearer ')) {
+        apiKey = apiKey.substring(7);
+      }
+      if (!apiKey.startsWith('sk-or-')) {
+        apiKey = `sk-or-v1-${apiKey}`;
+      }
+    }
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
         'X-Title': 'Akıllı Sınav Sistemi'
@@ -118,10 +129,27 @@ Açıklama: B'nin doğru cevap olmasının kısa açıklaması.`
 // Image analysis function
 export async function analyzeImage(imageUrl: string, question: string, model: ModelType = 'google/gemini-2.0-flash-exp:free'): Promise<string> {
   try {
+    let apiKey = process.env.OPENROUTER_API_KEY;
+
+    if (!apiKey) {
+      console.error('OpenRouter API key is not configured. Please set the OPENROUTER_API_KEY environment variable.');
+      throw new Error('OpenRouter API anahtarı yapılandırılmamış. Lütfen OPENROUTER_API_KEY çevre değişkenini ayarlayın.');
+    }
+
+    // API anahtarının formatını kontrol et ve düzelt (llm-status/route.ts ile aynı mantık)
+    if (apiKey && !apiKey.startsWith('sk-or-')) {
+      if (apiKey.startsWith('Bearer ')) {
+        apiKey = apiKey.substring(7);
+      }
+      if (!apiKey.startsWith('sk-or-')) {
+        apiKey = `sk-or-v1-${apiKey}`;
+      }
+    }
+
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
         'X-Title': 'Akıllı Sınav Sistemi'
@@ -161,17 +189,17 @@ export async function analyzeImage(imageUrl: string, question: string, model: Mo
 // Test function
 export async function testQuestionGeneration() {
   const testContent = `
-  Web geliştirme, web siteleri ve web uygulamaları oluşturma sürecidir. 
-  Frontend geliştirme, kullanıcı arayüzü ve etkileşimini içerirken, 
-  backend geliştirme sunucu tarafı işlemleri ve veritabanı yönetimini kapsar. 
+  Web geliştirme, web siteleri ve web uygulamaları oluşturma sürecidir.
+  Frontend geliştirme, kullanıcı arayüzü ve etkileşimini içerirken,
+  backend geliştirme sunucu tarafı işlemleri ve veritabanı yönetimini kapsar.
   HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.
   `
 
   try {
-    const result = await generateQuestions({ 
-      content: testContent, 
-      difficulty: 'medium', 
-      numberOfQuestions: 2, 
+    const result = await generateQuestions({
+      content: testContent,
+      difficulty: 'medium',
+      numberOfQuestions: 2,
       model: 'anthropic/claude-3-sonnet:beta'
     })
     console.log('Generated Questions:', result)
@@ -180,4 +208,4 @@ export async function testQuestionGeneration() {
     console.error('Test failed:', error)
     throw error
   }
-} 
+}

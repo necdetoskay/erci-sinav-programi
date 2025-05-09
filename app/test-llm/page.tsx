@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
-import { ModelType } from '@/lib/openrouter'
+import { ModelType } from '@/lib/ai-service'
 
 const MODELS: { id: ModelType; name: string }[] = [
   { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0' },
@@ -24,10 +24,10 @@ const MODELS: { id: ModelType; name: string }[] = [
   { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1' },
 ]
 
-export default function TestLLM() {
-  const [content, setContent] = useState(`Web geliştirme, web siteleri ve web uygulamaları oluşturma sürecidir. 
-Frontend geliştirme, kullanıcı arayüzü ve etkileşimini içerirken, 
-backend geliştirme sunucu tarafı işlemleri ve veritabanı yönetimini kapsar. 
+function TestLLMContent() {
+  const [content, setContent] = useState(`Web geliştirme, web siteleri ve web uygulamaları oluşturma sürecidir.
+Frontend geliştirme, kullanıcı arayüzü ve etkileşimini içerirken,
+backend geliştirme sunucu tarafı işlemleri ve veritabanı yönetimini kapsar.
 HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
   const [result, setResult] = useState('')
   const [loading, setLoading] = useState(false)
@@ -43,9 +43,9 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
     async function checkLlmStatus() {
       try {
         setLlmStatus('loading')
-        
+
         const response = await fetch('/api/llm-status')
-        
+
         if (!response.ok) {
           const errorText = await response.text()
           console.error('LLM Status Error:', errorText)
@@ -53,9 +53,9 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
           setApiStatusMessage('LLM servisi bağlantı hatası')
           return
         }
-        
+
         const text = await response.text()
-        
+
         try {
           const data = JSON.parse(text)
           if (data.status === 'ready') {
@@ -90,7 +90,7 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           content,
           difficulty,
           numberOfQuestions,
@@ -101,13 +101,13 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
       // Metni önce alıp sonra JSON.parse etmeye çalışalım
       const responseText = await response.text()
       console.log('Raw API response:', responseText)
-      
+
       try {
         const data = JSON.parse(responseText)
-        
+
         if (data.success) {
           let parsedData
-          
+
           // API'den dönen data değerini kontrol et
           if (typeof data.data === 'string') {
             try {
@@ -133,7 +133,7 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
             // Zaten JSON objesi ise doğrudan kullan
             parsedData = data.data;
           }
-          
+
           // Sonucu ekranda göster
           if (typeof parsedData === 'object') {
             setResult(JSON.stringify(parsedData, null, 2));
@@ -171,7 +171,7 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
               </AlertDescription>
             </Alert>
           )}
-          
+
           {llmStatus === 'error' && (
             <Alert className="bg-red-50 border-red-400">
               <AlertCircle className="h-4 w-4 text-red-600" />
@@ -181,7 +181,7 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
               </AlertDescription>
             </Alert>
           )}
-          
+
           {llmStatus === 'ready' && (
             <Alert className="bg-green-50 border-green-400">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -269,8 +269,8 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
             </div>
           </div>
 
-          <Button 
-            onClick={handleTest} 
+          <Button
+            onClick={handleTest}
             disabled={loading || !content.trim() || llmStatus !== 'ready'}
             className="w-full"
           >
@@ -319,4 +319,12 @@ HTML sayfa yapısını, CSS stilleri, JavaScript ise etkileşimi sağlar.`)
       </Card>
     </div>
   )
-} 
+}
+
+export default function TestLLM() {
+  return (
+    <Suspense fallback={<div>Loading LLM test page...</div>}>
+      <TestLLMContent />
+    </Suspense>
+  );
+}

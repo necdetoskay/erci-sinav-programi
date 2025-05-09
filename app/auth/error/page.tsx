@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { LoadingLink } from "@/components/ui/loading-link";
 
 const errorTypes: Record<string, string> = {
   default: "Kimlik doğrulama sırasında bir hata oluştu.",
@@ -21,7 +22,7 @@ const errorTypes: Record<string, string> = {
   DatabaseConnectivity: "Veritabanı bağlantı hatası. Lütfen daha sonra tekrar deneyin.",
 };
 
-export default function ErrorPage() {
+function ErrorDisplay() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string>(searchParams?.get("error") || "default");
   const [errorMessage, setErrorMessage] = useState<string>(errorTypes["default"]);
@@ -71,15 +72,23 @@ export default function ErrorPage() {
           </div>
 
           <div className="flex justify-center">
-            <Link
+            <LoadingLink
               href="/auth/login"
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Giriş Sayfasına Dön
-            </Link>
+            </LoadingLink>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}
+
+export default function ErrorPage() {
+  return (
+    <Suspense fallback={<div>Loading error information...</div>}>
+      <ErrorDisplay />
+    </Suspense>
+  );
+}

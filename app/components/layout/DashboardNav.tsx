@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { LoadingLink } from "@/components/ui/loading-link";
 import { usePathname } from "next/navigation"
 
 import { cn } from "@/lib/utils"
@@ -38,7 +38,7 @@ export function DashboardNav() {
       <NavigationMenuList>
         {mainNav.map((item) => (
           <NavigationMenuItem key={item.href}>
-            <Link href={item.href} legacyBehavior passHref>
+            <LoadingLink href={item.href}>
               <NavigationMenuLink
                 className={cn(
                   navigationMenuTriggerStyle(),
@@ -48,10 +48,10 @@ export function DashboardNav() {
               >
                 {item.title}
               </NavigationMenuLink>
-            </Link>
+            </LoadingLink>
           </NavigationMenuItem>
         ))}
       </NavigationMenuList>
     </NavigationMenu>
   )
-} 
+}

@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from "next-auth/next"
-import { authOptions } from "@/lib/auth" // Assuming authOptions are defined here
+import { getSession } from "@/lib/session"
 
 export async function DELETE(
     request: Request,
@@ -9,7 +8,7 @@ export async function DELETE(
 ) {
     console.log(`[API DELETE /api/exam/attempt/${params.attemptId}] Request received.`);
     // Optional: Add authentication/authorization check if needed
-    // const session = await getServerSession(authOptions);
+    // const session = await getSession(request);
     // if (!session || !session.user) {
     //     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     // }

@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -13,11 +13,11 @@ const questionPoolSchema = z.object({
 
 // GET /api/question-pools/[id]
 export async function GET(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession(req);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -25,7 +25,7 @@ export async function GET(
     const questionPool = await db.questionPool.findUnique({
       where: {
         id: parseInt(params.id),
-        // userId: session.user.id, // Removed user check
+        userId: session.user.id, // Kullanıcı kontrolünü ekle
       },
       include: {
         questions: true,
@@ -48,11 +48,11 @@ export async function GET(
 
 // PATCH /api/question-pools/[id]
 export async function PATCH(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession(req);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -63,7 +63,7 @@ export async function PATCH(
     const questionPool = await db.questionPool.update({
       where: {
         id: parseInt(params.id),
-        // userId: session.user.id, // Removed user check
+        userId: session.user.id, // Kullanıcı kontrolünü ekle
       },
       data: validatedData,
     });
@@ -83,11 +83,11 @@ export async function PATCH(
 
 // DELETE /api/question-pools/[id]
 export async function DELETE(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession(req);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -95,7 +95,7 @@ export async function DELETE(
     await db.questionPool.delete({
       where: {
         id: parseInt(params.id),
-        // userId: session.user.id, // Removed user check
+        userId: session.user.id, // Kullanıcı kontrolünü ekle
       },
     });
 

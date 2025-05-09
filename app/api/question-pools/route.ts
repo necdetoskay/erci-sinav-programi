@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -13,9 +13,9 @@ const questionPoolSchema = z.object({
 });
 
 // GET /api/question-pools
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSession(req);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -46,11 +46,11 @@ export async function GET() {
 }
 
 // POST /api/question-pools
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getSession(req);
     console.log("Session:", JSON.stringify(session, null, 2));
-    
+
     // Session kontrolü
     if (!session) {
       console.error("No session found");
@@ -70,20 +70,34 @@ export async function POST(req: Request) {
     }
 
     // Kullanıcının veritabanında var olduğunu kontrol et
-    const user = await db.user.findUnique({
-      where: { 
-        id: session.user.id 
-      },
-      select: { 
-        id: true,
-        email: true,
-        role: true
-      }
-    });
+    let user;
+    try {
+      user = await db.user.findUnique({
+        where: {
+          id: session.user.id
+        },
+        select: {
+          id: true,
+          email: true,
+          role: true
+        }
+      });
 
-    if (!user) {
-      console.error(`User not found in database: ${session.user.id}`);
-      return NextResponse.json({ error: "Unauthorized - User not found in database" }, { status: 401 });
+      if (!user) {
+        console.error(`User not found in database: ${session.user.id}`);
+        return NextResponse.json({
+          error: "Unauthorized - User not found in database",
+          message: "Oturum bilgileriniz geçersiz. Lütfen yeniden giriş yapın.",
+          code: "USER_NOT_FOUND"
+        }, { status: 401 });
+      }
+    } catch (dbError) {
+      console.error("Database error when finding user:", dbError);
+      return NextResponse.json({
+        error: "Database error",
+        message: "Veritabanı bağlantısında bir sorun oluştu. Lütfen daha sonra tekrar deneyin.",
+        code: "DB_CONNECTION_ERROR"
+      }, { status: 500 });
     }
 
     console.log("Found user:", JSON.stringify(user, null, 2));
@@ -93,7 +107,7 @@ export async function POST(req: Request) {
 
     console.log("Creating question pool with data:", {
       ...validatedData,
-      userId: user.id,
+      userId: session.user.id,
       status: "ACTIVE"
     });
 
@@ -104,7 +118,7 @@ export async function POST(req: Request) {
         description: validatedData.description,
         subject: validatedData.subject,
         difficulty: validatedData.difficulty,
-        userId: user.id, // Bu ID'nin geçerli olduğundan emin olduk
+        userId: session.user.id, // Bu ID'nin geçerli olduğundan emin olduk
         status: "ACTIVE" // Varsayılan veya belirlenen durum
         // grade alanı şemada olmadığı için eklenmiyor
       },
@@ -115,7 +129,7 @@ export async function POST(req: Request) {
     return NextResponse.json(questionPool, { status: 201 });
   } catch (error) {
     console.error("Error details:", error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
@@ -123,9 +137,9 @@ export async function POST(req: Request) {
     // Detaylı hata mesajı
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     const errorDetails = error instanceof Error ? (error as any).code : undefined;
-    
+
     return NextResponse.json(
-      { 
+      {
         error: "Failed to create question pool",
         message: errorMessage,
         code: errorDetails,

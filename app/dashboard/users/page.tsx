@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { useUsers, User } from "@/app/context/UserContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import UserFormModal from "@/app/components/modals/UserFormModal";
 import { toast } from "sonner";
 
-export default function UsersPage() {
+function UsersTable() {
   const { users, deleteUser } = useUsers();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | undefined>(undefined);
@@ -64,8 +65,21 @@ export default function UsersPage() {
                 <TableCell>{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>
-                    {user.role === "ADMIN" ? "Yönetici" : "Kullanıcı"}
+                  <Badge
+                    variant={
+                      user.role === "ADMIN"
+                        ? "default"
+                        : user.role === "PERSONEL"
+                          ? "outline"
+                          : "secondary"
+                    }
+                  >
+                    {user.role === "ADMIN"
+                      ? "Yönetici"
+                      : user.role === "PERSONEL"
+                        ? "Personel"
+                        : "Kullanıcı"
+                    }
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
@@ -95,5 +109,13 @@ export default function UsersPage() {
         mode={mode}
       />
     </div>
+  );
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={<div>Loading users...</div>}>
+      <UsersTable />
+    </Suspense>
   );
 }

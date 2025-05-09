@@ -57,8 +57,8 @@ export function RichTextEditor({
   }
 
   return (
-    <div className={cn("rounded-md border", className)}>
-      <div className="flex flex-wrap gap-1 border-b bg-muted/50 p-1">
+    <div className={cn("rounded-md border border-border bg-background", className)}>
+      <div className="flex flex-wrap gap-1 border-b border-border bg-muted/50 p-1">
         <Toggle
           size="sm"
           pressed={editor.isActive("bold")}
@@ -118,8 +118,8 @@ export function RichTextEditor({
       </div>
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none px-3 py-2 focus-visible:outline-none"
+        className="prose prose-sm dark:prose-invert max-w-none px-3 py-2 focus-visible:outline-none bg-background text-foreground"
       />
     </div>
   );
-} 
+}

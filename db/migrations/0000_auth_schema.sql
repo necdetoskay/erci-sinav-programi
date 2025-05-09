@@ -10,30 +10,22 @@ CREATE TABLE IF NOT EXISTS "users" (
   "updated_at" timestamp NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "accounts" (
+CREATE TABLE IF NOT EXISTS "refresh_tokens" (
+  "id" text PRIMARY KEY NOT NULL,
   "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-  "type" text NOT NULL,
-  "provider" text NOT NULL,
-  "provider_account_id" text NOT NULL,
-  "refresh_token" text,
-  "access_token" text,
-  "expires_at" timestamp,
-  "token_type" text,
-  "scope" text,
-  "id_token" text,
-  "session_state" text,
-  PRIMARY KEY ("provider", "provider_account_id")
+  "token" text NOT NULL,
+  "expires_at" timestamp NOT NULL,
+  "created_at" timestamp NOT NULL DEFAULT now(),
+  "updated_at" timestamp NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS "sessions" (
-  "session_token" text PRIMARY KEY NOT NULL,
-  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-  "expires" timestamp NOT NULL
-);
+-- JWT tabanlı kimlik doğrulama kullanıldığı için sessions tablosuna gerek yok
 
 CREATE TABLE IF NOT EXISTS "verification_tokens" (
-  "identifier" text NOT NULL,
+  "id" text PRIMARY KEY NOT NULL,
+  "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "token" text NOT NULL,
+  "type" text NOT NULL, -- 'email', 'password-reset', etc.
   "expires" timestamp NOT NULL,
-  PRIMARY KEY ("identifier", "token")
-); 
+  "created_at" timestamp NOT NULL DEFAULT now()
+);

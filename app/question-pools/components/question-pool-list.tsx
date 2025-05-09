@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { LoadingLink } from "@/components/ui/loading-link";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -25,7 +25,7 @@ export function QuestionPoolList({ questionPools }: QuestionPoolListProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {questionPools.map((pool) => (
-        <Link key={pool.id} href={`/question-pools/${pool.id}`}>
+        <LoadingLink key={pool.id} href={`/question-pools/${pool.id}`}>
           <Card className="hover:bg-muted/50 transition-colors">
             <CardHeader>
               <div className="flex justify-between items-start">
@@ -45,7 +45,6 @@ export function QuestionPoolList({ questionPools }: QuestionPoolListProps) {
               <div className="flex justify-between text-sm text-muted-foreground">
                 <div>
                   <p>{pool.subject}</p>
-                  <p>{pool.grade}</p>
                 </div>
                 <div className="text-right">
                   <p>{pool.questions.length} Soru</p>
@@ -54,8 +53,8 @@ export function QuestionPoolList({ questionPools }: QuestionPoolListProps) {
               </div>
             </CardContent>
           </Card>
-        </Link>
+        </LoadingLink>
       ))}
     </div>
   );
-} 
+}

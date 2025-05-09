@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { ExamAttemptStatus } from '@prisma/client';
+
+import { ExamAttemptStatus } from "@/types/prisma";
 
 // Frontend'in beklediği sonuç formatı
 interface ExamResultResponse {
@@ -53,7 +54,7 @@ export async function GET(
         }
 
         // 3. Skoru hesapla
-        const correctAnswersCount = attempt.attemptAnswers.filter(ans => ans.isCorrect).length;
+        const correctAnswersCount = attempt.attemptAnswers.filter((ans: { isCorrect: boolean }) => ans.isCorrect).length;
         const totalQuestions = attempt.exam.questions.length;
         const percentage = totalQuestions > 0 ? (correctAnswersCount / totalQuestions) * 100 : 0;
 
@@ -64,7 +65,7 @@ export async function GET(
             score: correctAnswersCount,
             totalQuestions: totalQuestions,
             percentage: percentage,
-            status: attempt.status,
+            status: attempt.status as ExamAttemptStatus, // Tip dönüşümü ekle
             // participantName: attempt.participantName, // Gerekirse eklenebilir
             // startTime: attempt.startTime,
             // endTime: attempt.endTime,

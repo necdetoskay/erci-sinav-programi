@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 // useRouter şimdilik kullanılmayacak, API sonrası yönlendirme yapılacak
 // import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from 'sonner';
 import Link from 'next/link'; // Sınav linki için
 
-export default function EnterExamCodePage() {
+function EnterExamCodeForm() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [examCode, setExamCode] = useState('');
@@ -151,5 +151,13 @@ export default function EnterExamCodePage() {
         </form>
       </Card>
     </div>
+  );
+}
+
+export default function EnterExamCodePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <EnterExamCodeForm />
+    </Suspense>
   );
 }

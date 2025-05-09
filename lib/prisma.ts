@@ -8,6 +8,7 @@ declare global {
 // It will automatically use the DATABASE_URL from the .env file
 const prisma = global.prisma || new PrismaClient();
 
+// Development ortamında global değişkene ata
 if (process.env.NODE_ENV !== 'production') global.prisma = prisma;
 
 export { prisma };

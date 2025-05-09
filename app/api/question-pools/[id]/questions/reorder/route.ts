@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 
 const requestSchema = z.object({
   questions: z.array(
@@ -13,11 +13,11 @@ const requestSchema = z.object({
 });
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession(request);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -67,8 +67,8 @@ export async function PUT(
             id: question.id,
             poolId: poolId
           },
-          data: { 
-            position: question.position 
+          data: {
+            position: question.position
           },
         })
       )
@@ -77,7 +77,7 @@ export async function PUT(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[REORDER_QUESTIONS]", error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Geçersiz istek formatı" },
@@ -90,4 +90,4 @@ export async function PUT(
       { status: 500 }
     );
   }
-} 
+}

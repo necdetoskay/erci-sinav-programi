@@ -33,7 +33,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Pencil } from "lucide-react";
-import { QuestionPool } from "@prisma/client";
+import { QuestionPool } from "@/types/prisma";
 
 const formSchema = z.object({
   title: z.string().min(1, "Başlık gereklidir"),
@@ -99,7 +99,12 @@ export function UpdateQuestionPool({ data }: UpdateQuestionPoolProps) {
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent
+        onPointerDownOutside={(e) => {
+          // Dışarı tıklamayı engelle
+          e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Soru Havuzunu Düzenle</DialogTitle>
           <DialogDescription>

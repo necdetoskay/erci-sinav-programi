@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { getApiKey } from '@/lib/api-key-service';
 
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
 
-    if (!process.env.OPENROUTER_API_KEY) {
-      throw new Error("OPENROUTER_API_KEY is not defined");
+    // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
+    const apiKey = await getApiKey('OpenRouter', 'OPENROUTER_API_KEY');
+    console.log('API Key (ilk 10 karakter):', apiKey ? apiKey.substring(0, 10) + '...' : 'null');
+    if (!apiKey) {
+      throw new Error("OpenRouter API anahtarı veritabanında veya çevre değişkenlerinde yapılandırılmamış");
     }
 
     if (!process.env.APP_URL) {
@@ -31,7 +35,7 @@ export async function POST(req: Request) {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
         "X-Title": "Erci Sinav Programi",
         "Content-Type": "application/json"
@@ -68,14 +72,14 @@ export async function POST(req: Request) {
     }
 
     let content = data.choices[0].message.content;
-    
+
     // Markdown kod bloğu işaretlerini temizle
     content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
     try {
       // JSON formatını kontrol et ve gerekli alanların varlığını doğrula
       const parsedContent = JSON.parse(content);
-      
+
       // Gerekli alanların varlığını kontrol et
       if (!parsedContent.question || !parsedContent.options || !parsedContent.correctAnswer || !parsedContent.explanation) {
         throw new Error("Eksik alanlar var");
@@ -90,7 +94,7 @@ export async function POST(req: Request) {
     } catch (parseError) {
       console.error("JSON Parsing Error:", parseError, "Content:", content);
       return new NextResponse(
-        JSON.stringify({ 
+        JSON.stringify({
           error: "API'den gelen yanıt geçerli bir JSON formatında değil veya gerekli alanlar eksik.",
           details: parseError instanceof Error ? parseError.message : "Unknown parsing error",
           content: content // Debug için içeriği de gönder
@@ -101,11 +105,11 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("[OPENROUTER_ERROR] Full error:", error);
     return new NextResponse(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error instanceof Error ? error.message : "Internal Server Error",
         details: error
-      }), 
+      }),
       { status: 500 }
     );
   }
-} 
+}

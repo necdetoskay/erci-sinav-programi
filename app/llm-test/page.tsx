@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,7 +9,7 @@ import { Slider } from '@/components/ui/slider'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 
-export default function LLMTestPage() {
+function LLMTestContent() {
   const [content, setContent] = useState('')
   const [numberOfQuestions, setNumberOfQuestions] = useState(3)
   const [optionsPerQuestion, setOptionsPerQuestion] = useState(4)
@@ -212,4 +213,12 @@ export default function LLMTestPage() {
       </Card>
     </div>
   )
-} 
+}
+
+export default function LLMTestPage() {
+  return (
+    <Suspense fallback={<div>Loading LLM test page...</div>}>
+      <LLMTestContent />
+    </Suspense>
+  );
+}

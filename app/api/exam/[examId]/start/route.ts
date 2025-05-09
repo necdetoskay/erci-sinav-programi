@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { ExamAttemptStatus, Question, ExamAttempt, ExamAttemptAnswer } from '@prisma/client'; // Import necessary types
-import { getServerSession } from "next-auth/next"; // Import next-auth session
-import { authOptions } from "@/lib/auth"; // Import auth options
+import { getSession } from "@/lib/session"; // Import JWT session
+
+import { ExamAttemptStatus, Question, ExamAttempt, ExamAttemptAnswer } from "@/types/prisma";
 
 // Helper function to convert index to letter (0 -> A, 1 -> B, ...)
 const indexToLetter = (index: number): string => {
@@ -47,7 +47,7 @@ const QueryParamsSchema = z.object({
 });
 
 export async function GET(
-    request: Request,
+    request: NextRequest,
     { params }: { params: { examId: string } }
 ) {
     try {
@@ -71,7 +71,7 @@ export async function GET(
         const participantName = (firstName && lastName) ? `${firstName} ${lastName}` : 'Bilinmeyen Katılımcı';
 
         // Get user session to retrieve email
-        const session = await getServerSession(authOptions);
+        const session = await getSession(request);
         // Use session email if available, otherwise null (handle cases where exam might be public?)
         const participantEmail = session?.user?.email ?? null;
         console.log(`[API start] Participant Name: ${participantName}, Email from session: ${participantEmail}`);
@@ -96,7 +96,7 @@ export async function GET(
         }
 
         // 3. Bu kullanıcı için en son denemeyi bul (durumdan bağımsız)
-        let attempt: AttemptWithAnswersAndQuestions | null = await prisma.examAttempt.findFirst({
+        let attempt: any = await prisma.examAttempt.findFirst({
             where: {
                 examId: examIdInt,
                 participantName: participantName,
@@ -130,15 +130,17 @@ export async function GET(
                     answers: {},
                     currentQuestionIndex: 0,
                 },
-            }) as AttemptWithAnswersAndQuestions;
-            attempt.attemptAnswers = []; // Yeni deneme için boş dizi
+            });
+            // Add empty attemptAnswers array to match the expected structure
+            attempt.attemptAnswers = [];
+
 
         } else if (attempt.status === ExamAttemptStatus.SUBMITTED || attempt.status === ExamAttemptStatus.TIMED_OUT) {
             // 5. Deneme TAMAMLANMIŞ ise
             responseStatus = 'COMPLETED';
             // Tamamlanmış denemenin cevaplarını ve sonuçlarını hazırla
             if (attempt.attemptAnswers) {
-                attemptAnswersData = attempt.attemptAnswers.reduce((acc, ans) => {
+                attemptAnswersData = attempt.attemptAnswers.reduce((acc: { [key: number]: AnswerCheckResult }, ans: any) => {
                     if (ans.question) {
                         acc[ans.questionId] = {
                             isCorrect: ans.isCorrect,
@@ -161,7 +163,7 @@ export async function GET(
 
             // Mevcut cevapları ve sonuçları hazırla
             if (attempt.attemptAnswers) {
-                attemptAnswersData = attempt.attemptAnswers.reduce((acc, ans) => {
+                attemptAnswersData = attempt.attemptAnswers.reduce((acc: { [key: number]: AnswerCheckResult }, ans: any) => {
                     if (ans.question) {
                         acc[ans.questionId] = {
                             isCorrect: ans.isCorrect,
@@ -181,12 +183,12 @@ export async function GET(
         }
 
         // 7. Frontend'e gönderilecek veriyi hazırla
-        const transformedQuestions = exam.questions.map(q => {
+        const transformedQuestions = exam.questions.map((q: any) => {
             let formattedOptions: { letter: string, text: string }[] = [];
             try {
                 const optionsData = q.options as any;
                 if (Array.isArray(optionsData)) {
-                    formattedOptions = optionsData.map((text, index) => ({
+                    formattedOptions = optionsData.map((text: any, index: number) => ({
                         letter: indexToLetter(index),
                         text: String(text)
                     }));

@@ -1,14 +1,33 @@
 "use client"
 
-import { useSession } from "next-auth/react"
+import { Suspense, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function SettingsPage() {
-  const { data: session } = useSession()
+function SettingsContent() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUserData() {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUserData();
+  }, []);
 
   return (
     <div className="container mx-auto py-10">
@@ -30,11 +49,11 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">İsim</Label>
-                <Input id="name" defaultValue={session?.user?.name || ""} />
+                <Input id="name" defaultValue={user?.name || ""} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">E-posta</Label>
-                <Input id="email" type="email" defaultValue={session?.user?.email || ""} />
+                <Input id="email" type="email" defaultValue={user?.email || ""} />
               </div>
               <Button>Değişiklikleri Kaydet</Button>
             </CardContent>
@@ -82,4 +101,12 @@ export default function SettingsPage() {
       </Tabs>
     </div>
   )
-} 
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>Loading settings...</div>}>
+      <SettingsContent />
+    </Suspense>
+  );
+}

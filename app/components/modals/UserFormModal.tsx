@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-type Role = "ADMIN" | "USER";
+type Role = "ADMIN" | "USER" | "PERSONEL";
 type Status = "ACTIVE" | "INACTIVE";
 
 interface UserFormModalProps {
@@ -74,7 +74,7 @@ export default function UserFormModal({
           updatePayload.password = formData.password;
         }
         // Pass the cleaned payload (without status) to updateUser
-        await updateUser(user.id, updatePayload); 
+        await updateUser(user.id, updatePayload);
       }
       onClose();
     } catch (err) {
@@ -178,12 +178,13 @@ export default function UserFormModal({
                     <SelectContent>
                       <SelectItem value="USER">Kullanıcı</SelectItem>
                       <SelectItem value="ADMIN">Yönetici</SelectItem>
+                      <SelectItem value="PERSONEL">Personel</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Removed Status Select Field */}
-                
+
               </div>
             </CardContent>
 

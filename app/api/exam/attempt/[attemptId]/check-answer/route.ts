@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 // Prisma namespace'ini ve PrismaClient'ı import et
-import { PrismaClient, ExamAttemptStatus, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { z } from 'zod';
+
+import { ExamAttemptStatus } from "@/types/prisma";
 
 const prisma = new PrismaClient();
 
@@ -165,9 +167,9 @@ export async function POST(
         return NextResponse.json({ message: 'Invalid request data', errors: error.errors }, { status: 400 });
     }
     // Handle potential race conditions or other DB errors during upsert/update
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof Error && 'code' in error && typeof (error as any).code === 'string') {
         // Log specific Prisma error
-        console.error(`Prisma Error Code: ${error.code}`, error.message);
+        console.error(`Prisma Error Code: ${(error as any).code}`, error.message);
         // Potentially handle P2002 (unique constraint) if upsert fails unexpectedly, though upsert should handle it.
     }
     return NextResponse.json({ message: 'An unexpected error occurred while checking the answer.' }, { status: 500 });

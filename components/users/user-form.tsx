@@ -47,7 +47,7 @@ interface UserFormData {
     id: string; // Changed to string
     name: string | null; // Match UserContext
     email: string;
-    role: "ADMIN" | "USER";
+    role: string; // Accept any role string
     // status: "ACTIVE" | "INACTIVE"; // Removed status
 }
 
@@ -63,18 +63,18 @@ export function UserForm({ initialData }: UserFormProps) {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(formSchema),
     // Adjust defaultValues to handle potential null name and ensure type consistency
-    defaultValues: initialData 
-      ? { 
+    defaultValues: initialData
+      ? {
           name: initialData.name ?? "", // Use nullish coalescing for name
-          email: initialData.email, 
-          role: initialData.role,
+          email: initialData.email,
+          role: initialData.role === "PERSONEL" ? "USER" : initialData.role as "ADMIN" | "USER",
           // password is not set for initialData (edit mode)
-        } 
+        }
       : { // Default values for new user form
           name: "",
           email: "",
-          password: "", 
-          role: "USER", 
+          password: "",
+          role: "USER",
         },
   })
 
@@ -82,14 +82,14 @@ export function UserForm({ initialData }: UserFormProps) {
     try {
       if (initialData) {
         // Pass string ID and relevant data to updateUser
-        await updateUser(initialData.id, { 
-          name: data.name, 
-          email: data.email, 
+        await updateUser(initialData.id, {
+          name: data.name,
+          email: data.email,
           role: data.role,
           // status: data.status // Removed status
         });
         // toast is handled in updateUser context function
-        // toast.success("User updated successfully"); 
+        // toast.success("User updated successfully");
       } else {
         // Add user logic (ensure CreateUserData matches context)
         if (!data.password) {
@@ -98,7 +98,7 @@ export function UserForm({ initialData }: UserFormProps) {
         }
         // Ensure the data passed matches CreateUserData expected by context
         // Note: addUser in context is currently a placeholder
-        await addUser({ 
+        await addUser({
           name: data.name,
           email: data.email,
           password: data.password, // Password is required here
@@ -106,19 +106,19 @@ export function UserForm({ initialData }: UserFormProps) {
           // status: data.status, // Removed status
         });
         // toast is handled in addUser context function (currently a warning)
-        // toast.success("User created successfully"); 
+        // toast.success("User created successfully");
       }
       router.push("/users"); // Navigate back after submit
     } catch (error) {
       // Error toast is handled in context functions
-      // toast.error("Something went wrong"); 
+      // toast.error("Something went wrong");
       console.error("Error during form submission:", error); // Keep console log
     }
   }
 
   return (
     // Correctly pass the form object to the Form component
-    <Form form={form}> 
+    <Form form={form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <FormField
           control={form.control}

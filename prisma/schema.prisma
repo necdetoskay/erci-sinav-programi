@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -15,57 +16,33 @@ model User {
   image         String?
   password      String?
   role          Role           @default(USER)
+  roleId        String?        // Yeni eklenen alan - özel roller için
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  accounts      Account[]
-  posts         Post[]
   questionPools QuestionPool[]
-  sessions      Session[]
+  refreshTokens  RefreshToken[]
+  customRole    CustomRole?    @relation(fields: [roleId], references: [id])
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Post {
+model RefreshToken {
   id        String   @id @default(cuid())
-  title     String
-  content   String
-  published Boolean  @default(false)
-  authorId  String
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  author    User     @relation(fields: [authorId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  type      String   // 'email', 'password-reset', etc.
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Exam {
@@ -217,12 +194,51 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+// Yapay zeka provider ve model tabloları
+model Provider {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  apiKey      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  models      Model[]  // Provider'a ait modeller
+}
+
+model Model {
+  id          String   @id @default(cuid())
+  name        String
+  details     String?
+  codeName    String   // Modelin kodlamada kullanılan adı (microsoft/phi-4-reasoning-plus:free gibi)
+  orderIndex  Int      @default(0) // Tabloda gösterim sırası
+  isEnabled   Boolean  @default(true) // Etkinleştirme/devre dışı bırakma durumu
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([providerId])
+  @@index([orderIndex])
+}
+
 enum Role {
   USER
   ADMIN
+  PERSONEL
 }
 
 enum Status {
   ACTIVE
   INACTIVE
+}
+
+// Özel roller için model
+model CustomRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  permissions Json?    // İzinleri JSON olarak saklayacağız
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
 }

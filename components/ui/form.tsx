@@ -51,18 +51,21 @@ const FormField = <
 >({
   ...props
 }: ControllerProps<TFieldValues, TName>) => {
+  // FormItemContext'i burada kullanıyoruz, callback içinde değil
+  const formItemContext = React.useContext(FormItemContext);
+
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
       <Controller
         {...props}
         render={({ field, fieldState, formState }) => {
-          const itemContext = React.useContext(FormItemContext); // id'yi almak için
-          if (!itemContext) {
+          // Context'i dışarıda aldığımız için burada kullanabiliriz
+          if (!formItemContext) {
              // FormItem içinde değilse veya context sağlanmadıysa hata ver
              // Bu durum normalde olmamalı ama bir güvenlik önlemi
              throw new Error("FormField must be used within a FormItem");
           }
-          const id = itemContext.id;
+          const id = formItemContext.id;
           const contextValue: FormFieldStateContextValue = {
             id,
             name: props.name,
@@ -149,10 +152,13 @@ const FormControl = React.forwardRef<
 >(({ ...props }, ref) => {
   const { error, formItemId, formDescriptionId, formMessageId } = useFormField()
 
+  // Benzersiz bir ID oluştur
+  const uniqueId = React.useId() + formItemId;
+
   return (
     <Slot
       ref={ref}
-      id={formItemId}
+      id={uniqueId}
       aria-describedby={
         !error
           ? `${formDescriptionId}`

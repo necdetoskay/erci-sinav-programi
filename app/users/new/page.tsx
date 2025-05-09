@@ -1,9 +1,11 @@
 "use client"
 
+import { Suspense } from "react";
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { Layout } from '@/components/layout/layout';
 import { UserForm } from '@/components/users/user-form';
 
-export default function NewUser() {
+function NewUserContent() {
   return (
     <Layout>
       <div className="container mx-auto">
@@ -14,4 +16,12 @@ export default function NewUser() {
       </div>
     </Layout>
   )
-} 
+}
+
+export default function NewUser() {
+  return (
+    <Suspense fallback={<div>Loading form...</div>}>
+      <NewUserContent />
+    </Suspense>
+  );
+}

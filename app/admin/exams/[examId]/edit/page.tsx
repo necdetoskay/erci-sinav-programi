@@ -21,7 +21,7 @@ import { Breadcrumb } from '../../../../components/breadcrumb';
 export default function EditExamPage({ params }: { params: { examId: string } }) {
   const router = useRouter();
   const examId = params.examId;
-  
+
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -47,13 +47,13 @@ export default function EditExamPage({ params }: { params: { examId: string } })
       try {
         setLoading(true);
         const response = await fetch(`/api/admin/exams/${examId}`);
-        
+
         if (!response.ok) {
           throw new Error('Sınav yüklenirken bir hata oluştu');
         }
-        
+
         const exam = await response.json();
-        
+
         // Form alanlarını doldur
         setTitle(exam.title);
         setDescription(exam.description || '');
@@ -76,18 +76,18 @@ export default function EditExamPage({ params }: { params: { examId: string } })
     // Rastgele 6 karakterlik alfanumerik kod oluştur
     const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Karışabilecek karakterler (0, O, 1, I) hariç tutuldu
     let result = '';
-    
+
     for (let i = 0; i < 6; i++) {
       const randomIndex = Math.floor(Math.random() * characters.length);
       result += characters.charAt(randomIndex);
     }
-    
+
     setAccessCode(result);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim()) {
       toast.error('Lütfen sınav adını giriniz');
       return;
@@ -95,7 +95,7 @@ export default function EditExamPage({ params }: { params: { examId: string } })
 
     try {
       setIsSubmitting(true);
-      
+
       const response = await fetch(`/api/admin/exams/${examId}`, {
         method: 'PUT',
         headers: {
@@ -109,14 +109,14 @@ export default function EditExamPage({ params }: { params: { examId: string } })
           status
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Sınav güncellenirken bir hata oluştu');
       }
-      
+
       toast.success('Sınav başarıyla güncellendi');
-      
+
       // Sınav listesine geri dön
       router.push('/admin/exams');
     } catch (error) {
@@ -160,90 +160,97 @@ export default function EditExamPage({ params }: { params: { examId: string } })
 
   return (
     <div className="container mx-auto p-6">
-      <Breadcrumb 
+      <Breadcrumb
         items={[
           { label: 'Yönetim', href: '/admin' },
           { label: 'Sınavlar', href: '/admin/exams' },
           { label: exam?.title || 'Sınav', href: `/admin/exams/${params.examId}` },
           { label: 'Düzenle' }
-        ]} 
+        ]}
       />
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Sınavı Düzenle</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Sınavı Düzenle</h1>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCancel}
+          >
+            İptal
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Kaydediliyor...' : 'Kaydet'}
+          </Button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit}>
         <Card>
-          <CardHeader>
-            <CardTitle>Sınav Bilgileri</CardTitle>
+          <CardHeader className="py-4">
+            <CardTitle className="text-lg">Sınav Bilgileri</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="title">Sınav Adı *</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Sınav adını giriniz"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Açıklama</Label>
-              <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Sınav açıklaması giriniz (isteğe bağlı)"
-                rows={4}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="duration">Sınav Süresi</Label>
-              <Select
-                value={durationMinutes}
-                onValueChange={setDurationMinutes}
-              >
-                <SelectTrigger id="duration">
-                  <SelectValue placeholder="Süre seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {durationOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="accessCode">Erişim Kodu</Label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={generateAccessCode}
-                >
-                  Kod Oluştur
-                </Button>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="title">Sınav Adı *</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Sınav adını giriniz"
+                  required
+                />
               </div>
-              <Input
-                id="accessCode"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Erişim kodu giriniz"
-              />
-              <p className="text-sm text-muted-foreground">
-                Personel bu kodu kullanarak sınava erişebilecek.
-              </p>
-            </div>
 
-            {status === 'published' && (
-              <div className="space-y-2">
+              <div className="space-y-1">
+                <Label htmlFor="duration">Sınav Süresi</Label>
+                <Select
+                  value={durationMinutes}
+                  onValueChange={setDurationMinutes}
+                >
+                  <SelectTrigger id="duration">
+                    <SelectValue placeholder="Süre seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {durationOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="accessCode">Erişim Kodu</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={generateAccessCode}
+                  >
+                    Kod Oluştur
+                  </Button>
+                </div>
+                <Input
+                  id="accessCode"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value)}
+                  placeholder="Erişim kodu giriniz"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Personel bu kodu kullanarak sınava erişebilecek.
+                </p>
+              </div>
+
+              <div className="space-y-1">
                 <Label htmlFor="status">Durum</Label>
                 <Select
                   value={status}
@@ -254,29 +261,31 @@ export default function EditExamPage({ params }: { params: { examId: string } })
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">Taslak</SelectItem>
-                    <SelectItem value="published">Yayında</SelectItem>
+                    <SelectItem value="active">Aktif</SelectItem>
+                    <SelectItem value="completed">Tamamlandı</SelectItem>
+                    <SelectItem value="archived">Arşivlenmiş</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  Sadece &quot;Aktif&quot; durumdaki sınavlara katılım sağlanabilir.
+                </p>
               </div>
-            )}
+
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="description">Açıklama</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Sınav açıklaması giriniz (isteğe bağlı)"
+                  rows={3}
+                />
+              </div>
+            </div>
           </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={handleCancel}
-            >
-              İptal
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Kaydediliyor...' : 'Kaydet'}
-            </Button>
-          </CardFooter>
+
         </Card>
       </form>
     </div>
   );
-} 
+}

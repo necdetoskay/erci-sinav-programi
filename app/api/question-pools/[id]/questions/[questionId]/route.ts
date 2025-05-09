@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 const questionSchema = z.object({
@@ -19,11 +19,11 @@ const questionSchema = z.object({
 
 // GET /api/question-pools/[id]/questions/[questionId]
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string; questionId: string } }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession(request);
 
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -51,11 +51,11 @@ export async function GET(
 
 // PATCH /api/question-pools/[id]/questions/[questionId]
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string; questionId: string } }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession(request);
 
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -87,11 +87,11 @@ export async function PATCH(
 
 // DELETE /api/question-pools/[id]/questions/[questionId]
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string; questionId: string } }
 ) {
   try {
-    const session = await auth();
+    const session = await getSession(request);
 
     if (!session?.user) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -111,4 +111,4 @@ export async function DELETE(
   } catch (error) {
     return new NextResponse("Internal Error", { status: 500 });
   }
-} 
+}

@@ -1,0 +1,2 @@
+docker build -t necdetoskay/erci-sinav-programi:latest .
+docker push necdetoskay/erci-sinav-programi:latest

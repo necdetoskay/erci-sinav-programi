@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -12,9 +12,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 export function Header() {
-  const { data: session, status } = useSession();
+  const [session, setSession] = useState<any>(null);
+  const [status, setStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+
+  useEffect(() => {
+    async function fetchSession() {
+      try {
+        const response = await fetch('/api/auth/session');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            setSession({ user: data.user });
+            setStatus('authenticated');
+          } else {
+            setStatus('unauthenticated');
+          }
+        } else {
+          setStatus('unauthenticated');
+        }
+      } catch (error) {
+        console.error('Failed to fetch session:', error);
+        setStatus('unauthenticated');
+      }
+    }
+
+    fetchSession();
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -50,7 +76,8 @@ export function Header() {
           <div className="w-full flex-1 md:w-auto md:flex-none">
             {/* Search component will be added here */}
           </div>
-          <nav className="flex items-center">
+          <nav className="flex items-center space-x-2">
+            <ThemeToggle />
             {status === 'loading' ? (
               <div className="h-8 w-8 animate-pulse rounded-full bg-gray-200" />
             ) : session ? (
@@ -108,4 +135,4 @@ export function Header() {
       </div>
     </header>
   );
-} 
+}

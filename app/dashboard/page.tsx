@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-// import { useUsers } from "@/app/context/UserContext" // Removed unused import
+import { useEffect, useState, Suspense } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,22 +12,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { QuestionPool } from "@prisma/client"
-import { Exam } from "@prisma/client"
-import { Users, CheckCircle, BookOpen, FileText } from "lucide-react" // Icons
-// import { motion } from "framer-motion" // Removed framer-motion import
+import { QuestionPool, Exam } from "@/types/prisma";
+import { Users, CheckCircle, BookOpen, FileText, Loader2 } from "lucide-react" // Icons
+import { motion } from "framer-motion"
 import {
   BarChart,
   Bar,
-  Cell, // Import Cell for custom bar colors if needed
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LabelList // To potentially add labels on bars
-} from "recharts" // Import recharts components
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell
+} from "recharts"
+import { format } from 'date-fns'; // format fonksiyonu import edildi
+// import { LoadingLink } from "@/components/ui/loading-link"; // Kullanılmıyorsa kaldırılabilir
+// import { Button } from "@/components/ui/button" // Kullanılmıyorsa kaldırılabilir
 
 // Interface for the OVERALL stats data
 interface OverallStats {
@@ -39,32 +43,45 @@ interface OverallStats {
 
 // Interface for DETAILED participant stats (matching API response)
 interface ParticipantStats {
-    identifier: string; // Unique key (email or name)
-    displayName: string; // Name to display
-    isEmail: boolean; // Identifier type flag
+    identifier: string;
+    displayName: string;
+    isEmail: boolean;
     totalAttempts: number;
     totalCorrect: number;
     totalIncorrect: number;
     averageScore: number | null;
 }
 
+// Yeni veri yapıları
+interface AttemptsOverTimeData {
+  date: string;
+  count: number;
+}
+
+interface ScoreDistributionData {
+  range: string;
+  count: number;
+}
+
 // Interface for the combined API response
 interface DashboardData {
     overallStats: OverallStats;
     participantStats: ParticipantStats[];
+    attemptsOverTime?: AttemptsOverTimeData[]; // Yeni alan
+    scoreDistribution?: ScoreDistributionData[]; // Yeni alan
 }
 
 
-export default function Dashboard() {
-  // const { users } = useUsers() // Removed user data fetching
+function DashboardContent() {
   const [questionPools, setQuestionPools] = useState<QuestionPool[]>([])
   const [exams, setExams] = useState<Exam[]>([])
-  const [stats, setStats] = useState<DashboardData | null>(null); // State for combined dashboard data
-  const [isLoadingStats, setIsLoadingStats] = useState(true); // Loading state for stats
+  const [stats, setStats] = useState<DashboardData | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
+
+  const PIE_CHART_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#DD4477', '#66AB8C'];
 
   useEffect(() => {
-    setIsLoadingStats(true); // Start loading stats
-    // Fetch Dashboard Stats
+    setIsLoadingStats(true);
     fetch("/api/dashboard/stats")
       .then((res) => {
         if (!res.ok) {
@@ -72,125 +89,95 @@ export default function Dashboard() {
         }
         return res.json();
       })
-      .then((data: DashboardData) => { // Expect combined data structure
+      .then((data: DashboardData) => {
         setStats(data);
       })
       .catch((error) => {
         console.error("Error fetching dashboard stats:", error);
-        // Optionally show a toast error here
       })
       .finally(() => {
-        setIsLoadingStats(false); // Finish loading stats
+        setIsLoadingStats(false);
       });
 
-
-    // Fetch Question Pools
     fetch("/api/question-pools")
       .then((res) => res.json())
       .then((data) => setQuestionPools(data))
       .catch((error) => console.error("Error fetching question pools:", error))
 
-    // Fetch Exams (Assuming an endpoint exists, adjust if needed)
-    fetch("/api/admin/exams") // Adjust API endpoint if necessary
+    fetch("/api/admin/exams")
       .then((res) => res.json())
       .then((data) => setExams(data))
       .catch((error) => console.error("Error fetching exams:", error))
   }, [])
 
-  // Removed user statistics calculations
-  // const activeUsers = users.filter((user) => user.status === "ACTIVE").length
-  // const inactiveUsers = users.filter((user) => user.status === "INACTIVE").length
-  // const adminUsers = users.filter((user) => user.role === "ADMIN").length
-  // const recentUsers = users.slice(0, 5)
-
-  // Add recent question pools and exams
-  // Ensure data is an array before slicing
-  const recentQuestionPools = Array.isArray(questionPools) ? questionPools.slice(-5).reverse() : []; // Get last 5 and reverse for recent first
-  const recentExams = Array.isArray(exams) ? exams.slice(-5).reverse() : []; // Get last 5 and reverse for recent first
+  const recentQuestionPools = Array.isArray(questionPools) ? questionPools.slice(-5).reverse() : [];
+  const recentExams = Array.isArray(exams) ? exams.slice(-5).reverse() : [];
 
 
   return (
-    <div className="container mx-auto">
-      <h1 className="text-4xl font-bold mb-6">Dashboard</h1>
-
-      {/* Statistics Cards (No Animation) */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Soru Havuzu</CardTitle>
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{questionPools.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Sınav</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{exams.length}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Toplam Sınav Denemesi</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                  {isLoadingStats ? '...' : stats?.overallStats?.totalAttempts ?? 0}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tamamlanan Denemeler</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                  {isLoadingStats ? '...' : stats?.overallStats?.completedAttempts ?? 0}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Benzersiz Katılımcı</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                  {isLoadingStats ? '...' : stats?.overallStats?.uniqueParticipants ?? 0}
-              </div>
-            </CardContent>
-          </Card>
+    <div className="container mx-auto py-6"> {/* Ana container'a biraz padding eklendi */}
+      <div className="flex justify-between items-center mb-8"> {/* Alt boşluk artırıldı */}
+        <h1 className="text-4xl font-bold">Dashboard</h1>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
-          <TabsTrigger value="participants">Katılımcı İstatistikleri</TabsTrigger>
-          {/* <TabsTrigger value="analytics" disabled>
-            Analytics
-          </TabsTrigger> */}
-        </TabsList>
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2"> {/* Use two columns for overview */}
-             {/* Recent Question Pools Table */}
-             <Card>
-                <CardHeader>
-                  <CardTitle>Son Eklenen Soru Havuzları</CardTitle>
-                </CardHeader>
+      {/* Statistics Cards (With Animation) */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5 mb-8"> {/* Boşluklar ve alt boşluk artırıldı */}
+        {[
+          { title: "Toplam Soru Havuzu", value: questionPools.length, Icon: BookOpen, isLoading: false },
+          { title: "Toplam Sınav", value: exams.length, Icon: FileText, isLoading: false },
+          { title: "Toplam Sınav Denemesi", value: stats?.overallStats?.totalAttempts ?? 0, Icon: Users, isLoading: isLoadingStats },
+          { title: "Tamamlanan Denemeler", value: stats?.overallStats?.completedAttempts ?? 0, Icon: CheckCircle, isLoading: isLoadingStats },
+          { title: "Benzersiz Katılımcı", value: stats?.overallStats?.uniqueParticipants ?? 0, Icon: Users, isLoading: isLoadingStats },
+        ].map((item, index) => (
+          <motion.div
+            key={item.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+          >
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
+                <item.Icon className="h-5 w-5 text-muted-foreground" /> {/* İkon boyutu biraz artırıldı */}
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold"> {/* Sayı boyutu biraz artırıldı */}
+                  {item.isLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : item.value}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      <Tabs defaultValue="overview" className="space-y-6"> {/* Sekmeler arası boşluk artırıldı */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.5 }}>
+          <TabsList>
+            <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
+            <TabsTrigger value="participants">Katılımcı İstatistikleri</TabsTrigger>
+          </TabsList>
+        </motion.div>
+
+        <TabsContent value="overview" className="space-y-6">
+          <motion.div 
+            className="grid gap-6" // Ana grid için tek sütun, içindeki gridler 2 sütun olacak
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: { opacity: 1, transition: { staggerChildren: 0.2 } }
+            }}
+          >
+            {/* Recent Tables Section */}
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
+            >
+              <Card>
+                <CardHeader><CardTitle>Son Eklenen Soru Havuzları</CardTitle></CardHeader>
                 <CardContent>
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Başlık</TableHead>
-                        <TableHead>Açıklama</TableHead>
-                      </TableRow>
-                    </TableHeader>
+                    <TableHeader><TableRow><TableHead>Başlık</TableHead><TableHead>Açıklama</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {recentQuestionPools.length > 0 ? (
                         recentQuestionPools.map((pool) => (
@@ -200,79 +187,118 @@ export default function Dashboard() {
                           </TableRow>
                         ))
                       ) : (
-                        <TableRow>
-                          <TableCell colSpan={2} className="text-center">Henüz soru havuzu eklenmemiş.</TableCell>
-                        </TableRow>
+                        <TableRow><TableCell colSpan={2} className="text-center">Henüz soru havuzu eklenmemiş.</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </CardContent>
               </Card>
-            {/* Recent Exams Table */}
-             <Card>
-                <CardHeader>
-                  <CardTitle>Son Eklenen Sınavlar</CardTitle>
-                </CardHeader>
+              <Card>
+                <CardHeader><CardTitle>Son Eklenen Sınavlar</CardTitle></CardHeader>
                 <CardContent>
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Başlık</TableHead>
-                        <TableHead>Açıklama</TableHead>
-                        <TableHead>Durum</TableHead>
-                      </TableRow>
-                    </TableHeader>
+                    <TableHeader><TableRow><TableHead>Başlık</TableHead><TableHead>Açıklama</TableHead><TableHead>Durum</TableHead></TableRow></TableHeader>
                     <TableBody>
                     {Array.isArray(recentExams) && recentExams.length > 0 ? (
                       recentExams.map((exam) => (
                         <TableRow key={exam.id}>
                           <TableCell>{exam.title}</TableCell>
                           <TableCell>{exam.description?.substring(0, 50)}{exam.description && exam.description.length > 50 ? "..." : ""}</TableCell>
-                          <TableCell>
-                            <Badge variant={exam.status === 'PUBLISHED' ? 'default' : 'secondary'}>
-                              {exam.status}
-                            </Badge>
-                          </TableCell>
+                          <TableCell><Badge variant={exam.status === 'PUBLISHED' ? 'default' : 'secondary'}>{exam.status}</Badge></TableCell>
                         </TableRow>
                       ))
                     ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center">Henüz sınav eklenmemiş.</TableCell>
-                        </TableRow>
+                        <TableRow><TableCell colSpan={3} className="text-center">Henüz sınav eklenmemiş.</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </CardContent>
               </Card>
-          </div> {/* Close the grid div */}
+            </motion.div>
+
+            {/* New Charts Section */}
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
+            >
+              <Card>
+                <CardHeader><CardTitle>Sınav Denemeleri (Son 30 Gün)</CardTitle></CardHeader>
+                <CardContent className="pl-2 h-[350px]"> {/* Yükseklik verildi */}
+                  {isLoadingStats ? (
+                    <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /> Yükleniyor...</div>
+                  ) : stats?.attemptsOverTime && stats.attemptsOverTime.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={stats.attemptsOverTime} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                        <XAxis dataKey="date" tickFormatter={(str) => format(new Date(str), "MMM d")} tick={{ fontSize: 10 }} />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                        <Tooltip 
+                          labelFormatter={(label) => format(new Date(label), "PP")}
+                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: '1px solid #ddd' }} 
+                        />
+                        <Legend verticalAlign="top" height={36}/>
+                        <Line type="monotone" dataKey="count" name="Deneme Sayısı" stroke="#8884d8" strokeWidth={2} activeDot={{ r: 6 }} dot={{r: 3}} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex justify-center items-center h-full text-muted-foreground">Veri bulunamadı.</div>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle>Başarı Puanı Dağılımı</CardTitle></CardHeader>
+                <CardContent className="h-[350px] flex justify-center items-center">
+                  {isLoadingStats ? (
+                    <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /> Yükleniyor...</div>
+                  ) : stats?.scoreDistribution && stats.scoreDistribution.some(item => item.count > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={stats.scoreDistribution.filter(item => item.count > 0)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent, count }) => `${name}: ${count} (${(percent * 100).toFixed(0)}%)`}
+                          outerRadius={100} // Outer radius ayarlandı
+                          fill="#8884d8"
+                          dataKey="count"
+                          nameKey="range"
+                          paddingAngle={2}
+                          minAngle={1}
+                        >
+                          {stats.scoreDistribution.filter(item => item.count > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} strokeWidth={0} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value, name) => [`${value} katılımcı`, name]}
+                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: '1px solid #ddd' }}
+                        />
+                        <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{fontSize: "12px", marginTop: "15px"}}/>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex justify-center items-center h-full text-muted-foreground">Puan dağılım verisi bulunamadı.</div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
         </TabsContent>
-         <TabsContent value="participants" className="space-y-4">
-           {/* Participant Statistics Chart */}
-           <Card>
-              <CardHeader>
-                <CardTitle>Katılımcı Ortalama Başarı Puanları</CardTitle>
-              </CardHeader>
-              <CardContent className="pl-2"> {/* Add padding for chart */}
+
+        <TabsContent value="participants" className="space-y-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
+            <Card>
+              <CardHeader><CardTitle>Katılımcı Ortalama Başarı Puanları</CardTitle></CardHeader>
+              <CardContent className="pl-2 h-[400px]"> {/* Yükseklik verildi */}
                 {isLoadingStats ? (
-                   <div className="flex justify-center items-center h-60">Yükleniyor...</div>
+                   <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /> Yükleniyor...</div>
                 ) : stats && stats.participantStats.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={350}> {/* Increased height */}
-                    <BarChart data={stats.participantStats} margin={{ top: 5, right: 30, left: 20, bottom: 70 }}> {/* Increased bottom margin */}
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" /> {/* Lighter grid */}
-                      <XAxis
-                        dataKey="displayName"
-                        angle={-60} // More angle for potentially long names
-                        textAnchor="end"
-                        interval={0}
-                        tick={{ fontSize: 10 }} // Smaller font size for labels
-                        height={80} // Increased height for angled labels
-                      />
-                      <YAxis
-                        domain={[0, 100]}
-                        tickFormatter={(value) => `${value}%`}
-                        tick={{ fontSize: 11 }}
-                        label={{ value: 'Başarı (%)', angle: -90, position: 'insideLeft', offset: -10, style: {fontSize: '12px', fill: '#666'} }} // Adjusted label
-                      />
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.participantStats} margin={{ top: 5, right: 30, left: 20, bottom: 70 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="displayName" angle={-60} textAnchor="end" interval={0} tick={{ fontSize: 10 }} height={80} />
+                      <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={{ fontSize: 11 }} label={{ value: 'Başarı (%)', angle: -90, position: 'insideLeft', offset: -10, style: {fontSize: '12px', fill: '#666'} }} />
                       <Tooltip
                         cursor={{ fill: 'rgba(206, 206, 206, 0.2)' }}
                         formatter={(value: number) => [`${value.toFixed(1)}%`, "Ortalama Başarı"]}
@@ -280,20 +306,25 @@ export default function Dashboard() {
                         contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: '1px solid #ddd', padding: '8px 12px' }}
                       />
                       <Legend verticalAlign="top" height={36}/>
-                      {/* Teal color, rounded top, slightly larger bar, animation */}
-                      <Bar dataKey="averageScore" name="Ortalama Başarı" fill="#2dd4bf" radius={[4, 4, 0, 0]} barSize={40} animationDuration={800}>
-                         {/* Optional: Add labels on top of bars */}
-                         {/* <LabelList dataKey="averageScore" position="top" formatter={(value: number) => `${value.toFixed(0)}%`} fontSize={11} fill="#333" /> */}
-                      </Bar>
+                      <Bar dataKey="averageScore" name="Ortalama Başarı" fill="#2dd4bf" radius={[4, 4, 0, 0]} barSize={30} animationDuration={800} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex justify-center items-center h-60 text-muted-foreground">Katılımcı istatistiği bulunamadı.</div>
+                  <div className="flex justify-center items-center h-full text-muted-foreground">Katılımcı istatistiği bulunamadı.</div>
                 )}
               </CardContent>
             </Card>
+          </motion.div>
          </TabsContent>
       </Tabs>
     </div>
   )
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="h-12 w-12 animate-spin" /> Yükleniyor...</div>}>
+      <DashboardContent />
+    </Suspense>
+  );
 }

@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { getServerSession } from "@/lib/session";
 // Import the new client page component
 import QuestionPoolClientPage from "./question-pool-client-page";
 import { ExtendedPoolQuestion } from "./components/question-list"; // Import ExtendedPoolQuestion
@@ -16,7 +16,7 @@ interface PageProps { // Renamed interface to avoid conflict if needed
 
 // This is now the main server component for the route
 export default async function Page({ params }: PageProps) {
-  const session = await auth();
+  const session = await getServerSession();
 
   if (!session?.user) {
     redirect("/auth/login");
@@ -25,10 +25,18 @@ export default async function Page({ params }: PageProps) {
   let questionPool: (QuestionPool & { questions: ExtendedPoolQuestion[] }) | null = null;
 
   try {
+    // params.id'nin sayı olduğundan emin olalım
+    const poolId = parseInt(params.id);
+
+    if (isNaN(poolId)) {
+      console.error(`Invalid question pool ID: ${params.id}`);
+      redirect("/question-pools"); // Geçersiz ID durumunda yönlendir
+    }
+
     const fetchedPool = await db.questionPool.findUnique({
       where: {
-        id: parseInt(params.id),
-        // userId: session.user.id, // Removed user check
+        id: poolId,
+        userId: session.user.id, // Kullanıcı kontrolünü ekle
       },
       include: {
         questions: {

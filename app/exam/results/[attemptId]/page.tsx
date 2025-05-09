@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation'; // useRouter import edildi
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'; // CardFooter import edildi
 import { Skeleton } from '@/components/ui/skeleton';
-import { ExamAttemptStatus } from '@prisma/client'; // ExamAttemptStatus import edildi
+import { ExamAttemptStatus } from "@/types/prisma";
 import { Button } from '@/components/ui/button'; // Button import edildi
 import { toast } from 'sonner'; // toast import edildi
 import {

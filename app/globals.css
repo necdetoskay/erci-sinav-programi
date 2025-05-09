@@ -2,35 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Temel stiller */
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+/* Temel UI bileşenleri */
+.btn {
+  @apply px-4 py-2 rounded-md font-medium;
+}
+
+.btn-primary {
+  @apply bg-blue-500 text-white hover:bg-blue-600;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-md p-4;
+}
+
+.input {
+  @apply border border-gray-300 rounded-md px-3 py-2;
+}
+
+.label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
 }
 
-@media (prefers-color-scheme: dark) {
+/* Dark mode devre dışı bırakıldı */
+/* @media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 0, 0, 0;
   }
-}
+} */
 
 /* Form element styles */
 select,
 input,
 .dropdown-item {
-  @apply text-gray-900 dark:text-gray-100;
+  @apply text-gray-900;
 }
 
 .dropdown-item:hover {
-  @apply bg-gray-100 dark:bg-gray-700;
+  @apply bg-gray-100;
 }
 
 /* Form labels and text */
 label,
 .form-text {
-  @apply text-gray-700 dark:text-gray-300;
+  @apply text-gray-700;
 }
 
 @layer base {
@@ -56,7 +89,8 @@ label,
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
   }
-  .dark {
+  /* Dark mode devre dışı bırakıldı */
+  /* .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -76,7 +110,7 @@ label,
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 240 4.9% 83.9%;
-  }
+  } */
 }
 
 @layer base {
@@ -100,4 +134,28 @@ label,
 
 .animate-pulse-width {
   animation: pulse-width 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Loading ekranı için progress animasyonu */
+@keyframes progress {
+  0% {
+    width: 0%;
+    margin-left: 0;
+  }
+  50% {
+    width: 70%;
+    margin-left: 0;
+  }
+  70% {
+    width: 50%;
+    margin-left: 50%;
+  }
+  100% {
+    width: 0%;
+    margin-left: 100%;
+  }
+}
+
+.animate-progress {
+  animation: progress 2s ease-in-out infinite;
 }

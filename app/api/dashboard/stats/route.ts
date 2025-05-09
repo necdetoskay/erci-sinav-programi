@@ -1,177 +1,149 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { ExamAttemptStatus, ExamAttempt, ExamAttemptAnswer } from '@prisma/client'; // Import types
+import { ExamAttemptStatus, ExamAttemptAnswer as PrismaExamAttemptAnswer } from "@prisma/client"; // Prisma client'tan tipi al
+import { subDays, format, startOfDay, endOfDay } from 'date-fns'; // Tarih işlemleri için
 
-export const dynamic = 'force-dynamic'; // Prevent caching
+export const dynamic = 'force-dynamic';
 
-// Define the structure for detailed participant stats
 interface ParticipantStats {
-    identifier: string; // Unique key (email or name)
-    displayName: string; // Name to display
-    isEmail: boolean; // Identifier type flag
+    identifier: string;
+    displayName: string;
+    isEmail: boolean;
     totalAttempts: number;
     totalCorrect: number;
     totalIncorrect: number;
-    averageScore: number | null; // Percentage
+    averageScore: number | null;
+}
+
+// Yeni veri yapıları
+interface AttemptsOverTimeData {
+    date: string; // YYYY-MM-DD
+    count: number;
+}
+
+interface ScoreDistributionData {
+    range: string; // e.g., '81-100%'
+    count: number;
 }
 
 export async function GET(request: Request) {
   console.log("[API /api/dashboard/stats] Request received.");
   try {
-    // 1. Get total number of attempts
+    // 1. Genel İstatistikler
     const totalAttempts = await prisma.examAttempt.count();
-    console.log(`[API /api/dashboard/stats] Total attempts: ${totalAttempts}`);
-
-    // 2. Get number of unique participants (based on email)
-    // Use distinct count aggregation
-    const uniqueParticipantsResult = await prisma.examAttempt.aggregate({
-      _count: {
-        participantEmail: true, // Count non-null emails
-      },
-      where: {
-        participantEmail: {
-          not: null, // Ensure email is not null if counting distinct emails
-        },
-      },
-    });
-     // Prisma's distinct count on a field isn't direct. We fetch distinct emails and count them.
-     const distinctEmails = await prisma.examAttempt.findMany({
-        where: {
-            participantEmail: {
-                not: null, // Exclude null emails if necessary
-            },
-        },
-        select: {
-            participantEmail: true,
-        },
+    const distinctEmails = await prisma.examAttempt.findMany({
+        where: { participantEmail: { not: null } },
+        select: { participantEmail: true },
         distinct: ['participantEmail'],
-     });
-     const uniqueParticipants = distinctEmails.length;
-     console.log(`[API /api/dashboard/stats] Unique participants: ${uniqueParticipants}`);
-
-
-    // 3. Get number of completed attempts
+    });
+    const uniqueParticipants = distinctEmails.length;
     const completedAttempts = await prisma.examAttempt.count({
-      where: {
-        status: {
-          in: [ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT],
-        },
-      },
+      where: { status: { in: [ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT] } },
     });
-    console.log(`[API /api/dashboard/stats] Completed attempts: ${completedAttempts}`);
+    console.log(`[API /api/dashboard/stats] Overall stats: TA=${totalAttempts}, UP=${uniqueParticipants}, CA=${completedAttempts}`);
 
-    // 4. Calculate detailed participant statistics
-    console.log("[API /api/dashboard/stats] Fetching completed attempts with answers...");
-    const completedAttemptsWithAnswers = await prisma.examAttempt.findMany({
-        where: {
-            status: {
-                in: [ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT],
-            },
-            // participantEmail: { // Ensure we only process attempts with emails - REMOVED FILTER
-            //     not: null
-            // }
-        },
-        // include: { // Keep include removed, fetch answers separately
-        //     // attemptAnswers: true
-        // }
+    // 2. Detaylı Katılımcı İstatistikleri
+    const completedAttemptsWithAnswersRecords = await prisma.examAttempt.findMany({
+        where: { status: { in: [ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT] } },
     });
-    console.log(`[API /api/dashboard/stats] Found ${completedAttemptsWithAnswers.length} completed attempt records (email filter removed).`);
 
-    // If completed attempts exist, fetch their answers separately
-    let allAnswers: ExamAttemptAnswer[] = [];
-    if (completedAttemptsWithAnswers.length > 0) {
-        const attemptIds = completedAttemptsWithAnswers.map(a => a.id);
-        console.log(`[API /api/dashboard/stats] Fetching answers separately for attempt IDs:`, attemptIds);
+    let allAnswers: PrismaExamAttemptAnswer[] = []; // Güncellenmiş tipi kullan
+    if (completedAttemptsWithAnswersRecords.length > 0) {
+        const attemptIds = completedAttemptsWithAnswersRecords.map(a => a.id);
         allAnswers = await prisma.examAttemptAnswer.findMany({
-            where: {
-                examAttemptId: {
-                    in: attemptIds
-                }
-            }
+            where: { examAttemptId: { in: attemptIds } }
+            // select veya include olmadan ilişkisel alanlar (question, answer) gelmez
         });
-        console.log(`[API /api/dashboard/stats] Found ${allAnswers.length} answer records separately.`);
-        // Log raw answers for debugging
-        console.log("[API /api/dashboard/stats] Raw separate answers data:", JSON.stringify(allAnswers, null, 2));
     }
 
-    // Group answers by attemptId for easier lookup
-    const answersByAttemptId = new Map<string, ExamAttemptAnswer[]>();
+    const answersByAttemptId = new Map<string, PrismaExamAttemptAnswer[]>(); // Güncellenmiş tipi kullan
     allAnswers.forEach(answer => {
         const answers = answersByAttemptId.get(answer.examAttemptId) || [];
         answers.push(answer);
         answersByAttemptId.set(answer.examAttemptId, answers);
     });
 
-    // Process the attempts to aggregate stats per participant (using email or name as identifier)
     const participantStatsMap = new Map<string, ParticipantStats>();
-
-    completedAttemptsWithAnswers.forEach(attempt => {
-        // Determine the identifier: use email if available, otherwise use name (handle potential null name)
+    completedAttemptsWithAnswersRecords.forEach((attempt) => {
         const identifier = attempt.participantEmail ? `email:${attempt.participantEmail}` : `name:${attempt.participantName || 'Bilinmeyen'}`;
         const displayName = attempt.participantName || (attempt.participantEmail ? attempt.participantEmail : 'Bilinmeyen');
         const isEmail = !!attempt.participantEmail;
-
-        const attemptAnswers = answersByAttemptId.get(attempt.id) || []; // Get answers from the map
-        console.log(`[API /api/dashboard/stats] Processing attempt ${attempt.id} for identifier '${identifier}'. Found ${attemptAnswers.length} answers.`);
-
+        const attemptAnswers = answersByAttemptId.get(attempt.id) || [];
         let stats = participantStatsMap.get(identifier);
-
-        // Initialize stats for new participant identifier
         if (!stats) {
-            stats = {
-                identifier: identifier,
-                displayName: displayName,
-                isEmail: isEmail,
-                totalAttempts: 0,
-                totalCorrect: 0,
-                totalIncorrect: 0,
-                averageScore: null
-            };
+            stats = { identifier, displayName, isEmail, totalAttempts: 0, totalCorrect: 0, totalIncorrect: 0, averageScore: null };
         }
-
-        // Update stats
         stats.totalAttempts += 1;
         let correctCount = 0;
-        let incorrectCount = 0;
-        // Access isCorrect from the separately fetched answers
-        attemptAnswers.forEach(answer => {
-            if (answer.isCorrect) {
-                correctCount++;
-            } else {
-                incorrectCount++;
-            }
-        });
+        attemptAnswers.forEach(answer => { if (answer.isCorrect) correctCount++; });
         stats.totalCorrect += correctCount;
-        stats.totalIncorrect += incorrectCount;
-
-        participantStatsMap.set(identifier, stats); // Use identifier instead of email
+        stats.totalIncorrect += (attemptAnswers.length - correctCount);
+        participantStatsMap.set(identifier, stats);
     });
 
-    // Calculate average score and convert map to array
     const detailedParticipantStats = Array.from(participantStatsMap.values()).map(stats => {
         const totalAnswered = stats.totalCorrect + stats.totalIncorrect;
         stats.averageScore = totalAnswered > 0 ? parseFloat(((stats.totalCorrect / totalAnswered) * 100).toFixed(1)) : 0;
         return stats;
     });
-
     console.log(`[API /api/dashboard/stats] Calculated detailed stats for ${detailedParticipantStats.length} participants.`);
 
+    // 3. Zaman İçinde Sınav Denemesi Sayısı (attemptsOverTime) - Son 30 gün
+    const attemptsOverTime: AttemptsOverTimeData[] = [];
+    const today = new Date();
+    for (let i = 29; i >= 0; i--) { // Son 30 gün (bugün dahil)
+      const targetDate = subDays(today, i);
+      const dayStart = startOfDay(targetDate);
+      const dayEnd = endOfDay(targetDate);
 
-    // Prepare the final response data including both overall and detailed stats
+      const count = await prisma.examAttempt.count({
+        where: {
+          createdAt: {
+            gte: dayStart,
+            lte: dayEnd,
+          },
+        },
+      });
+      attemptsOverTime.push({ date: format(targetDate, 'yyyy-MM-dd'), count });
+    }
+    console.log(`[API /api/dashboard/stats] Calculated attempts over time for last 30 days.`);
+
+    // 4. Başarı Puanı Dağılımı (scoreDistribution)
+    const scoreDistribution: ScoreDistributionData[] = [
+      { range: '0-20%', count: 0 },
+      { range: '21-40%', count: 0 },
+      { range: '41-60%', count: 0 },
+      { range: '61-80%', count: 0 },
+      { range: '81-100%', count: 0 },
+    ];
+    detailedParticipantStats.forEach(participant => {
+      const score = participant.averageScore;
+      if (score !== null) {
+        if (score >= 0 && score <= 20) scoreDistribution[0].count++;
+        else if (score >= 21 && score <= 40) scoreDistribution[1].count++;
+        else if (score >= 41 && score <= 60) scoreDistribution[2].count++;
+        else if (score >= 61 && score <= 80) scoreDistribution[3].count++;
+        else if (score >= 81 && score <= 100) scoreDistribution[4].count++;
+      }
+    });
+    console.log(`[API /api/dashboard/stats] Calculated score distribution.`);
+
     const responseData = {
-      overallStats: {
-        totalAttempts,
-        uniqueParticipants,
-        completedAttempts,
-      },
-      participantStats: detailedParticipantStats, // Add detailed stats
+      overallStats: { totalAttempts, uniqueParticipants, completedAttempts },
+      participantStats: detailedParticipantStats,
+      attemptsOverTime, // Yeni veri
+      scoreDistribution,  // Yeni veri
     };
 
-    console.log("[API /api/dashboard/stats] Successfully calculated stats:", responseData);
+    console.log("[API /api/dashboard/stats] Successfully calculated all stats.");
     return NextResponse.json(responseData, { status: 200 });
 
   } catch (error) {
     console.error('[API /api/dashboard/stats] Error fetching dashboard stats:', error);
-    return NextResponse.json({ message: 'Failed to fetch dashboard statistics.' }, { status: 500 });
+    let errorMessage = 'Failed to fetch dashboard statistics.';
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    }
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
