@@ -12,9 +12,9 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
-      <div className="hidden border-r bg-background md:block md:w-64">
+      <div className="hidden border-r bg-background md:block md:w-64 sidebar">
         <div className="flex h-16 items-center border-b px-6">
-          <h1 className="text-lg font-bold">EYSS</h1>
+          <h1 className="text-lg font-bold">Kentkonut Sınav Portalı</h1>
         </div>
         <div className="p-6">
           <SideNav />
@@ -23,7 +23,7 @@ export default function DashboardLayout({
       {/* Main Content */}
       <div className="flex flex-1 flex-col">
         {/* Header */}
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 header">
           <div className="container flex h-14 items-center justify-between">
             <div></div>
             <UserNav />

@@ -12,6 +12,7 @@ interface QuestionReviewProps {
   totalSteps: number;
   toggleApproval: (questionId: string) => void;
   saveApprovedQuestions: () => void;
+  setCurrentStep?: (step: number) => void;
 }
 
 export const QuestionReview: React.FC<QuestionReviewProps> = ({
@@ -19,7 +20,8 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
   currentStep,
   totalSteps,
   toggleApproval,
-  saveApprovedQuestions
+  saveApprovedQuestions,
+  setCurrentStep
 }) => {
   return (
     <div className="space-y-4 py-4">
@@ -104,7 +106,7 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
           disabled={currentStep === 1}
           onClick={() => {
             const prevStep = Math.max(1, currentStep - 1);
-            // setCurrentStep(prevStep);
+            if (setCurrentStep) setCurrentStep(prevStep);
           }}
         >
           Önceki Soru
@@ -114,7 +116,7 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
           disabled={currentStep === totalSteps}
           onClick={() => {
             const nextStep = Math.min(totalSteps, currentStep + 1);
-            // setCurrentStep(nextStep);
+            if (setCurrentStep) setCurrentStep(nextStep);
           }}
         >
           Sonraki Soru

@@ -26,12 +26,21 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid user ID format" }, { status: 400 });
     }
 
+    // Superadmin tüm soru havuzlarını görebilir, diğer kullanıcılar sadece kendilerine ait olanları
+    const whereCondition = session.user.role === 'SUPERADMIN'
+      ? {}
+      : { userId: session.user.id };
+
     const questionPools = await db.questionPool.findMany({
-      where: {
-        userId: session.user.id,
-      },
+      where: whereCondition,
       include: {
         questions: true,
+        createdBy: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
       },
     });
 

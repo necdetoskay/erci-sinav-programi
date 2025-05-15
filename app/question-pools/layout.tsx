@@ -14,7 +14,7 @@ export default function QuestionPoolsLayout({
       {/* Sidebar */}
       <div className="hidden border-r bg-background md:block md:w-64">
         <div className="flex h-16 items-center border-b px-6">
-          <h1 className="text-lg font-bold">Erci Sınav Programı</h1>
+          <h1 className="text-lg font-bold">Kentkonut Sınav Portalı</h1>
         </div>
         <div className="p-6">
           <SideNav />
@@ -36,4 +36,4 @@ export default function QuestionPoolsLayout({
       </div>
     </div>
   )
-} 
+}

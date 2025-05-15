@@ -33,17 +33,29 @@ export default async function Page({ params }: PageProps) {
       redirect("/question-pools"); // Geçersiz ID durumunda yönlendir
     }
 
+    // Super admin tüm soru havuzlarına erişebilir
+    let whereCondition = {};
+    if (session.user.role === 'SUPERADMIN') {
+      whereCondition = { id: poolId };
+    } else {
+      whereCondition = { id: poolId, userId: session.user.id };
+    }
+
     const fetchedPool = await db.questionPool.findUnique({
-      where: {
-        id: poolId,
-        userId: session.user.id, // Kullanıcı kontrolünü ekle
-      },
+      where: whereCondition,
       include: {
         questions: {
           orderBy: {
             createdAt: "desc",
           },
         },
+        createdBy: {
+          select: {
+            name: true,
+            email: true,
+            role: true
+          }
+        }
       },
     });
 

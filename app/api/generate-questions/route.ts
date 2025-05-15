@@ -1,276 +1,240 @@
 import { NextResponse } from 'next/server';
-import { getApiKey } from '@/lib/api-key-service';
-// SDK importlarını kaldırıp fetch'e geri dönüyoruz.
+import { prisma } from '@/lib/prisma';
 
-// Google Gemini API için fetch kullanan yardımcı fonksiyon (Orijinal Hali)
-async function callGoogleGeminiAPI(apiKey: string, model: string, prompt: string): Promise<{ success: boolean; questions?: string; error?: string; status: number }> {
-  // Google Gemini API endpoint'i model adına göre dinamik olarak oluşturulabilir veya sabit olabilir.
-  // Genellikle /v1beta/models/{model}:generateContent formatındadır.
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  console.log(`Calling Google Gemini API: ${url}`);
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        // generationConfig: { // İsteğe bağlı yapılandırma
-        //   temperature: 0.7,
-        //   maxOutputTokens: 2000,
-        // }
-      }),
-    });
-
-    const responseDataText = await response.text();
-    console.log('Google Gemini Raw Response Text:', responseDataText);
-
-    let data;
+// Özel API isteği için yardımcı fonksiyon
+async function callCustomAPI(apiKey: string, model: string, prompt: string, apiCode: string): Promise<{ success: boolean; questions?: string; error?: string; status: number }> {
+    console.log(`Calling Custom API with model ${model}`);
     try {
-      data = JSON.parse(responseDataText);
-      console.log('Google Gemini Full Response Data:', JSON.stringify(data, null, 2));
-    } catch (e) {
-      console.error('Failed to parse Google Gemini response as JSON:', e);
-      const status = response.status || 500;
-      const errorMessage = `Google Gemini API yanıtı ayrıştırılamadı (HTTP ${status}). Yanıt: ${responseDataText.substring(0, 200)}`;
-      return { success: false, error: errorMessage, status: status };
-    }
-
-    // Google API Hata Kontrolü (yanıt içindeki 'error')
-    if (data?.error) {
-      console.error('--- Google Gemini returned an error object ---');
-      console.error('Google Gemini Error Data:', data.error);
-      const errorStatus = data.error.code || response.status || 500;
-      let errorMessage = data.error.message || `Google Gemini API hatası (kod ${errorStatus})`;
-       // Google API 429 hatasını kontrol et
-       if (errorStatus === 429) {
-         errorMessage = `Google Gemini API kullanım kotası aşıldı (Hata: ${data.error.message || 'Bilinmiyor'}). Lütfen planınızı kontrol edin veya daha sonra tekrar deneyin.`;
-         console.log(`!!! Returning 429 error from Google Gemini: ${errorMessage}`);
-         return { success: false, error: errorMessage, status: 429 };
-       }
-      console.log(`!!! Returning error from Google Gemini JSON payload (status ${errorStatus}): ${errorMessage}`);
-      return { success: false, error: errorMessage, status: typeof errorStatus === 'number' ? errorStatus : 500 };
-    }
-
-    // HTTP durumunu da kontrol et (yedek)
-    if (!response.ok) {
-        console.error(`--- Google Gemini API request failed (HTTP ${response.status}) ---`);
-        const errorMessage = `Google Gemini API hatası (${response.status}). Detay: ${data?.error?.message || responseDataText.substring(0, 200)}`;
-        return { success: false, error: errorMessage, status: response.status };
-    }
-
-    // Başarılı yanıtı işle (candidates yapısını kontrol et)
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      console.error('--- Invalid Google Gemini response format (no candidates/content/parts/text) ---', data);
-      // Bazen blockReason olabilir, bunu da kontrol edelim
-      const blockReason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
-      const blockMessage = blockReason ? ` İçerik engellendi (Sebep: ${blockReason}).` : '';
-      return { success: false, error: `Google Gemini API yanıtı başarılı ancak beklenen içerik bulunamadı.${blockMessage}`, status: 500 };
-    }
-
-    console.log("--- Google Gemini call successful ---");
-    return { success: true, questions: text, status: 200 };
-
-  } catch (error) {
-    console.error('Error calling Google Gemini API:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Google Gemini API çağrılırken bilinmeyen bir hata oluştu.';
-    return { success: false, error: errorMessage, status: 500 };
-  }
-}
-
-// Groq API için yardımcı fonksiyon
-async function callGroqAPI(apiKey: string, model: string, prompt: string): Promise<{ success: boolean; questions?: string; error?: string; status: number }> {
-    console.log(`Calling Groq API with model ${model}`);
-    try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', { // Groq endpoint
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`, // Groq API anahtarı kullanılacak
-                'Content-Type': 'application/json',
-                // Groq için özel header'lar gerekirse buraya eklenebilir, şimdilik standart
-            },
-            body: JSON.stringify({
-                model: model,
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.7, // Groq için isteğe bağlı parametreler
-                max_tokens: 2000 // Groq için isteğe bağlı parametreler
-            })
-        });
-
-        const responseDataText = await response.text();
-        console.log('Groq Raw Response Text:', responseDataText); // Log mesajını güncelle
-
-        let data;
+        // API kodunu parse et
+        let apiCodeObj;
         try {
-            data = JSON.parse(responseDataText);
-            console.log('Groq Full Response Data:', JSON.stringify(data, null, 2)); // Log mesajını güncelle
-        } catch (e) {
-            console.error('Failed to parse Groq response as JSON:', e); // Log mesajını güncelle
-            const status = response.status || 500;
-            const errorMessage = `Groq API yanıtı ayrıştırılamadı (HTTP ${status}). Yanıt: ${responseDataText.substring(0, 200)}`; // Hata mesajını güncelle
-            return { success: false, error: errorMessage, status: status };
-        }
+            // API kodu boş veya geçersiz ise varsayılan bir yapı kullan
+            if (!apiCode || apiCode.trim() === '') {
+                console.log('API code is empty, using default OpenRouter format');
+                apiCodeObj = {
+                    model: "MODEL_NAME",
+                    messages: [
+                        {
+                            role: "user",
+                            content: "PROMPT"
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2000
+                };
+            } else if (apiCode.trim().startsWith('fetch(')) {
+                // JavaScript fetch kodu ise, varsayılan OpenRouter formatını kullan
+                console.log('API code is JavaScript fetch code, extracting model name and using default OpenRouter format');
 
-        // Groq Hata Kontrolü (yanıt içindeki 'error') - OpenAI formatına benzer
-        if (data?.error) {
-            console.error('--- Groq returned an error object ---'); // Log mesajını güncelle
-            console.error('Groq Error Data:', data.error); // Log mesajını güncelle
-            const errorStatus = data.error.code || response.status || 500;
-            let errorMessage = data.error.message || `Groq API hatası (kod ${errorStatus})`; // Hata mesajını güncelle
-            // Hız sınırı hatasını (429) özel olarak ele al
-            if (errorStatus === 429 || String(errorStatus).startsWith('429')) {
-                errorMessage = data?.error?.message || `Seçilen model (${model}) için Groq kullanım kotası aşıldı. Lütfen farklı bir model deneyin veya planınızı kontrol edin.`; // Hata mesajını güncelle
-                console.log(`!!! Returning 429 error from Groq: ${errorMessage}`); // Log mesajını güncelle
-                return { success: false, error: errorMessage, status: 429 };
+                // Model adını çıkarmaya çalış
+                const modelMatch = apiCode.match(/"model"\s*:\s*"([^"]+)"/);
+                const extractedModel = modelMatch ? modelMatch[1] : model;
+
+                apiCodeObj = {
+                    model: extractedModel,
+                    messages: [
+                        {
+                            role: "user",
+                            content: "PROMPT"
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2000
+                };
+            } else {
+                apiCodeObj = JSON.parse(apiCode);
             }
-            console.log(`!!! Returning error from Groq JSON payload (status ${errorStatus}): ${errorMessage}`); // Log mesajını güncelle
-            return { success: false, error: errorMessage, status: typeof errorStatus === 'number' ? errorStatus : 500 };
+        } catch (error) {
+            console.error('Error parsing API code:', error);
+            console.log('Invalid API code, using default OpenRouter format');
+            // JSON parse hatası durumunda varsayılan bir yapı kullan
+            apiCodeObj = {
+                model: "MODEL_NAME",
+                messages: [
+                    {
+                        role: "user",
+                        content: "PROMPT"
+                    }
+                ],
+                temperature: 0.7,
+                max_tokens: 2000
+            };
         }
 
-        // HTTP durumunu da kontrol et (yedek)
-        if (!response.ok) {
-            console.error(`--- Groq API request failed (HTTP ${response.status}) ---`); // Log mesajını güncelle
-            const errorMessage = `Groq API hatası (${response.status}). Detay: ${data?.error?.message || responseDataText.substring(0, 200)}`; // Hata mesajını güncelle
-            return { success: false, error: errorMessage, status: response.status };
-        }
+        // API endpoint'ini al
+        const endpoint = apiCodeObj.endpoint || 'https://openrouter.ai/api/v1/chat/completions';
+        delete apiCodeObj.endpoint; // endpoint'i body'den çıkar
 
-        // Başarılı yanıtı işle (OpenAI formatına benzer)
-        const text = data?.choices?.[0]?.message?.content;
-        if (!text) {
-            console.error('--- Invalid Groq response format (no choices/content) ---'); // Log mesajını güncelle
-            return { success: false, error: 'Groq API yanıtı başarılı ancak beklenen içerik bulunamadı.', status: 500 }; // Hata mesajını güncelle
-        }
+        // Headers'ı al
+        const headers: Record<string, string> = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
+            'X-Title': 'Akilli Sinav Sistemi',
+            ...(apiCodeObj.headers || {})
+        };
+        delete apiCodeObj.headers; // headers'ı body'den çıkar
 
-        console.log("--- Groq call successful ---"); // Log mesajını güncelle
-        return { success: true, questions: text, status: 200 };
-
-    } catch (error) {
-        console.error('Error calling Groq API:', error); // Log mesajını güncelle
-        const errorMessage = error instanceof Error ? error.message : 'Groq API çağrılırken bilinmeyen bir hata oluştu.'; // Hata mesajını güncelle
-        return { success: false, error: errorMessage, status: 500 };
-    }
-}
-
-
-// OpenRouter API için yardımcı fonksiyon (Meta Llama 4 Maverick desteği eklendi)
-async function callOpenRouterAPI(apiKey: string, model: string, prompt: string): Promise<{ success: boolean; questions?: string; error?: string; status: number }> {
-    console.log(`Calling OpenRouter API with model ${model}`);
-    try {
-        // Model Llama 4 Maverick mi kontrol et
-        // URL'den gelen model adını temizle (https:// gibi kısımları kaldır)
-        let cleanedModelName = model;
-
-        // URL formatını temizle
-        if (cleanedModelName.includes('openrouter.ai/')) {
-            // URL formatındaki model adını temizle
-            const match = cleanedModelName.match(/openrouter\.ai\/(.+)/);
-            if (match && match[1]) {
-                cleanedModelName = match[1];
-            }
-        }
-        console.log('Cleaned Model Name:', cleanedModelName);
-
-        const isLlama4Maverick = cleanedModelName.toLowerCase().includes('maverick');
-        const isGemini2Flash = cleanedModelName.toLowerCase().includes('gemini-2.0-flash');
-
-        // İstek gövdesini hazırla
-        const requestBody: any = {
-            model: cleanedModelName, // Temizlenmiş model adını kullan
-            temperature: 0.7,
-            max_tokens: 2000
+        // Body'yi oluştur
+        const body = {
+            ...apiCodeObj
         };
 
-        // Llama 4 Maverick veya Gemini 2.0 Flash için multimodal format
-        if (isLlama4Maverick || isGemini2Flash) {
-            console.log(`Using multimodal format for ${isLlama4Maverick ? 'Llama 4 Maverick' : 'Gemini 2.0 Flash'}`);
-            requestBody.messages = [
-                {
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: prompt }
-                    ]
-                }
-            ];
+        // MODEL_NAME ve PROMPT değerlerini değiştir
+        let bodyStr = JSON.stringify(body);
+
+        // Eğer MODEL_NAME yoksa ekle
+        if (!bodyStr.includes('MODEL_NAME')) {
+            bodyStr = bodyStr.replace(/"model"\s*:\s*"[^"]*"/, `"model": "${model}"`);
         } else {
-            // Standart format
-            requestBody.messages = [{ role: 'user', content: prompt }];
+            bodyStr = bodyStr.replace(/MODEL_NAME/g, model);
         }
 
-        console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+        // Eğer PROMPT yoksa ekle
+        if (!bodyStr.includes('PROMPT')) {
+            try {
+                // messages dizisi varsa, ilk mesajın content'ine ekle
+                if (bodyStr.includes('"messages"')) {
+                    // Güvenli bir şekilde prompt'u ekle
+                    const escapedPrompt = prompt
+                        .replace(/\\/g, '\\\\')
+                        .replace(/"/g, '\\"')
+                        .replace(/\n/g, '\\n')
+                        .replace(/\r/g, '\\r')
+                        .replace(/\t/g, '\\t')
+                        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
 
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': process.env.SITE_URL || 'http://localhost:3000',
-                'X-Title': 'Akilli Sinav Sistemi'
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        const responseDataText = await response.text();
-        console.log('OpenRouter Raw Response Text:', responseDataText);
-
-        let data;
-        try {
-            data = JSON.parse(responseDataText);
-            console.log('OpenRouter Full Response Data:', JSON.stringify(data, null, 2));
-        } catch (e) {
-            console.error('Failed to parse OpenRouter response as JSON:', e);
-            const status = response.status || 500;
-            const errorMessage = `OpenRouter API yanıtı ayrıştırılamadı (HTTP ${status}). Yanıt: ${responseDataText.substring(0, 200)}`;
-            return { success: false, error: errorMessage, status: status };
-        }
-
-        // OpenRouter Hata Kontrolü (yanıt içindeki 'error')
-        if (data?.error) {
-            console.error('--- OpenRouter returned an error object ---');
-            console.error('OpenRouter Error Data:', data.error);
-            const errorStatus = data.error.code || response.status || 500;
-            let errorMessage = data.error.message || `OpenRouter API hatası (kod ${errorStatus})`;
-            // Hız sınırı hatasını (429) özel olarak ele al
-            if (errorStatus === 429 || String(errorStatus).startsWith('429')) {
-                errorMessage = data?.error?.message || `Seçilen model (${model}) için OpenRouter kullanım kotası aşıldı. Lütfen farklı bir model deneyin veya planınızı kontrol edin.`;
-                console.log(`!!! Returning 429 error from OpenRouter: ${errorMessage}`);
-                return { success: false, error: errorMessage, status: 429 };
+                    bodyStr = bodyStr.replace(/"content"\s*:\s*"[^"]*"/, `"content": "${escapedPrompt}"`);
+                } else {
+                    // messages dizisi yoksa, varsayılan bir messages dizisi ekle
+                    const parsedTemp = JSON.parse(bodyStr);
+                    parsedTemp.messages = [{ role: 'user', content: prompt }];
+                    bodyStr = JSON.stringify(parsedTemp);
+                }
+            } catch (error) {
+                console.error('Error modifying body JSON:', error);
+                // Hata durumunda varsayılan bir yapı kullan
+                const defaultBody = {
+                    model: model,
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.7,
+                    max_tokens: 2000
+                };
+                bodyStr = JSON.stringify(defaultBody);
             }
-            console.log(`!!! Returning error from OpenRouter JSON payload (status ${errorStatus}): ${errorMessage}`);
-            return { success: false, error: errorMessage, status: typeof errorStatus === 'number' ? errorStatus : 500 };
+        } else {
+            try {
+                // Güvenli bir şekilde prompt'u ekle
+                const escapedPrompt = prompt
+                    .replace(/\\/g, '\\\\')
+                    .replace(/"/g, '\\"')
+                    .replace(/\n/g, '\\n')
+                    .replace(/\r/g, '\\r')
+                    .replace(/\t/g, '\\t')
+                    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+
+                bodyStr = bodyStr.replace(/PROMPT/g, escapedPrompt);
+            } catch (error) {
+                console.error('Error replacing PROMPT:', error);
+                // Hata durumunda varsayılan bir yapı kullan
+                const defaultBody = {
+                    model: model,
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.7,
+                    max_tokens: 2000
+                };
+                bodyStr = JSON.stringify(defaultBody);
+            }
         }
 
-        // HTTP durumunu da kontrol et (yedek)
-        if (!response.ok) {
-            console.error(`--- OpenRouter API request failed (HTTP ${response.status}) ---`);
-            const errorMessage = `OpenRouter API hatası (${response.status}). Detay: ${data?.error?.message || responseDataText.substring(0, 200)}`;
-            return { success: false, error: errorMessage, status: response.status };
+        try {
+            // JSON parsing hatalarını önlemek için kontrol karakterlerini temizle
+            const cleanBodyStr = bodyStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+            const parsedBody = JSON.parse(cleanBodyStr);
+            console.log('API Endpoint:', endpoint);
+            console.log('API Headers:', headers);
+            console.log('API Body:', parsedBody);
+
+            // API isteğini yap
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(parsedBody)
+            });
+
+            // Yanıtı text olarak al
+            const responseText = await response.text();
+            console.log('API Response Text:', responseText);
+
+            // Yanıtı JSON olarak parse et
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (error) {
+                console.error('Error parsing API response:', error);
+                return {
+                    success: false,
+                    error: `API yanıtı geçerli bir JSON formatında değil: ${responseText.substring(0, 200)}`,
+                    status: 500
+                };
+            }
+
+            if (!response.ok) {
+                console.error('API Error:', data);
+                return {
+                    success: false,
+                    error: data.error?.message || `API hatası: ${response.status}`,
+                    status: response.status
+                };
+            }
+
+            console.log('API Response:', data);
+
+            // Yanıtı işle
+            let questions = '';
+
+            if (data.choices && data.choices[0] && data.choices[0].message) {
+                questions = data.choices[0].message.content;
+            } else if (data.content) {
+                questions = data.content;
+            } else if (data.output) {
+                questions = data.output;
+            } else if (data.text) {
+                questions = data.text;
+            } else if (data.response) {
+                questions = data.response;
+            } else if (data.result) {
+                questions = data.result;
+            } else if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+                // Google Gemini formatı
+                questions = data.candidates[0].content.parts[0].text;
+            } else {
+                questions = JSON.stringify(data);
+            }
+
+            return { success: true, questions, status: 200 };
+        } catch (error) {
+            console.error('Error parsing body JSON:', error);
+            return {
+                success: false,
+                error: `API isteği gövdesi oluşturulurken hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`,
+                status: 500
+            };
         }
-
-        // Başarılı yanıtı işle
-        const text = data?.choices?.[0]?.message?.content;
-        if (!text) {
-            console.error('--- Invalid OpenRouter response format (no choices/content) ---');
-            return { success: false, error: 'OpenRouter API yanıtı başarılı ancak beklenen içerik bulunamadı.', status: 500 };
-        }
-
-        console.log("--- OpenRouter call successful ---");
-        return { success: true, questions: text, status: 200 };
-
     } catch (error) {
-        console.error('Error calling OpenRouter API:', error);
-        const errorMessage = error instanceof Error ? error.message : 'OpenRouter API çağrılırken bilinmeyen bir hata oluştu.';
-        return { success: false, error: errorMessage, status: 500 };
+        console.error('Custom API Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'API isteği sırasında bir hata oluştu',
+            status: 500
+        };
     }
 }
-
 
 // Ana API Route Handler
 export async function POST(req: Request) {
   try {
-    const { content, numberOfQuestions, optionsPerQuestion, model } = await req.json();
+    const { content, numberOfQuestions, optionsPerQuestion, model, difficulty = "medium" } = await req.json();
 
     // Input validation checks...
     if (!content) {
@@ -290,7 +254,14 @@ export async function POST(req: Request) {
     // Şık sayısını 4 ile sınırla
     const actualOptionsCount = Math.min(4, optionsPerQuestion);
 
-    const prompt = `Aşağıdaki içerik hakkında ${numberOfQuestions} adet çoktan seçmeli soru üret.
+    // Zorluk seviyesini Türkçe'ye çevir
+    const difficultyInTurkish = {
+      easy: 'kolay',
+      medium: 'orta',
+      hard: 'zor'
+    }[difficulty] || 'orta';
+
+    const prompt = `Aşağıdaki içerik hakkında ${numberOfQuestions} adet ${difficultyInTurkish} seviyede çoktan seçmeli soru üret.
 
 ÖNEMLİ KURALLAR:
 1. Her soru için SADECE 4 seçenek olmalı (A, B, C, D) - daha fazla değil, daha az değil.
@@ -317,101 +288,97 @@ TEKRAR UYARI: Sadece A, B, C, D şıklarını kullan. Başka şık ekleme. Markd
     let result: { success: boolean; questions?: string; error?: string; status: number };
 
     // Model adına göre hangi API'nin çağrılacağını belirle
-    const lowerCaseModel = model.toLowerCase();
+
+    // Önce veritabanından model bilgisini al
+    console.log('Fetching model info for:', model);
+
+    // Veritabanından model bilgisini al
+    const modelInfo = await prisma.model.findFirst({
+      where: {
+        codeName: model
+      }
+    });
+
+    console.log('Model info from database:', modelInfo);
+
+    // Model API kodunu al
+    const modelApiCode = modelInfo?.apiCode || '';
+    console.log('Model API code:', modelApiCode);
+
+    // API kodu yoksa hata döndür
+    if (!modelApiCode) {
+      console.error('API code is not defined for model:', model);
+      return NextResponse.json({
+        success: false,
+        error: `"${modelInfo?.name || model}" modeli için API kodu tanımlanmamış. Lütfen model ayarlarından API kodunu ekleyin.`
+      }, { status: 400 });
+    }
+
     console.log('Original Model:', model);
-    console.log('Lowercase Model:', lowerCaseModel);
 
-    // Gemini 2.0 Flash modeli için özel kontrol
-    const isGemini2Flash = lowerCaseModel.includes('gemini-2.0-flash');
-    console.log('Is Gemini 2.0 Flash Model:', isGemini2Flash);
+    // API kodunu kullanarak API isteği yap
+    try {
+      console.log('Using API code for model:', model);
 
-    // Diğer Gemini modelleri için kontrol
-    const isGoogleModel = lowerCaseModel.includes('gemini') && !isGemini2Flash;
-    console.log('Is Google Model (non-Flash):', isGoogleModel);
-
-    // Maverick modelini OpenRouter üzerinden çalıştır
-    const isMaverickModel = lowerCaseModel.includes('maverick');
-    console.log('Is Maverick Model:', isMaverickModel);
-
-    // Groq modellerini kontrol et (Llama 4 Maverick hariç)
-    const isGroqModel = (!isMaverickModel && lowerCaseModel.includes('llama')) ||
-                        lowerCaseModel.includes('mixtral') ||
-                        model === 'meta-llama/llama-4-scout-17b-16e-instruct'; // Groq'un desteklediği diğer modeller eklenebilir
-    console.log('Is Groq Model:', isGroqModel);
-
-    if (isGemini2Flash) {
-      // Gemini 2.0 Flash modeli için OpenRouter API'sini kullan
-      console.log(`Routing to OpenRouter for Gemini 2.0 Flash model: ${model}`);
-
-      // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
-      let apiKey = await getApiKey('Open Router', 'OPENROUTER_API_KEY');
-      if (!apiKey) {
-        console.error('OpenRouter API Key is not configured in database or environment variables.');
-        return NextResponse.json({ success: false, error: 'OpenRouter API anahtarı yapılandırılmamış.' }, { status: 500 });
+      // API anahtarını al - provider'a göre
+      let providerId = modelInfo?.providerId;
+      if (!providerId) {
+        console.error('Provider ID is not defined for model:', model);
+        return NextResponse.json({
+          success: false,
+          error: `"${modelInfo?.name || model}" modeli için provider tanımlanmamış. Lütfen model ayarlarını kontrol edin.`
+        }, { status: 400 });
       }
 
-      // API anahtarının formatını kontrol et ve düzelt
-      if (apiKey && !apiKey.startsWith('sk-or-')) {
-        console.log('API anahtarı doğru formatta değil, düzeltiliyor...');
-        if (apiKey.startsWith('Bearer ')) {
-          apiKey = apiKey.substring(7);
+      // Provider'ı bul
+      const provider = await prisma.provider.findUnique({
+        where: {
+          id: providerId
         }
-        if (!apiKey.startsWith('sk-or-')) {
-          apiKey = `sk-or-v1-${apiKey}`;
-        }
+      });
+
+      if (!provider) {
+        console.error('Provider not found for model:', model);
+        return NextResponse.json({
+          success: false,
+          error: `"${modelInfo?.name || model}" modeli için provider bulunamadı. Lütfen model ayarlarını kontrol edin.`
+        }, { status: 400 });
       }
 
-      // Gemini 2.0 Flash için multimodal format kullan
-      result = await callOpenRouterAPI(apiKey, model, prompt);
-    } else if (isGoogleModel) {
-      // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
-      const apiKey = await getApiKey('Google Gemini', 'GOOGLE_API_KEY') || process.env.GOOGLE_API_KEY;
-      if (!apiKey) {
-        console.error('Google API Key is not configured in database or environment variables.');
-        return NextResponse.json({ success: false, error: 'Google API anahtarı yapılandırılmamış.' }, { status: 500 });
-      }
-      // Google API'sine gönderilecek temiz model adını al
-      let geminiModelName = model.toLowerCase().startsWith('google/') ? model.substring(7) : model;
-      geminiModelName = geminiModelName.startsWith('models/') ? geminiModelName.substring(7) : geminiModelName;
+      // API anahtarını al
+      let apiKey = provider.apiKey;
 
-      console.log(`Routing to Google Gemini with cleaned model name: ${geminiModelName}`);
-      result = await callGoogleGeminiAPI(apiKey, geminiModelName, prompt);
-    } else if (isGroqModel) { // Groq kontrolü eklendi
-      // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
-      const apiKey = await getApiKey('Groq', 'GROQ_API_KEY') || process.env.GROQ_API_KEY;
-      if (!apiKey) {
-        console.error('Groq API Key is not configured in database or environment variables.');
-        return NextResponse.json({ success: false, error: 'Groq API anahtarı yapılandırılmamış.' }, { status: 500 });
-      }
-      console.log(`Routing to Groq with model name: ${model}`);
-      result = await callGroqAPI(apiKey, model, prompt); // callGroqAPI çağrılıyor
-    } else {
-      // Diğer tüm modeller için OpenRouter'ı kullan (varsayılan)
-      console.log(`Routing to OpenRouter with model name: ${model}`);
+      // API anahtarının formatını kontrol et
+      if (apiKey) {
+        console.log('API anahtarı formatı kontrol ediliyor...');
+        // Boşlukları temizle
+        apiKey = apiKey.trim();
 
-      // Önce veritabanından API anahtarını almayı dene, yoksa çevre değişkeninden al
-      let apiKey = await getApiKey('Open Router', 'OPENROUTER_API_KEY');
-      if (!apiKey) {
-        console.error('OpenRouter API Key is not configured in database or environment variables.');
-        return NextResponse.json({ success: false, error: 'OpenRouter API anahtarı yapılandırılmamış.' }, { status: 500 });
-      }
-
-      // API anahtarının formatını kontrol et ve düzelt
-      // OpenRouter API anahtarları genellikle "sk-or-v1-..." ile başlar
-      if (apiKey && !apiKey.startsWith('sk-or-')) {
-        console.log('API anahtarı doğru formatta değil, düzeltiliyor...');
         // Eğer API anahtarı "Bearer " ile başlıyorsa, bu kısmı kaldır
         if (apiKey.startsWith('Bearer ')) {
-          apiKey = apiKey.substring(7);
+          apiKey = apiKey.substring(7).trim();
+          console.log('Bearer öneki kaldırıldı');
         }
-        // Eğer API anahtarı "sk-or-" ile başlamıyorsa, ekle
-        if (!apiKey.startsWith('sk-or-')) {
-          apiKey = `sk-or-v1-${apiKey}`;
-        }
-        console.log('Düzeltilmiş API Key (ilk 10 karakter):', apiKey.substring(0, 10) + '...');
+
+        // API anahtarını olduğu gibi kullan, format düzeltmesi yapma
+        console.log(`API anahtarı formatı: ${apiKey.substring(0, 4)}...`);
+      } else {
+        console.error('API key is not defined for provider:', provider.name);
+        return NextResponse.json({
+          success: false,
+          error: `"${provider.name}" provider'ı için API anahtarı tanımlanmamış. Lütfen provider ayarlarını kontrol edin.`
+        }, { status: 400 });
       }
 
-      result = await callOpenRouterAPI(apiKey, model, prompt);
+      // API kodunu kullanarak özel API isteği yap
+      console.log('Using custom API code for model:', model);
+      result = await callCustomAPI(apiKey, model, prompt, modelApiCode);
+    } catch (error) {
+      console.error('Error calling API:', error);
+      return NextResponse.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'API isteği sırasında bir hata oluştu.'
+      }, { status: 500 });
     }
 
     // API çağrısının sonucunu kontrol et

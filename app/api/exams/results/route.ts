@@ -19,8 +19,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Tüm sınavları getir
+    // Kullanıcı bazlı filtreleme için where koşulu
+    const whereCondition = {
+      createdById: session.user.id
+    };
+
+    // Admin kullanıcılar tüm sınavları görebilir
+    const isAdmin = session.user.role === 'ADMIN';
+    const where = isAdmin ? {} : whereCondition;
+
+    // Kullanıcıya ait sınavları getir
     const exams = await prisma.exam.findMany({
+      where,
       orderBy: {
         created_at: "desc",
       },
@@ -31,6 +41,13 @@ export async function GET(req: NextRequest) {
         status: true,
         created_at: true,
         duration_minutes: true,
+        createdById: true,
+        createdBy: {
+          select: {
+            name: true,
+            email: true
+          }
+        },
         // Sınava katılan kullanıcı sayısını hesapla
         _count: {
           select: {
@@ -70,6 +87,8 @@ export async function GET(req: NextRequest) {
         status: exam.status,
         created_at: exam.created_at,
         duration_minutes: exam.duration_minutes,
+        createdById: exam.createdById,
+        createdBy: exam.createdBy,
         participantCount: exam._count.attempts,
         averageScore: scoreData?._avg.score ? scoreData._avg.score * 100 : null,
       };

@@ -13,6 +13,22 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { QuestionPool, Exam } from "@/types/prisma";
+
+// Genişletilmiş QuestionPool tipi
+interface ExtendedQuestionPool extends QuestionPool {
+  createdBy?: {
+    name: string;
+    email: string;
+  };
+}
+
+// Genişletilmiş Exam tipi
+interface ExtendedExam extends Exam {
+  createdBy?: {
+    name: string;
+    email: string;
+  };
+}
 import { Users, CheckCircle, BookOpen, FileText, Loader2 } from "lucide-react" // Icons
 import { motion } from "framer-motion"
 import {
@@ -73,42 +89,62 @@ interface DashboardData {
 
 
 function DashboardContent() {
-  const [questionPools, setQuestionPools] = useState<QuestionPool[]>([])
-  const [exams, setExams] = useState<Exam[]>([])
+  const [questionPools, setQuestionPools] = useState<ExtendedQuestionPool[]>([])
+  const [exams, setExams] = useState<ExtendedExam[]>([])
   const [stats, setStats] = useState<DashboardData | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   const PIE_CHART_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#DD4477', '#66AB8C'];
 
   useEffect(() => {
-    setIsLoadingStats(true);
-    fetch("/api/dashboard/stats")
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Failed to fetch stats: ${res.statusText}`);
+    const fetchData = async () => {
+      try {
+        setIsLoadingStats(true);
+
+        // İstatistikleri getir
+        const statsRes = await fetch("/api/dashboard/stats");
+        if (!statsRes.ok) {
+          throw new Error(`Failed to fetch stats: ${statsRes.statusText}`);
         }
-        return res.json();
-      })
-      .then((data: DashboardData) => {
-        setStats(data);
-      })
-      .catch((error) => {
-        console.error("Error fetching dashboard stats:", error);
-      })
-      .finally(() => {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+
+        // Soru havuzlarını getir
+        const poolsRes = await fetch("/api/question-pools");
+        if (!poolsRes.ok) {
+          throw new Error(`Failed to fetch question pools: ${poolsRes.statusText}`);
+        }
+        const poolsData = await poolsRes.json();
+        setQuestionPools(poolsData);
+
+        // Sınavları getir
+        const examsRes = await fetch("/api/admin/exams");
+        if (!examsRes.ok) {
+          throw new Error(`Failed to fetch exams: ${examsRes.statusText}`);
+        }
+        const examsData = await examsRes.json();
+        // API yanıtı bir nesne içinde exams dizisi döndürüyor
+        if (examsData && examsData.exams) {
+          setExams(examsData.exams);
+        } else {
+          console.error("Unexpected exams data format:", examsData);
+          setExams([]);
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      } finally {
         setIsLoadingStats(false);
-      });
+      }
+    };
 
-    fetch("/api/question-pools")
-      .then((res) => res.json())
-      .then((data) => setQuestionPools(data))
-      .catch((error) => console.error("Error fetching question pools:", error))
-
-    fetch("/api/admin/exams")
-      .then((res) => res.json())
-      .then((data) => setExams(data))
-      .catch((error) => console.error("Error fetching exams:", error))
+    fetchData();
   }, [])
+
+  // Konsola veri yapılarını yazdır (hata ayıklama için)
+  useEffect(() => {
+    console.log("Question Pools:", questionPools);
+    console.log("Exams:", exams);
+  }, [questionPools, exams]);
 
   const recentQuestionPools = Array.isArray(questionPools) ? questionPools.slice(-5).reverse() : [];
   const recentExams = Array.isArray(exams) ? exams.slice(-5).reverse() : [];
@@ -135,13 +171,13 @@ function DashboardContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
-            <Card>
+            <Card className="dashboard-card">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-                <item.Icon className="h-5 w-5 text-muted-foreground" /> {/* İkon boyutu biraz artırıldı */}
+                <CardTitle className="text-sm font-medium dashboard-title">{item.title}</CardTitle>
+                <item.Icon className="h-5 w-5 dashboard-icon" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold"> {/* Sayı boyutu biraz artırıldı */}
+                <div className="text-3xl font-bold dashboard-value">
                   {item.isLoading ? <Loader2 className="h-7 w-7 animate-spin" /> : item.value}
                 </div>
               </CardContent>
@@ -153,13 +189,13 @@ function DashboardContent() {
       <Tabs defaultValue="overview" className="space-y-6"> {/* Sekmeler arası boşluk artırıldı */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.5 }}>
           <TabsList>
-            <TabsTrigger value="overview">Genel Bakış</TabsTrigger>
-            <TabsTrigger value="participants">Katılımcı İstatistikleri</TabsTrigger>
+            <TabsTrigger value="overview" className="dashboard-tab">Genel Bakış</TabsTrigger>
+            <TabsTrigger value="participants" className="dashboard-tab">Katılımcı İstatistikleri</TabsTrigger>
           </TabsList>
         </motion.div>
 
         <TabsContent value="overview" className="space-y-6">
-          <motion.div 
+          <motion.div
             className="grid gap-6" // Ana grid için tek sütun, içindeki gridler 2 sütun olacak
             initial="hidden"
             animate="visible"
@@ -169,47 +205,67 @@ function DashboardContent() {
             }}
           >
             {/* Recent Tables Section */}
-            <motion.div 
+            <motion.div
               className="grid grid-cols-1 md:grid-cols-2 gap-6"
               variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
             >
-              <Card>
-                <CardHeader><CardTitle>Son Eklenen Soru Havuzları</CardTitle></CardHeader>
+              <Card className="dashboard-card">
+                <CardHeader><CardTitle className="dashboard-title">Son Eklenen Soru Havuzları</CardTitle></CardHeader>
                 <CardContent>
                   <Table>
-                    <TableHeader><TableRow><TableHead>Başlık</TableHead><TableHead>Açıklama</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>Başlık</TableHead><TableHead>Açıklama</TableHead><TableHead>Oluşturan</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {recentQuestionPools.length > 0 ? (
-                        recentQuestionPools.map((pool) => (
-                          <TableRow key={pool.id}>
-                            <TableCell>{pool.title}</TableCell>
-                            <TableCell>{pool.description?.substring(0, 50)}{pool.description && pool.description.length > 50 ? "..." : ""}</TableCell>
-                          </TableRow>
-                        ))
+                      {Array.isArray(recentQuestionPools) && recentQuestionPools.length > 0 ? (
+                        recentQuestionPools.map((pool) => {
+                          console.log("Rendering pool:", pool); // Hata ayıklama için
+                          return (
+                            <TableRow key={pool.id}>
+                              <TableCell className="text-foreground">{pool.title}</TableCell>
+                              <TableCell className="text-foreground">{pool.description?.substring(0, 50)}{pool.description && pool.description.length > 50 ? "..." : ""}</TableCell>
+                              <TableCell className="text-foreground">{pool.createdBy?.name || "Bilinmiyor"}</TableCell>
+                            </TableRow>
+                          );
+                        })
                       ) : (
-                        <TableRow><TableCell colSpan={2} className="text-center">Henüz soru havuzu eklenmemiş.</TableCell></TableRow>
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center">
+                            {Array.isArray(recentQuestionPools)
+                              ? "Henüz soru havuzu eklenmemiş."
+                              : "Soru havuzu verileri yüklenirken bir hata oluştu."}
+                          </TableCell>
+                        </TableRow>
                       )}
                     </TableBody>
                   </Table>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader><CardTitle>Son Eklenen Sınavlar</CardTitle></CardHeader>
+              <Card className="dashboard-card">
+                <CardHeader><CardTitle className="dashboard-title">Son Eklenen Sınavlar</CardTitle></CardHeader>
                 <CardContent>
                   <Table>
-                    <TableHeader><TableRow><TableHead>Başlık</TableHead><TableHead>Açıklama</TableHead><TableHead>Durum</TableHead></TableRow></TableHeader>
+                    <TableHeader><TableRow><TableHead>Başlık</TableHead><TableHead>Açıklama</TableHead><TableHead>Durum</TableHead><TableHead>Oluşturan</TableHead></TableRow></TableHeader>
                     <TableBody>
                     {Array.isArray(recentExams) && recentExams.length > 0 ? (
-                      recentExams.map((exam) => (
-                        <TableRow key={exam.id}>
-                          <TableCell>{exam.title}</TableCell>
-                          <TableCell>{exam.description?.substring(0, 50)}{exam.description && exam.description.length > 50 ? "..." : ""}</TableCell>
-                          <TableCell><Badge variant={exam.status === 'PUBLISHED' ? 'default' : 'secondary'}>{exam.status}</Badge></TableCell>
-                        </TableRow>
-                      ))
+                      recentExams.map((exam) => {
+                        console.log("Rendering exam:", exam); // Hata ayıklama için
+                        return (
+                          <TableRow key={exam.id}>
+                            <TableCell className="text-foreground">{exam.title}</TableCell>
+                            <TableCell className="text-foreground">{exam.description?.substring(0, 50)}{exam.description && exam.description.length > 50 ? "..." : ""}</TableCell>
+                            <TableCell><Badge className="badge" variant={exam.status === 'PUBLISHED' ? 'default' : 'secondary'}>{exam.status}</Badge></TableCell>
+                            <TableCell className="text-foreground">{exam.createdBy?.name || "Bilinmiyor"}</TableCell>
+                          </TableRow>
+                        );
+                      })
                     ) : (
-                        <TableRow><TableCell colSpan={3} className="text-center">Henüz sınav eklenmemiş.</TableCell></TableRow>
-                      )}
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center">
+                          {Array.isArray(recentExams)
+                            ? "Henüz sınav eklenmemiş."
+                            : "Sınav verileri yüklenirken bir hata oluştu."}
+                        </TableCell>
+                      </TableRow>
+                    )}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -217,12 +273,12 @@ function DashboardContent() {
             </motion.div>
 
             {/* New Charts Section */}
-            <motion.div 
+            <motion.div
               className="grid grid-cols-1 md:grid-cols-2 gap-6"
               variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}
             >
-              <Card>
-                <CardHeader><CardTitle>Sınav Denemeleri (Son 30 Gün)</CardTitle></CardHeader>
+              <Card className="dashboard-card">
+                <CardHeader><CardTitle className="dashboard-title">Sınav Denemeleri (Son 30 Gün)</CardTitle></CardHeader>
                 <CardContent className="pl-2 h-[350px]"> {/* Yükseklik verildi */}
                   {isLoadingStats ? (
                     <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /> Yükleniyor...</div>
@@ -232,9 +288,9 @@ function DashboardContent() {
                         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                         <XAxis dataKey="date" tickFormatter={(str) => format(new Date(str), "MMM d")} tick={{ fontSize: 10 }} />
                         <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
-                        <Tooltip 
+                        <Tooltip
                           labelFormatter={(label) => format(new Date(label), "PP")}
-                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: '1px solid #ddd' }} 
+                          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: '1px solid #ddd' }}
                         />
                         <Legend verticalAlign="top" height={36}/>
                         <Line type="monotone" dataKey="count" name="Deneme Sayısı" stroke="#8884d8" strokeWidth={2} activeDot={{ r: 6 }} dot={{r: 3}} />
@@ -245,8 +301,8 @@ function DashboardContent() {
                   )}
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader><CardTitle>Başarı Puanı Dağılımı</CardTitle></CardHeader>
+              <Card className="dashboard-card">
+                <CardHeader><CardTitle className="dashboard-title">Başarı Puanı Dağılımı</CardTitle></CardHeader>
                 <CardContent className="h-[350px] flex justify-center items-center">
                   {isLoadingStats ? (
                     <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /> Yükleniyor...</div>
@@ -270,7 +326,7 @@ function DashboardContent() {
                             <Cell key={`cell-${index}`} fill={PIE_CHART_COLORS[index % PIE_CHART_COLORS.length]} strokeWidth={0} />
                           ))}
                         </Pie>
-                        <Tooltip 
+                        <Tooltip
                           formatter={(value, name) => [`${value} katılımcı`, name]}
                           contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: '1px solid #ddd' }}
                         />
@@ -288,8 +344,8 @@ function DashboardContent() {
 
         <TabsContent value="participants" className="space-y-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
-            <Card>
-              <CardHeader><CardTitle>Katılımcı Ortalama Başarı Puanları</CardTitle></CardHeader>
+            <Card className="dashboard-card">
+              <CardHeader><CardTitle className="dashboard-title">Katılımcı Ortalama Başarı Puanları</CardTitle></CardHeader>
               <CardContent className="pl-2 h-[400px]"> {/* Yükseklik verildi */}
                 {isLoadingStats ? (
                    <div className="flex justify-center items-center h-full"><Loader2 className="h-8 w-8 animate-spin" /> Yükleniyor...</div>

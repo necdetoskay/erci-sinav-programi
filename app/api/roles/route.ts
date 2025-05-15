@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Rol kontrolü (sadece ADMIN ve USER rollerine izin ver)
-    if (session.user.role !== "ADMIN" && session.user.role !== "USER") {
+    // Rol kontrolü (sadece ADMIN, SUPERADMIN ve USER rollerine izin ver)
+    if (session.user.role !== "ADMIN" && session.user.role !== "USER" && session.user.role !== "SUPERADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
     try {
       // Sistem rollerini oluştur
       const systemRoles = [
+        { name: "SUPERADMIN" },
         { name: "ADMIN" },
         { name: "USER" },
         { name: "PERSONEL" }
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
         let permissions: string[] = [];
 
         // Varsayılan izinleri ekle
-        if (role.name === "ADMIN") {
+        if (role.name === "SUPERADMIN") {
           permissions = [
             "dashboard_access",
             "exams_view",
@@ -70,6 +71,18 @@ export async function GET(req: NextRequest) {
             "users_edit",
             "users_delete",
             "roles_manage"
+          ];
+        } else if (role.name === "ADMIN") {
+          permissions = [
+            "dashboard_access",
+            "exams_view",
+            "exams_create",
+            "exams_edit",
+            "exams_delete",
+            "users_view",
+            "users_create",
+            "users_edit",
+            "users_delete"
           ];
         } else if (role.name === "USER") {
           permissions = ["dashboard_access", "exams_view"];
@@ -129,8 +142,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Rol kontrolü (sadece ADMIN ve USER rollerine izin ver)
-    if (session.user.role !== "ADMIN" && session.user.role !== "USER") {
+    // Rol kontrolü (sadece ADMIN, SUPERADMIN ve USER rollerine izin ver)
+    if (session.user.role !== "ADMIN" && session.user.role !== "USER" && session.user.role !== "SUPERADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -147,7 +160,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Rol adının benzersiz olup olmadığını kontrol et
-    const validRoles = ["ADMIN", "USER", "PERSONEL"];
+    const validRoles = ["SUPERADMIN", "ADMIN", "USER", "PERSONEL"];
 
     if (validRoles.includes(name.toUpperCase())) {
       return NextResponse.json(

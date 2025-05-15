@@ -11,8 +11,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider
         attribute="class"
         defaultTheme="light"
-        forcedTheme="light"
         enableSystem={false}
+        storageKey="user-theme"
         disableTransitionOnChange
       >
         <LoadingProvider>

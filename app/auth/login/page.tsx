@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icons } from "@/components/ui/icons";
 import { toast } from "sonner";
 
@@ -16,13 +17,15 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [verificationNeeded, setVerificationNeeded] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      console.log("Attempting login with:", { email, password, rememberMe });
+      console.log("Attempting login with:", { email, password, rememberMe: !!rememberMe });
 
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -32,7 +35,7 @@ export default function LoginPage() {
         body: JSON.stringify({
           email,
           password,
-          rememberMe,
+          rememberMe: !!rememberMe, // Boolean'a dönüştür
         }),
       });
 
@@ -40,8 +43,15 @@ export default function LoginPage() {
       console.log("Login API response:", result);
 
       if (!response.ok) {
-        const errorMessage = result.error || "Giriş yapılamadı";
-        toast.error(errorMessage);
+        // E-posta doğrulama gerekiyorsa
+        if (response.status === 403 && result.needsVerification) {
+          setVerificationNeeded(true);
+          setVerificationEmail(result.email || email);
+          toast.error("E-posta adresinizi doğrulamanız gerekiyor");
+        } else {
+          const errorMessage = result.message || result.error || "Giriş yapılamadı";
+          toast.error(errorMessage);
+        }
         setIsLoading(false);
         return;
       }
@@ -72,24 +82,85 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                E-posta
-              </label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ornek@email.com"
-                required
-                disabled={isLoading}
-              />
+          {verificationNeeded ? (
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <Icons.alertTriangle className="h-5 w-5 text-yellow-400" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">
+                      E-posta adresinizi doğrulamanız gerekiyor. Lütfen <strong>{verificationEmail}</strong> adresine gönderilen doğrulama e-postasını kontrol edin.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col space-y-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setVerificationNeeded(false)}
+                >
+                  Farklı bir hesapla giriş yap
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      setIsLoading(true);
+                      // Doğrulama e-postasını yeniden gönder
+                      const response = await fetch("/api/auth/resend-verification", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ email: verificationEmail }),
+                      });
+
+                      if (response.ok) {
+                        toast.success("Doğrulama e-postası yeniden gönderildi");
+                      } else {
+                        const data = await response.json();
+                        toast.error(data.message || "E-posta gönderilemedi");
+                      }
+                    } catch (error) {
+                      console.error("Error resending verification:", error);
+                      toast.error("E-posta gönderilirken bir hata oluştu");
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+                      Gönderiliyor...
+                    </>
+                  ) : (
+                    "Doğrulama e-postasını yeniden gönder"
+                  )}
+                </Button>
+              </div>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-foreground">
+                  E-posta
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="ornek@email.com"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
+              <label htmlFor="password" className="text-sm font-medium text-foreground">
                 Şifre
               </label>
               <div className="relative">
@@ -128,7 +199,7 @@ export default function LoginPage() {
               />
               <label
                 htmlFor="remember-me"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
                 Beni hatırla
               </label>
@@ -145,7 +216,16 @@ export default function LoginPage() {
               {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
             </Button>
           </form>
+          )}
         </CardContent>
+        <CardFooter className="flex flex-col space-y-2">
+          <div className="text-sm text-center w-full">
+            Hesabınız yok mu?{" "}
+            <Link href="/auth/register" className="text-primary hover:underline">
+              Kayıt Ol
+            </Link>
+          </div>
+        </CardFooter>
       </Card>
     </div>
   );

@@ -44,12 +44,22 @@ export async function POST(
     }
 
     // Soru havuzunun kullanıcıya ait olup olmadığını kontrol et
-    const questionPool = await prisma.questionPool.findUnique({
-      where: {
-        id: poolId,
-        userId: session.user.id,
-      },
-    });
+    // Super admin tüm soru havuzlarına erişebilir
+    let questionPool;
+    if (session.user.role === 'SUPERADMIN') {
+      questionPool = await prisma.questionPool.findUnique({
+        where: {
+          id: poolId,
+        },
+      });
+    } else {
+      questionPool = await prisma.questionPool.findUnique({
+        where: {
+          id: poolId,
+          userId: session.user.id,
+        },
+      });
+    }
 
     if (!questionPool) {
       return NextResponse.json({ error: "Soru havuzu bulunamadı veya erişim izniniz yok" }, { status: 403 });
@@ -67,27 +77,54 @@ export async function POST(
     // Prisma'ya doğrudan gelen İngilizce değeri gönder
 
     // Tüm soruları tek bir transaction içinde kaydet
+    console.log("Saving questions to pool ID:", poolId);
+    console.log("Questions to save:", questions);
+
     const savedQuestions = await prisma.$transaction(
-      questions.map((question) =>
-        prisma.poolQuestion.create({
+      questions.map((question) => {
+        console.log("Creating question:", {
+          questionText: question.questionText,
+          correctAnswer: question.correctAnswer,
+          difficulty: question.difficulty,
+          poolId: poolId
+        });
+
+        return prisma.poolQuestion.create({
           data: {
             questionText: question.questionText,
             options: question.options, // Prisma'nın JSON olarak işlemesi beklenir
             correctAnswer: question.correctAnswer,
-            explanation: question.explanation,
+            explanation: question.explanation || "", // Açıklama yoksa boş string kullan
             // Zorluk seviyesini doğrudan kullan (artık İngilizce geliyor)
             difficulty: question.difficulty,
             poolId: poolId, // Alan adı schema ile eşleşecek şekilde düzeltildi (poolId)
           },
-        })
-      )
+        });
+      })
     );
 
+    console.log("Successfully saved questions:", savedQuestions.length);
     return NextResponse.json(savedQuestions);
   } catch (error) {
     console.error("Sorular kaydedilirken hata:", error);
+
+    // Hata detaylarını logla
+    if (error instanceof Error) {
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+
+      // Prisma hatası ise daha detaylı bilgi
+      if (error.name === 'PrismaClientKnownRequestError' ||
+          error.name === 'PrismaClientValidationError') {
+        console.error("Prisma error details:", JSON.stringify(error, null, 2));
+      }
+    }
+
     return NextResponse.json(
-      { error: "Sorular kaydedilirken bir hata oluştu" },
+      {
+        error: "Sorular kaydedilirken bir hata oluştu",
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }

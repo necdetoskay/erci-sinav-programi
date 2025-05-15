@@ -15,20 +15,15 @@ export async function GET(request: Request) {
     const allProviders = await prisma.provider.findMany();
     console.log('Tüm provider\'lar:', allProviders.map(p => ({ id: p.id, name: p.name })));
 
-    // Önce "OpenRouter" adıyla dene
-    const providerName = 'OpenRouter';
-    let apiKey = await getApiKey('OpenRouter', 'OPENROUTER_API_KEY');
-
-    // Bulunamadıysa, "Open Router" adıyla dene
-    if (!apiKey) {
-      apiKey = await getApiKey('Open Router', 'OPENROUTER_API_KEY');
-    }
+    // Sadece veritabanından API anahtarını al
+    const providerName = 'Open Router';
+    let apiKey = await getApiKey('Open Router', '');
 
     if (!apiKey) {
-      console.error('OpenRouter API key missing in database and environment variables')
+      console.error('OpenRouter API key missing in database')
       return NextResponse.json({
         status: 'error',
-        message: 'OpenRouter API anahtarı bulunamadı'
+        message: 'OpenRouter API anahtarı veritabanında bulunamadı. Lütfen yönetici panelinden API anahtarını ekleyin.'
       });
     }
 
@@ -43,19 +38,20 @@ export async function GET(request: Request) {
     console.log('Test Model:', testModel);
     console.log('Site URL:', process.env.SITE_URL || 'http://localhost:3000');
 
-    // API anahtarının formatını kontrol et ve düzelt
-    // OpenRouter API anahtarları genellikle "sk-or-v1-..." ile başlar
-    if (apiKey && !apiKey.startsWith('sk-or-')) {
-      console.log('API anahtarı doğru formatta değil, düzeltiliyor...');
+    // API anahtarının formatını kontrol et
+    if (apiKey) {
+      console.log('API anahtarı formatı kontrol ediliyor...');
+      // Boşlukları temizle
+      apiKey = apiKey.trim();
+
       // Eğer API anahtarı "Bearer " ile başlıyorsa, bu kısmı kaldır
       if (apiKey.startsWith('Bearer ')) {
-        apiKey = apiKey.substring(7);
+        apiKey = apiKey.substring(7).trim();
+        console.log('Bearer öneki kaldırıldı');
       }
-      // Eğer API anahtarı "sk-or-" ile başlamıyorsa, ekle
-      if (!apiKey.startsWith('sk-or-')) {
-        apiKey = `sk-or-v1-${apiKey}`;
-      }
-      console.log('Düzeltilmiş API Key (ilk 10 karakter):', apiKey.substring(0, 10) + '...');
+
+      // API anahtarını olduğu gibi kullan, format düzeltmesi yapma
+      console.log('API anahtarı formatı (ilk 10 karakter):', apiKey.substring(0, 10) + '...');
     }
 
     // API bağlantısını test et
@@ -109,9 +105,9 @@ export async function GET(request: Request) {
 
     console.log('Request Body:', JSON.stringify(requestBody, null, 2));
 
-    // Zaman aşımı süresini artır (10 saniye)
+    // Zaman aşımı süresini artır (30 saniye)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 saniye
 
     let response;
     try {
@@ -126,6 +122,22 @@ export async function GET(request: Request) {
     } catch (error) {
       clearTimeout(timeoutId);
       console.error('Fetch error:', error);
+
+      // AbortError (zaman aşımı) hatası için özel mesaj
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        return new NextResponse(
+          JSON.stringify({
+            status: 'error',
+            message: `${providerName} API yanıt vermedi (zaman aşımı). Lütfen daha sonra tekrar deneyin.`
+          }),
+          {
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8'
+            }
+          }
+        );
+      }
+
       throw error;
     }
 

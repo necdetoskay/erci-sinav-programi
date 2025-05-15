@@ -202,7 +202,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
         numberOfQuestions: validatedData.count, // count -> numberOfQuestions
         optionsPerQuestion: 4, // Sabit 4 şık - API'nin beklediği parametre
         model: validatedData.model,
-        // difficulty prompt'a eklenebilir veya API'de işlenebilir
+        difficulty: validatedData.difficulty // Zorluk seviyesini API'ye gönder
       };
 
       const response = await fetch(apiUrl, {
@@ -287,11 +287,12 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
       const newQuestions = prev.map((q: GeneratedQuestion) =>
         q.id === questionId ? { ...q, approved: !q.approved } : q
       );
-      const currentQuestion = newQuestions.find((q: GeneratedQuestion) => q.id === questionId);
-      const currentIndex = newQuestions.findIndex((q: GeneratedQuestion) => q.id === questionId);
-      if (currentQuestion?.approved && currentIndex < newQuestions.length - 1) {
-        setTimeout(() => setCurrentStep(currentIndex + 1 + 1), 300);
-      }
+      // Otomatik geçiş kodu kaldırıldı - önceki ve sonraki butonlarının çalışması için
+      // const currentQuestion = newQuestions.find((q: GeneratedQuestion) => q.id === questionId);
+      // const currentIndex = newQuestions.findIndex((q: GeneratedQuestion) => q.id === questionId);
+      // if (currentQuestion?.approved && currentIndex < newQuestions.length - 1) {
+      //   setTimeout(() => setCurrentStep(currentIndex + 1 + 1), 300);
+      // }
       return newQuestions;
     });
   }
@@ -309,7 +310,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Yapay Zeka ile Soru Üret</DialogTitle>
+          <DialogTitle>Metinden Soru Üret</DialogTitle>
           <DialogDescription>
             {currentStep === 0
               ? "Üretilecek soru sayısını ve kullanılacak modeli seçin."
@@ -345,6 +346,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
             totalSteps={totalSteps}
             toggleApproval={toggleApproval}
             saveApprovedQuestions={saveApprovedQuestions}
+            setCurrentStep={setCurrentStep}
           />
         )}
       </DialogContent>

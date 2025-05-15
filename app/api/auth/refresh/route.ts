@@ -51,6 +51,17 @@ export async function POST(request: NextRequest) {
     const newAccessToken = generateAccessToken(userPayload);
     const newRefreshToken = generateRefreshToken({ id: user.id }); // Refresh token rotasyonu
 
+    // Orijinal refresh token'ın maxAge değerini kontrol et
+    // Eğer session cookie ise (maxAge yok), yeni token'lar da session cookie olmalı
+    const originalRefreshTokenCookie = request.cookies.get('refresh-token');
+    const isSessionCookie = !originalRefreshTokenCookie?.expires;
+
+    console.log("Refresh token cookie:", {
+      cookie: originalRefreshTokenCookie,
+      expires: originalRefreshTokenCookie?.expires,
+      isSessionCookie
+    });
+
     const response = NextResponse.json(
       { message: 'Tokens refreshed successfully' },
       { status: 200 }
@@ -60,12 +71,23 @@ export async function POST(request: NextRequest) {
     const accessTokenMaxAge = parseExpiry(process.env.ACCESS_TOKEN_EXPIRES_IN || '15m');
     const refreshTokenMaxAge = parseExpiry(process.env.REFRESH_TOKEN_EXPIRES_IN || '7d');
 
+    // "Beni hatırla" seçeneğine göre maxAge değerini ayarla
+    const finalAccessTokenMaxAge = isSessionCookie ? undefined : accessTokenMaxAge;
+    const finalRefreshTokenMaxAge = isSessionCookie ? undefined : refreshTokenMaxAge;
+
+    console.log("Token maxAge values in refresh:", {
+      finalAccessTokenMaxAge,
+      finalRefreshTokenMaxAge,
+      accessTokenMaxAge,
+      refreshTokenMaxAge
+    });
+
     response.cookies.set('access-token', newAccessToken, {
       httpOnly: true,
       secure: false, // HTTP için false olmalı
       path: '/',
       sameSite: 'lax',
-      maxAge: accessTokenMaxAge,
+      maxAge: finalAccessTokenMaxAge, // undefined = session cookie
     });
 
     response.cookies.set('refresh-token', newRefreshToken, {
@@ -73,7 +95,7 @@ export async function POST(request: NextRequest) {
       secure: false, // HTTP için false olmalı
       path: '/',
       sameSite: 'lax',
-      maxAge: refreshTokenMaxAge,
+      maxAge: finalRefreshTokenMaxAge, // undefined = session cookie
     });
 
     return response;
@@ -84,9 +106,9 @@ export async function POST(request: NextRequest) {
       { message: 'Error refreshing token' },
       { status: 500 }
     );
-    // Hata durumunda da çerezleri temizlemek isteyebilirsiniz
-    // errorResponse.cookies.delete('refresh-token');
-    // errorResponse.cookies.delete('access-token');
+    // Hata durumunda çerezleri temizle
+    errorResponse.cookies.delete('refresh-token');
+    errorResponse.cookies.delete('access-token');
     return errorResponse;
   }
 }

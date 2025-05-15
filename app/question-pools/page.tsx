@@ -19,12 +19,22 @@ async function QuestionPoolsContent() {
     redirect("/auth/login");
   }
 
+  // Superadmin tüm soru havuzlarını görebilir, diğer kullanıcılar sadece kendilerine ait olanları
+  const whereCondition = session.user.role === 'SUPERADMIN'
+    ? {}
+    : { userId: session.user.id };
+
   const questionPools = await db.questionPool.findMany({
-    where: {
-      userId: session.user.id,
-    },
+    where: whereCondition,
     include: {
       questions: true,
+      createdBy: {
+        select: {
+          name: true,
+          email: true,
+          role: true
+        }
+      }
     },
     orderBy: {
       updatedAt: "desc",

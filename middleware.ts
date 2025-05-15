@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken, UserPayload } from '@/lib/jwt-auth'; // getUserFromAccessToken yerine verifyAccessToken kullanacağız
 
 const AUTH_PAGES = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
 const PROTECTED_ROOT = '/dashboard'; // Giriş sonrası varsayılan yönlendirme
@@ -11,11 +10,6 @@ const isPublicPath = (path: string) => PUBLIC_PATHS.includes(path) || path.start
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get('access-token')?.value;
-  let user: UserPayload | null = null;
-
-  if (accessToken) {
-    user = verifyAccessToken(accessToken);
-  }
 
   // API rotaları için özel bir işlem yapmıyoruz, onlar kendi içinde token kontrolü yapabilir
   // veya bu middleware'den sonra çalışacak şekilde ayarlanabilir.
@@ -29,33 +23,60 @@ export async function middleware(request: NextRequest) {
   }
 
 
-  // Eğer kullanıcı giriş yapmışsa (geçerli token'ı varsa)
-  if (user) {
-    // Giriş yapmış kullanıcı auth sayfalarına gitmeye çalışırsa dashboard'a yönlendir
-    if (isAuthPage(pathname)) {
-      return NextResponse.redirect(new URL(PROTECTED_ROOT, request.url));
-    }
+  // Eğer kullanıcı giriş yapmışsa (token varsa)
+  if (accessToken) {
+    // Token doğrulamasını API üzerinden yapalım
+    try {
+      const verifyResponse = await fetch(new URL('/api/auth/verify', request.url).toString(), {
+        method: 'GET',
+        headers: {
+          'Cookie': `access-token=${accessToken}`
+        }
+      });
 
-    // Rol tabanlı erişim kontrolü (Örnek: ADMIN rolü)
-    if (pathname.startsWith('/admin') && user.role !== 'ADMIN') {
-      // Admin olmayanları dashboard'a veya bir "yetkisiz erişim" sayfasına yönlendir
-      console.log(`Middleware: Non-ADMIN user (Role: ${user.role}) attempt to access ${pathname}. Redirecting to ${PROTECTED_ROOT}`);
-      return NextResponse.redirect(new URL(PROTECTED_ROOT, request.url));
-    }
-    
-    // PERSONEL rolüne sahip kullanıcılar sadece /exam sayfasına erişebilir
-    if (user.role === "PERSONEL" && pathname.startsWith('/dashboard')) {
-      console.log(`Middleware: Redirecting PERSONEL user from /dashboard to /exam`);
-      return NextResponse.redirect(new URL('/exam', request.url));
-    }
-     if (user.role === "PERSONEL" && pathname.startsWith('/admin')) {
-      console.log(`Middleware: Redirecting PERSONEL user from /admin to /exam`);
-      return NextResponse.redirect(new URL('/exam', request.url));
-    }
+      // Token doğrulama yanıtını kontrol et
+      if (verifyResponse.ok) {
+        // Eğer URL'de refresh_count parametresi varsa, temizle
+        if (request.nextUrl.searchParams.has('refresh_count')) {
+          const cleanUrl = new URL(request.url);
+          cleanUrl.searchParams.delete('refresh_count');
+          return NextResponse.redirect(cleanUrl);
+        }
+        const userData = await verifyResponse.json();
 
+        // Giriş yapmış kullanıcı auth sayfalarına gitmeye çalışırsa dashboard'a yönlendir
+        if (isAuthPage(pathname)) {
+          return NextResponse.redirect(new URL(PROTECTED_ROOT, request.url));
+        }
 
-    // Diğer korumalı sayfalara erişim izni
-    return NextResponse.next();
+        // Rol hiyerarşisi: PERSONEL < USER < ADMIN < SUPERADMIN
+
+        // Rol yönetimi sayfasını sadece SUPERADMIN görebilir
+        if (pathname.startsWith('/dashboard/roles') && userData.role !== 'SUPERADMIN') {
+          console.log(`Middleware: Non-SUPERADMIN user (Role: ${userData.role}) attempt to access ${pathname}. Redirecting to ${PROTECTED_ROOT}`);
+          return NextResponse.redirect(new URL(PROTECTED_ROOT, request.url));
+        }
+
+        // Admin sayfalarına sadece ADMIN ve SUPERADMIN erişebilir
+        if (pathname.startsWith('/admin') && userData.role !== 'ADMIN' && userData.role !== 'SUPERADMIN') {
+          console.log(`Middleware: Non-ADMIN user (Role: ${userData.role}) attempt to access ${pathname}. Redirecting to ${PROTECTED_ROOT}`);
+          return NextResponse.redirect(new URL(PROTECTED_ROOT, request.url));
+        }
+
+        // PERSONEL ve USER rolüne sahip kullanıcılar sadece /exam sayfasına erişebilir
+        if (userData.role === "PERSONEL" || userData.role === "USER") {
+          if (pathname.startsWith('/dashboard') || pathname.startsWith('/admin')) {
+            console.log(`Middleware: Redirecting ${userData.role} user from ${pathname} to /exam`);
+            return NextResponse.redirect(new URL('/exam', request.url));
+          }
+        }
+
+        // Diğer korumalı sayfalara erişim izni
+        return NextResponse.next();
+      }
+    } catch (e) {
+      console.error('Middleware: Error during token verification:', e);
+    }
   }
 
   // Eğer kullanıcı giriş yapmamışsa (veya token geçersizse)
@@ -65,6 +86,19 @@ export async function middleware(request: NextRequest) {
     const refreshToken = request.cookies.get('refresh-token')?.value;
 
     if (refreshToken) {
+      // Eğer URL'de refresh_count parametresi varsa ve değeri 3 veya daha fazlaysa,
+      // doğrudan login sayfasına yönlendir
+      const refreshCount = parseInt(request.nextUrl.searchParams.get('refresh_count') || '0');
+      if (refreshCount >= 3) {
+        console.log('Middleware: Too many refresh attempts detected. Redirecting to login.');
+        const loginUrl = new URL('/auth/login', request.url);
+        loginUrl.searchParams.set('callbackUrl', pathname);
+        const response = NextResponse.redirect(loginUrl);
+        response.cookies.delete('access-token');
+        response.cookies.delete('refresh-token');
+        return response;
+      }
+
       try {
         // API route'u Next.js 13+ fetch ile çağır
         const refreshResponse = await fetch(new URL('/api/auth/refresh', request.url).toString(), {
@@ -87,7 +121,7 @@ export async function middleware(request: NextRequest) {
           // Refresh endpoint'i response body'sinde yeni token'ı döndürmüyor, sadece cookie'ye set ediyor.
           // Bu durumda, en basit çözüm, sayfayı yeniden yükleterek tarayıcının yeni çerezi almasını sağlamak
           // veya isteği tekrarlamaktır.
-          
+
           // Daha iyi bir yaklaşım: refresh endpoint'i yeni token'ı DÖNDÜRMEZ, SADECE COOKIE'YE SET EDER.
           // Bu durumda, middleware'in yapabileceği en iyi şey, isteği devam ettirmek ve
           // bir sonraki istekte yeni token'ın kullanılmasını ummaktır.
@@ -95,24 +129,39 @@ export async function middleware(request: NextRequest) {
 
           const response = NextResponse.redirect(request.url); // Orijinal URL'e yönlendir
 
-          // Refresh endpoint'inin set ettiği 'access-token' çerezini bu yanıta kopyala
-          const newAccessTokenCookie = refreshResponse.headers.get('set-cookie');
-          if (newAccessTokenCookie) {
-             // Birden fazla set-cookie başlığı olabilir, doğru olanı bulmamız gerek.
-            const cookies = newAccessTokenCookie.split(', ');
-            cookies.forEach(cookie => {
-                if (cookie.startsWith('access-token=')) {
-                    response.headers.append('set-cookie', cookie);
-                }
-            });
-          }
-          // Refresh token'ın kendisi de güncellenmiş olabilir (rolling refresh tokens)
-          // Onu da kontrol edip ekleyebiliriz. Şimdilik sadece access token'a odaklanalım.
+          // Refresh endpoint'inin set ettiği çerezleri bu yanıta kopyala
+          const setCookieHeader = refreshResponse.headers.get('set-cookie');
+          if (setCookieHeader) {
+            // Tüm set-cookie başlıklarını al
+            const cookies = setCookieHeader.split(', ');
 
-          // Yönlendirme döngüsünü kırmak için rewrite kullanalım.
-          // /api/auth/refresh endpoint'i yeni access token çerezini set etmiş olmalı.
-          // rewrite, URL'i değiştirmeden mevcut isteği işler.
-          return NextResponse.rewrite(request.nextUrl); 
+            // Her bir çerezi response'a ekle
+            cookies.forEach(cookie => {
+              response.headers.append('set-cookie', cookie);
+            });
+
+            console.log('Middleware: Copied cookies from refresh response');
+          }
+
+          // Yönlendirme döngüsünü kırmak için
+          // Eğer URL'de refresh_count parametresi varsa, bu bir yenileme döngüsü olabilir
+          const refreshCount = parseInt(request.nextUrl.searchParams.get('refresh_count') || '0');
+
+          if (refreshCount >= 3) {
+            // Çok fazla yenileme denemesi yapıldı, kullanıcıyı login sayfasına yönlendir
+            console.log('Middleware: Too many refresh attempts. Redirecting to login.');
+            const loginUrl = new URL('/auth/login', request.url);
+            loginUrl.searchParams.set('callbackUrl', pathname);
+            const response = NextResponse.redirect(loginUrl);
+            response.cookies.delete('access-token');
+            response.cookies.delete('refresh-token');
+            return response;
+          }
+
+          // Yenileme sayacını artır ve orijinal URL'e yönlendir
+          const redirectUrl = new URL(request.url);
+          redirectUrl.searchParams.set('refresh_count', (refreshCount + 1).toString());
+          return NextResponse.redirect(redirectUrl);
         } else {
           console.log('Middleware: Refresh token failed. Clearing cookies and redirecting to login.');
           // Refresh token geçersizse, çerezleri temizle ve login'e yönlendir
@@ -152,7 +201,7 @@ export async function middleware(request: NextRequest) {
     response.headers.set('X-XSS-Protection', '1; mode=block');
     // response.headers.set('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"); // CSP'yi dikkatlice yapılandırın
   }
-  
+
   return response;
 }
 

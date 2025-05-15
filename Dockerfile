@@ -82,7 +82,7 @@ WORKDIR /app
 RUN apk update && apk add --no-cache libc6-compat openssl postgresql-client
 
 # Güvenlik için root olmayan bir kullanıcı oluştur ve kullan
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 # JWT için gerekli ortam değişkenleri
 ENV JWT_SECRET=1f7b2c4d8e9a3f0c5b6d7a8e9f0c1b2a3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a

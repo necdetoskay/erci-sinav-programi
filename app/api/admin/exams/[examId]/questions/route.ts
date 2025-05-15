@@ -19,6 +19,26 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid exam ID' }, { status: 400 });
     }
 
+    // Kullanıcı bazlı erişim kontrolü
+    const whereCondition = {
+      id: examId
+    };
+
+    // Admin kullanıcıları sadece kendi oluşturdukları sınavlara erişebilir
+    // Superadmin tüm sınavlara erişebilir
+    if (session.user.role === 'ADMIN') {
+      whereCondition['createdById'] = session.user.id;
+    }
+
+    // Sınavın mevcut olup olmadığını ve kullanıcının erişim izni olup olmadığını kontrol et
+    const exam = await prisma.exam.findFirst({
+      where: whereCondition
+    });
+
+    if (!exam) {
+      return NextResponse.json({ error: 'Sınav bulunamadı veya erişim izniniz yok' }, { status: 404 });
+    }
+
     // Sınav ID'ye göre soruları getir
     const questions = await prisma.question.findMany({
       where: { exam_id: examId },
@@ -52,13 +72,24 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid exam ID' }, { status: 400 });
     }
 
-    // Sınavın varlığını kontrol et
-    const exam = await prisma.exam.findUnique({
-      where: { id: examId },
+    // Kullanıcı bazlı erişim kontrolü
+    const whereCondition = {
+      id: examId
+    };
+
+    // Admin kullanıcıları sadece kendi oluşturdukları sınavlara erişebilir
+    // Superadmin tüm sınavlara erişebilir
+    if (session.user.role === 'ADMIN') {
+      whereCondition['createdById'] = session.user.id;
+    }
+
+    // Sınavın mevcut olup olmadığını ve kullanıcının erişim izni olup olmadığını kontrol et
+    const exam = await prisma.exam.findFirst({
+      where: whereCondition
     });
 
     if (!exam) {
-      return NextResponse.json({ error: 'Exam not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Sınav bulunamadı veya erişim izniniz yok' }, { status: 404 });
     }
 
     const body = await request.json();

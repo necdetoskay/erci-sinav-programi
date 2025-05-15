@@ -33,6 +33,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // E-posta doğrulaması kontrolü
+    if (!user.emailVerified) {
+      return NextResponse.json(
+        {
+          message: 'Please verify your email before logging in',
+          needsVerification: true,
+          email: user.email
+        },
+        { status: 403 } // Forbidden
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
@@ -64,8 +76,10 @@ export async function POST(request: Request) {
     const refreshTokenMaxAge = parseExpiry(process.env.REFRESH_TOKEN_EXPIRES_IN || '7d');
 
     // Remember Me özelliği için maxAge değerini ayarla
+    console.log("Remember Me value:", rememberMe, typeof rememberMe);
     const finalAccessTokenMaxAge = rememberMe ? accessTokenMaxAge : undefined; // undefined = session cookie
     const finalRefreshTokenMaxAge = rememberMe ? refreshTokenMaxAge : undefined;
+    console.log("Token maxAge values:", { finalAccessTokenMaxAge, finalRefreshTokenMaxAge });
 
     response.cookies.set('access-token', accessToken, {
       httpOnly: true,

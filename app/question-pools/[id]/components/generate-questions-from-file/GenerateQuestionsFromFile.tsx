@@ -190,7 +190,7 @@ export function GenerateQuestionsFromFile({ poolId, poolTitle, onQuestionsGenera
       if (!response.ok) {
         throw new Error(responseData.message || `Sorular üretilirken bir hata oluştu (Status: ${response.status})`);
       }
-      
+
       // The API now returns parsed questions directly in responseData.questions
       // if the parsing on backend is successful.
       // If API returns raw text, we parse it here. Assuming API returns structured questions.
@@ -259,7 +259,7 @@ export function GenerateQuestionsFromFile({ poolId, poolTitle, onQuestionsGenera
       return newQuestions;
     });
   }
-  
+
   const currentQuestionForReview = generatedQuestions[currentStep -1]; // For QuestionReview, step is 1-based index
 
   return (
@@ -311,6 +311,7 @@ export function GenerateQuestionsFromFile({ poolId, poolTitle, onQuestionsGenera
             totalSteps={generatedQuestions.length}
             toggleApproval={toggleApproval}
             saveApprovedQuestions={saveApprovedQuestions}
+            setCurrentStep={setCurrentStep}
           />
         )}
       </DialogContent>

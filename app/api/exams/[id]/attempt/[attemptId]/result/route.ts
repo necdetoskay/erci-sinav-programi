@@ -82,7 +82,7 @@ export async function GET(
 
     // Sonuç verilerini hazırla
     const result = {
-      score: attempt.score || 0,
+      score: (attempt.score || 0) * 100, // Yüzdelik değere çevir
       correctAnswers: attempt.attemptAnswers.filter(a => a.isCorrect).length,
       totalQuestions: attempt.exam.questions.length,
       examTitle: attempt.exam.title,

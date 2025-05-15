@@ -1,35 +1,129 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2 } from "lucide-react";
 
-export const AppSettings = () => {
-  const [defaultQuestionCount, setDefaultQuestionCount] = useState(
-    localStorage.getItem('defaultQuestionCount') || "10"
-  );
-  const [defaultDifficulty, setDefaultDifficulty] = useState(
-    localStorage.getItem('defaultDifficulty') || "medium"
-  );
-  const [autoSave, setAutoSave] = useState(
-    localStorage.getItem('autoSave') !== "false"
-  );
-  const [notifications, setNotifications] = useState(
-    localStorage.getItem('notifications') !== "false"
-  );
+interface AppSettingsProps {
+  userId: string | null;
+}
+
+export const AppSettings = ({ userId }: AppSettingsProps) => {
+  const [defaultQuestionCount, setDefaultQuestionCount] = useState("10");
+  const [defaultDifficulty, setDefaultDifficulty] = useState("medium");
+  const [autoSave, setAutoSave] = useState(true);
+  const [notifications, setNotifications] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Ayarları yükle
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+
+        // Kullanıcı ID'si varsa, o kullanıcının ayarlarını getir
+        const scope = 'user';
+        const url = `/api/settings?scope=${scope}&userId=${userId}`;
+
+        console.log(`Fetching App settings from: ${url} at ${new Date().toISOString()}`);
+
+        const response = await fetch(url, {
+          // Cache'i devre dışı bırak
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch settings');
+        }
+
+        const settings = await response.json();
+
+        console.log(`App settings loaded for user ${userId} at ${new Date().toISOString()}:`, settings);
+
+        // Ayarları state'e yükle
+        setDefaultQuestionCount(settings.defaultQuestionCount || "10");
+        setDefaultDifficulty(settings.defaultDifficulty || "medium");
+        setAutoSave(settings.autoSave !== "false");
+        setNotifications(settings.notifications !== "false");
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        toast.error('Ayarlar yüklenirken bir hata oluştu');
+
+        // Hata durumunda localStorage'dan yükle (geriye dönük uyumluluk)
+        setDefaultQuestionCount(localStorage.getItem('defaultQuestionCount') || "10");
+        setDefaultDifficulty(localStorage.getItem('defaultDifficulty') || "medium");
+        setAutoSave(localStorage.getItem('autoSave') !== "false");
+        setNotifications(localStorage.getItem('notifications') !== "false");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, [userId]);
 
   // Uygulama ayarlarını kaydet
-  const handleAppSettingsSave = () => {
-    // Burada API çağrısı yapılabilir veya localStorage'a kaydedilebilir
-    localStorage.setItem('defaultQuestionCount', defaultQuestionCount);
-    localStorage.setItem('defaultDifficulty', defaultDifficulty);
-    localStorage.setItem('autoSave', autoSave.toString());
-    localStorage.setItem('notifications', notifications.toString());
-    toast.success("Uygulama ayarları kaydedildi");
+  const handleAppSettingsSave = async () => {
+    if (!userId) {
+      toast.error('Kullanıcı seçilmedi');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      // Ayarları API'ye gönder
+      const scope = 'user';
+      const url = `/api/settings?scope=${scope}&userId=${userId}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          defaultQuestionCount,
+          defaultDifficulty,
+          autoSave: autoSave.toString(),
+          notifications: notifications.toString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save settings');
+      }
+
+      // Geriye dönük uyumluluk için localStorage'a da kaydet
+      // Not: Bu sadece mevcut kullanıcı için yapılmalı
+      if (userId === localStorage.getItem('currentUserId')) {
+        localStorage.setItem('defaultQuestionCount', defaultQuestionCount);
+        localStorage.setItem('defaultDifficulty', defaultDifficulty);
+        localStorage.setItem('autoSave', autoSave.toString());
+        localStorage.setItem('notifications', notifications.toString());
+      }
+
+      toast.success("Uygulama ayarları kaydedildi");
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('Ayarlar kaydedilirken bir hata oluştu');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -94,7 +188,19 @@ export const AppSettings = () => {
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={handleAppSettingsSave}>Kaydet</Button>
+        <Button
+          onClick={handleAppSettingsSave}
+          disabled={isLoading || isSaving}
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Kaydediliyor...
+            </>
+          ) : (
+            "Kaydet"
+          )}
+        </Button>
       </CardFooter>
     </Card>
   );

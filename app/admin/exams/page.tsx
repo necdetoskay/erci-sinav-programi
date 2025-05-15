@@ -19,6 +19,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,7 +37,7 @@ import { Breadcrumb } from '../../components/breadcrumb';
 interface Exam {
   id: number;
   title: string;
-  status: 'draft' | 'published';
+  status: 'draft' | 'active' | 'completed' | 'archived';
   created_at: string;
   updated_at: string;
   access_code: string; // Sınav kodunu ekle
@@ -49,11 +59,11 @@ function ExamsTable() {
         setLoading(true);
         setError(null);
         const response = await fetch(`/api/admin/exams?page=${currentPage}&limit=10`);
-        
+
         if (!response.ok) {
           throw new Error('Sınavlar yüklenirken bir hata oluştu');
         }
-        
+
         const data = await response.json();
         setExams(data.exams || []);
         setTotalPages(data.totalPages || 1);
@@ -89,24 +99,40 @@ function ExamsTable() {
     router.push(`/admin/exams/${examId}/share`);
   }
 
-  async function handleDeleteExam(examId: number) {
-    if (window.confirm('Bu sınavı silmek istediğinizden emin misiniz?')) {
-      try {
-        const response = await fetch(`/api/admin/exams/${examId}`, {
-          method: 'DELETE',
-        });
-        
-        if (!response.ok) {
-          throw new Error('Sınav silinirken bir hata oluştu');
-        }
-        
-        // Silinen sınavı listeden kaldır
-        setExams(exams.filter(exam => exam.id !== examId));
-        toast.success('Sınav başarıyla silindi');
-      } catch (error) {
-        console.error('Sınav silinirken hata:', error);
-        toast.error('Sınav silinirken bir hata oluştu');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [examToDelete, setExamToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  function handleDeleteExam(examId: number) {
+    setExamToDelete(examId);
+    setDeleteModalOpen(true);
+  }
+
+  async function confirmDeleteExam() {
+    if (!examToDelete) return;
+
+    try {
+      setIsDeleting(true);
+
+      // Doğrudan veritabanından silme işlemi yap
+      const response = await fetch(`/api/admin/exams/delete-exam?id=${examToDelete}`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Sınav silinirken bir hata oluştu');
       }
+
+      // Silinen sınavı listeden kaldır
+      setExams(exams.filter(exam => exam.id !== examToDelete));
+      toast.success('Sınav başarıyla silindi');
+      setDeleteModalOpen(false);
+    } catch (error) {
+      console.error('Sınav silinirken hata:', error);
+      toast.error('Sınav silinirken bir hata oluştu');
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -134,8 +160,8 @@ function ExamsTable() {
           ) : error ? (
             <div className="text-center py-8 text-red-500">
               <p>{error}</p>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="mt-4"
                 onClick={() => setCurrentPage(1)}
               >
@@ -146,7 +172,7 @@ function ExamsTable() {
             <div className="text-center py-8 px-6 text-muted-foreground"> {/* Padding eklendi */}
               <p>Henüz sınav oluşturulmamış.</p>
               <Button
-                variant="outline" 
+                variant="outline"
                 className="mt-4"
                 onClick={handleCreateExam}
               >
@@ -171,13 +197,19 @@ function ExamsTable() {
                       <TableCell className="font-medium text-gray-900">{exam.title}</TableCell>
                       <TableCell className="text-gray-900">{exam.access_code}</TableCell>
                       <TableCell>
-                        <Badge variant={exam.status === 'published' ? 'default' : 'secondary'}>
-                          {exam.status === 'published' ? 'Yayında' : 'Taslak'}
-                        </Badge>
+                        {exam.status === 'active' ? (
+                          <Badge variant="default">Aktif</Badge>
+                        ) : exam.status === 'completed' ? (
+                          <Badge variant="success">Tamamlandı</Badge>
+                        ) : exam.status === 'archived' ? (
+                          <Badge variant="outline">Arşivlenmiş</Badge>
+                        ) : (
+                          <Badge variant="secondary">Taslak</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-gray-900">
-                        {exam.status === 'published' ? 
-                          `${exam.participantCount}/${exam.totalParticipants || 'Sınırsız'}` : 
+                        {exam.status === 'active' || exam.status === 'completed' ?
+                          `${exam.participantCount}/${exam.totalParticipants || 'Sınırsız'}` :
                           '0/0'}
                       </TableCell>
                       <TableCell className="text-right">
@@ -194,17 +226,17 @@ function ExamsTable() {
                             <DropdownMenuItem onClick={() => handleEditExam(exam.id)}>
                               Düzenle
                             </DropdownMenuItem>
-                            {exam.status === 'published' && (
+                            {(exam.status === 'active' || exam.status === 'completed') && (
                               <DropdownMenuItem onClick={() => handleViewResults(exam.id)}>
                                 Sonuçlar
                               </DropdownMenuItem>
                             )}
-                            {exam.status === 'published' && (
+                            {exam.status === 'active' && (
                               <DropdownMenuItem onClick={() => handleShareExam(exam.id)}>
                                 Paylaş
                               </DropdownMenuItem>
                             )}
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               onClick={() => handleDeleteExam(exam.id)}
                               className="text-destructive"
                             >
@@ -230,7 +262,7 @@ function ExamsTable() {
                     >
                       &lt;
                     </Button>
-                    
+
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <Button
                         key={page}
@@ -241,7 +273,7 @@ function ExamsTable() {
                         {page}
                       </Button>
                     ))}
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -256,6 +288,28 @@ function ExamsTable() {
             </>
           )}
       </div> {/* bg-white div kapanışı */}
+
+      {/* Silme Onay Modalı */}
+      <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sınavı Sil</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu sınavı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm sınav verileri silinecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>İptal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteExam}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Siliniyor..." : "Sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

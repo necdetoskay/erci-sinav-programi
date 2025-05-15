@@ -113,17 +113,20 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
         const providersData = await providersResponse.json();
         setProviders(providersData);
 
-        // Modelleri getir
+        // Modelleri getir - hem global hem de kullanıcıya özel modelleri almak için
         const modelsResponse = await fetch('/api/ai-models');
         if (!modelsResponse.ok) {
           throw new Error('Model verileri alınamadı');
         }
         const modelsData = await modelsResponse.json();
+        console.log('Loaded models:', modelsData);
 
         // Sadece aktif modelleri filtrele ve sırala
         const activeModels = modelsData
           .filter((model: Model) => model.isEnabled)
           .sort((a: Model, b: Model) => a.orderIndex - b.orderIndex);
+
+        console.log('Active models:', activeModels);
 
         setModels(activeModels);
 
@@ -202,7 +205,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
         numberOfQuestions: validatedData.count, // count -> numberOfQuestions
         optionsPerQuestion: 4, // Sabit 4 şık - API'nin beklediği parametre
         model: validatedData.model,
-        // difficulty prompt'a eklenebilir veya API'de işlenebilir
+        difficulty: validatedData.difficulty // Zorluk seviyesini API'ye gönder
       };
 
       const response = await fetch(apiUrl, {
@@ -260,6 +263,8 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
       // Doğru API endpoint'ini kullandığımızdan emin olalım
       const batchApiUrl = `/api/question-pools/${poolId}/questions/batch`;
       console.log(`Calling API: ${batchApiUrl}`);
+      console.log("Pool ID:", poolId);
+      console.log("Request payload:", JSON.stringify({ questions: approvedQuestions }, null, 2));
       const response = await fetch(batchApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -268,9 +273,23 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
       });
       console.log("Save Batch API Response Status:", response.status);
       if (!response.ok) {
-         const errorBody = await response.text();
-         console.error("Save Batch API Error Response Body:", errorBody);
-        throw new Error("Sorular kaydedilirken bir hata oluştu");
+        try {
+          const errorBody = await response.text();
+          console.error("Save Batch API Error Response Body:", errorBody);
+
+          // JSON olarak parse etmeyi dene
+          try {
+            const errorJson = JSON.parse(errorBody);
+            console.error("Error JSON:", errorJson);
+            throw new Error(errorJson.error || "Sorular kaydedilirken bir hata oluştu");
+          } catch (parseError) {
+            // JSON parse hatası, ham metni kullan
+            throw new Error(`Sorular kaydedilirken bir hata oluştu: ${errorBody}`);
+          }
+        } catch (textError) {
+          // Text okuma hatası
+          throw new Error(`Sorular kaydedilirken bir hata oluştu (${response.status})`);
+        }
       }
       toast.success("Onaylanan sorular başarıyla kaydedildi");
       setOpen(false);
@@ -287,11 +306,12 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
       const newQuestions = prev.map(q =>
         q.id === questionId ? { ...q, approved: !q.approved } : q
       );
-      const currentQuestion = newQuestions.find(q => q.id === questionId);
-      const currentIndex = newQuestions.findIndex(q => q.id === questionId);
-      if (currentQuestion?.approved && currentIndex < newQuestions.length - 1) {
-        setTimeout(() => setCurrentStep(currentIndex + 1 + 1), 300);
-      }
+      // Otomatik geçiş kodu kaldırıldı - önceki ve sonraki butonlarının çalışması için
+      // const currentQuestion = newQuestions.find(q => q.id === questionId);
+      // const currentIndex = newQuestions.findIndex(q => q.id === questionId);
+      // if (currentQuestion?.approved && currentIndex < newQuestions.length - 1) {
+      //   setTimeout(() => setCurrentStep(currentIndex + 1 + 1), 300);
+      // }
       return newQuestions;
     });
   }
@@ -345,6 +365,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
             totalSteps={totalSteps}
             toggleApproval={toggleApproval}
             saveApprovedQuestions={saveApprovedQuestions}
+            setCurrentStep={setCurrentStep}
           />
         )}
       </DialogContent>

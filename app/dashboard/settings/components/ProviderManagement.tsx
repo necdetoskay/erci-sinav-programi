@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { Provider } from './types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,25 +17,25 @@ interface ProviderManagementProps {
   setProviders: React.Dispatch<React.SetStateAction<Provider[]>>;
   setSelectedProviderId: React.Dispatch<React.SetStateAction<string | null>>;
   selectedProviderId: string | null;
+  userId?: string | null; // Kullanıcı ID'si
 }
 
 export const ProviderManagement: React.FC<ProviderManagementProps> = ({
   providers,
   setProviders,
   setSelectedProviderId,
-  selectedProviderId
+  selectedProviderId,
+  userId
 }) => {
   // Provider form state'leri
   const [isProviderDialogOpen, setIsProviderDialogOpen] = useState(false);
   const [isEditingProvider, setIsEditingProvider] = useState(false);
   const [currentProvider, setCurrentProvider] = useState<Provider>({ id: '', name: '', description: '', apiKey: '' });
-  const [showApiKey, setShowApiKey] = useState(false);
 
   // Validasyon hataları
   const [providerErrors, setProviderErrors] = useState<{[key: string]: string}>({});
 
-  // API anahtarı gösterme/gizleme durumlarını tutacak state
-  const [visibleApiKeys, setVisibleApiKeys] = useState<Record<string, boolean>>({});
+
 
   // Provider form validasyonu
   const validateProviderForm = (): boolean => {
@@ -58,7 +58,10 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
     if (validateProviderForm()) {
       try {
         // API'ye yeni provider ekle
-        const response = await fetch('/api/ai-providers', {
+        const url = userId ? `/api/ai-providers?userId=${userId}` : '/api/ai-providers';
+        console.log(`Adding provider to: ${url}`);
+
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -67,6 +70,7 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
             name: currentProvider.name,
             description: currentProvider.description || '',
             apiKey: currentProvider.apiKey,
+            userId: userId // Kullanıcı ID'sini de gönder
           }),
         });
 
@@ -104,7 +108,18 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
         }
 
         // API'ye provider güncelleme isteği gönder
-        const response = await fetch(`/api/ai-providers/${currentProvider.id}`, {
+        const url = userId
+          ? `/api/ai-providers/${currentProvider.id}?userId=${userId}`
+          : `/api/ai-providers/${currentProvider.id}`;
+
+        console.log(`Updating provider at: ${url}`);
+
+        // Kullanıcı ID'sini de ekle
+        if (userId) {
+          updateData.userId = userId;
+        }
+
+        const response = await fetch(url, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -137,7 +152,13 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
   const handleDeleteProvider = async (id: string) => {
     try {
       // API'ye provider silme isteği gönder
-      const response = await fetch(`/api/ai-providers/${id}`, {
+      const url = userId
+        ? `/api/ai-providers/${id}?userId=${userId}`
+        : `/api/ai-providers/${id}`;
+
+      console.log(`Deleting provider at: ${url}`);
+
+      const response = await fetch(url, {
         method: 'DELETE',
       });
 
@@ -169,70 +190,9 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
     });
     setIsEditingProvider(true);
     setIsProviderDialogOpen(true);
-    setShowApiKey(false); // API anahtarını varsayılan olarak gizle
   };
 
-  // API anahtarı göster/gizle toggle fonksiyonu
-  const toggleApiKeyVisibility = async (providerId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Tıklama olayının provider satırına yayılmasını engelle
 
-    // Eğer anahtar zaten görünür durumdaysa, maskelenmiş haline geri döndür
-    if (visibleApiKeys[providerId]) {
-      // Maskelenmiş anahtarı providers state'ine geri yükle
-      const provider = providers.find(p => p.id === providerId);
-      if (provider) {
-        // Maskelenmiş API anahtarını almak için API'yi çağır
-        try {
-          const response = await fetch(`/api/ai-providers/${providerId}`);
-          if (response.ok) {
-            const data = await response.json();
-            // Maskelenmiş anahtarı providers state'ine ekle
-            setProviders(prevProviders =>
-              prevProviders.map(p =>
-                p.id === providerId ? { ...p, apiKey: data.apiKey } : p
-              )
-            );
-          }
-        } catch (error) {
-          console.error('Maskelenmiş API anahtarı alınırken hata:', error);
-        }
-      }
-
-      // Anahtarın gizli olduğunu işaretle
-      setVisibleApiKeys(prev => ({
-        ...prev,
-        [providerId]: false
-      }));
-      return;
-    }
-
-    try {
-      // API'den şifrelenmemiş anahtarı al
-      const response = await fetch(`/api/ai-providers/${providerId}?showRawKey=true`);
-
-      if (!response.ok) {
-        throw new Error('API anahtarı alınırken bir hata oluştu');
-      }
-
-      const data = await response.json();
-
-      // Şifrelenmemiş anahtarı providers state'ine geçici olarak ekle
-      setProviders(prevProviders =>
-        prevProviders.map(p =>
-          p.id === providerId ? { ...p, apiKey: data.apiKey } : p
-        )
-      );
-
-      // Anahtarın görünür olduğunu işaretle
-      setVisibleApiKeys(prev => ({
-        ...prev,
-        [providerId]: true
-      }));
-    } catch (error) {
-      console.error('API anahtarı alınırken hata:', error);
-      toast.error('API anahtarı alınırken bir hata oluştu');
-    }
-  };
 
   return (
     <>
@@ -276,18 +236,7 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
                     <TableCell>{provider.description || "-"}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        <span className="font-mono">{provider.apiKey}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => toggleApiKeyVisibility(provider.id, e)}
-                        >
-                          {visibleApiKeys[provider.id] ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <span className="font-mono text-xs">{provider.apiKey}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -364,22 +313,12 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="apiKey">
-                  API Anahtarı {isEditingProvider ? "" : "*"}
-                </Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                >
-                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
+              <Label htmlFor="apiKey">
+                API Anahtarı {isEditingProvider ? "" : "*"}
+              </Label>
               <Input
                 id="apiKey"
-                type={showApiKey ? "text" : "password"}
+                type="text"
                 value={currentProvider.apiKey}
                 onChange={(e) => setCurrentProvider({ ...currentProvider, apiKey: e.target.value })}
                 placeholder={isEditingProvider ? "Değiştirmek için yeni anahtar girin" : "API anahtarını girin"}

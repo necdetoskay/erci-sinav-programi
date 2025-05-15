@@ -22,11 +22,19 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const questionPool = await db.questionPool.findUnique({
-      where: {
-        id: parseInt(params.id),
-        userId: session.user.id, // Kullanıcı kontrolünü ekle
-      },
+    // Kullanıcı bazlı erişim kontrolü
+    const whereCondition = {
+      id: parseInt(params.id)
+    };
+
+    // Admin kullanıcıları sadece kendi oluşturdukları soru havuzlarına erişebilir
+    // Superadmin tüm soru havuzlarına erişebilir
+    if (session.user.role === 'ADMIN') {
+      whereCondition['userId'] = session.user.id;
+    }
+
+    const questionPool = await db.questionPool.findFirst({
+      where: whereCondition,
       include: {
         questions: true,
       },
@@ -60,10 +68,30 @@ export async function PATCH(
     const json = await req.json();
     const validatedData = questionPoolSchema.partial().parse(json);
 
+    // Kullanıcı bazlı erişim kontrolü
+    const whereCondition = {
+      id: parseInt(params.id)
+    };
+
+    // Admin kullanıcıları sadece kendi oluşturdukları soru havuzlarını güncelleyebilir
+    // Superadmin tüm soru havuzlarını güncelleyebilir
+    if (session.user.role === 'ADMIN') {
+      whereCondition['userId'] = session.user.id;
+    }
+
+    // Önce soru havuzunun varlığını ve erişim izni olup olmadığını kontrol et
+    const existingPool = await db.questionPool.findFirst({
+      where: whereCondition
+    });
+
+    if (!existingPool) {
+      return NextResponse.json({ error: "Soru havuzu bulunamadı veya erişim izniniz yok" }, { status: 404 });
+    }
+
+    // Soru havuzunu güncelle
     const questionPool = await db.questionPool.update({
       where: {
-        id: parseInt(params.id),
-        userId: session.user.id, // Kullanıcı kontrolünü ekle
+        id: parseInt(params.id)
       },
       data: validatedData,
     });
@@ -92,10 +120,30 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Kullanıcı bazlı erişim kontrolü
+    const whereCondition = {
+      id: parseInt(params.id)
+    };
+
+    // Admin kullanıcıları sadece kendi oluşturdukları soru havuzlarını silebilir
+    // Superadmin tüm soru havuzlarını silebilir
+    if (session.user.role === 'ADMIN') {
+      whereCondition['userId'] = session.user.id;
+    }
+
+    // Önce soru havuzunun varlığını ve erişim izni olup olmadığını kontrol et
+    const existingPool = await db.questionPool.findFirst({
+      where: whereCondition
+    });
+
+    if (!existingPool) {
+      return NextResponse.json({ error: "Soru havuzu bulunamadı veya erişim izniniz yok" }, { status: 404 });
+    }
+
+    // Soru havuzunu sil
     await db.questionPool.delete({
       where: {
-        id: parseInt(params.id),
-        userId: session.user.id, // Kullanıcı kontrolünü ekle
+        id: parseInt(params.id)
       },
     });
 

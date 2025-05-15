@@ -88,23 +88,23 @@ Açıklama: B'nin doğru cevap olmasının kısa açıklaması.`
 
     if (isGoogleModel) {
       // Google Gemini API'sini kullan
-      apiKey = await getApiKey('Google', 'GOOGLE_API_KEY');
+      apiKey = await getApiKey('Google', '');
       if (!apiKey) {
-        throw new Error('Google API anahtarı yapılandırılmamış');
+        throw new Error('Google API anahtarı veritabanında bulunamadı. Lütfen yönetici panelinden API anahtarını ekleyin.');
       }
       result = await callGoogleAPI(apiKey, model, prompt);
     } else if (isGroqModel) {
       // Groq API'sini kullan
-      apiKey = await getApiKey('Groq', 'GROQ_API_KEY');
+      apiKey = await getApiKey('Groq', '');
       if (!apiKey) {
-        throw new Error('Groq API anahtarı yapılandırılmamış');
+        throw new Error('Groq API anahtarı veritabanında bulunamadı. Lütfen yönetici panelinden API anahtarını ekleyin.');
       }
       result = await callGroqAPI(apiKey, model, prompt);
     } else {
       // OpenRouter API'sini kullan (varsayılan)
-      apiKey = await getApiKey('OpenRouter', 'OPENROUTER_API_KEY');
+      apiKey = await getApiKey('Open Router', '');
       if (!apiKey) {
-        throw new Error('OpenRouter API anahtarı yapılandırılmamış');
+        throw new Error('OpenRouter API anahtarı veritabanında bulunamadı. Lütfen yönetici panelinden API anahtarını ekleyin.');
       }
       result = await callOpenRouterAPI(apiKey, model, prompt);
     }
@@ -270,16 +270,16 @@ export async function analyzeImage(imageUrl: string, question: string, model: Mo
 
     if (isGoogleModel) {
       // Google Gemini API'sini kullan
-      apiKey = await getApiKey('Google', 'GOOGLE_API_KEY');
+      apiKey = await getApiKey('Google', '');
       if (!apiKey) {
-        throw new Error('Google API anahtarı yapılandırılmamış');
+        throw new Error('Google API anahtarı veritabanında bulunamadı. Lütfen yönetici panelinden API anahtarını ekleyin.');
       }
       // Google Gemini API için görsel analizi fonksiyonu eklenecek
     } else {
       // OpenRouter API'sini kullan (varsayılan)
-      apiKey = await getApiKey('OpenRouter', 'OPENROUTER_API_KEY');
+      apiKey = await getApiKey('Open Router', '');
       if (!apiKey) {
-        throw new Error('OpenRouter API anahtarı yapılandırılmamış');
+        throw new Error('OpenRouter API anahtarı veritabanında bulunamadı. Lütfen yönetici panelinden API anahtarını ekleyin.');
       }
 
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {

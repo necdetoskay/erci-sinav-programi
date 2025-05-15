@@ -8,7 +8,7 @@ x-portainer:
 services:
   app:
     container_name: erci-sinav-programi
-    # Using image from Docker Hub
+    # Using locally built image
     image: necdetoskay/erci-sinav-programi:latest
     labels:
       - "com.docker.compose.project=erci-sinav-programi"
@@ -18,7 +18,7 @@ services:
       - "3000:3000" # Host port 3000 mapped to container port 3000
     environment:
       - NODE_ENV=development # Geliştirme moduna ayarlandı
-      - DATABASE_URL=postgresql://postgres:P@ssw0rd@db:5432/kentkonutdb?schema=public
+      - DATABASE_URL=postgresql://postgres:P@ssw0rd@db:5432/postgres?schema=public
       - JWT_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ= # JWT için güvenli anahtar
       - REFRESH_TOKEN_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ= # Refresh token için güvenli anahtar
       - ACCESS_TOKEN_EXPIRES_IN=15m # Access token süresi
@@ -27,18 +27,16 @@ services:
       - ADMIN_PASSWORD=Bi41*42* # Admin şifresi
       - DEBUG=true # Hata ayıklama için
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     networks:
       - app-network
     volumes:
-      # Source code volumes removed as we are using a pre-built image
-      - uploads-data:/app/uploads
+      # Bind mount kullanarak yerel dizinleri belirtiyoruz
+      - ./persistent-data-dev/uploads:/app/uploads
       - ./logs:/app/logs
     # Entrypoint olarak init-admin.sh kullanılıyor
     # Bu script veritabanı migrasyonlarını çalıştırır ve admin kullanıcısını oluşturur
-    entrypoint: ["/bin/sh", "/app/db/init-scripts/init-admin.sh"]
-    command: ["node", "server.js"]
+    entrypoint: ["/bin/sh", "-c", "echo 'Waiting for database to be ready...' && sleep 10 && /app/db/init-scripts/init-admin.sh && node server.js"]
 
   db:
     container_name: erci-sinav-db
@@ -50,17 +48,18 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=P@ssw0rd
-      - POSTGRES_DB=kentkonutdb
-    # Dış port kaldırıldı, sadece Docker ağı içinde erişilebilir
-    # ports:
-    #   - "5432:5432"
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ./persistent-data-dev/postgres:/var/lib/postgresql/data
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_connections=on"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d kentkonutdb"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - app-network
 
@@ -75,20 +74,16 @@ services:
       - PGADMIN_DEFAULT_EMAIL=admin@example.com
       - PGADMIN_DEFAULT_PASSWORD=admin
       - PGADMIN_LISTEN_PORT=80
-    # Dış port kaldırıldı, sadece Docker ağı içinde erişilebilir
-    # ports:
-    #   - "8080:80"
+    ports:
+      - "8080:80"
     volumes:
-      - pgadmin-data:/var/lib/pgadmin
+      - ./persistent-data-dev/pgadmin:/var/lib/pgadmin
     depends_on:
       - db
     networks:
       - app-network
 
-volumes:
-  postgres-data:
-  pgadmin-data:
-  uploads-data:
+# Bind mount kullanıldığı için volume tanımlamalarına gerek yok
 
 networks:
   app-network:

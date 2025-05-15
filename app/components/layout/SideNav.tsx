@@ -14,9 +14,11 @@ import {
   BarChart,
   Shield,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Brain
 } from "lucide-react"
 import { useState } from "react"
+import { useAuth } from "@/hooks/useAuth"
 
 // Menü grupları
 const sidebarNavGroups = [
@@ -74,14 +76,14 @@ const sidebarNavGroups = [
         icon: Settings,
       },
       {
-        title: "Öğrenci Sınav Girişi (Test)",
-        href: "/exam/enter-email",
-        icon: ClipboardCheckIcon,
-      },
-      {
         title: "Sınav Giriş Sayfası",
         href: "/exam",
         icon: ClipboardCheckIcon,
+      },
+      {
+        title: "Yapay Zeka Model Test",
+        href: "/dashboard/ai-model-test",
+        icon: Brain,
       },
     ],
   },
@@ -89,6 +91,7 @@ const sidebarNavGroups = [
 
 export function SideNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     // Başlangıçta tüm grupları açık olarak ayarla
     const initialState: Record<string, boolean> = {};
@@ -131,11 +134,16 @@ export function SideNav() {
                 const Icon = item.icon;
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
+                // Rol yönetimi ve Yapay Zeka Model Test sayfalarını sadece superadmin kullanıcılar görebilir
+                if ((item.href === "/dashboard/roles" || item.href === "/dashboard/ai-model-test") && user?.role !== "SUPERADMIN") {
+                  return null;
+                }
+
                 return (
                   <LoadingLink key={item.href} href={item.href}>
                     <Button
                       variant={isActive ? "secondary" : "ghost"}
-                      className="w-full justify-start gap-2 h-9"
+                      className={`w-full justify-start gap-2 h-9 ${isActive ? 'sidebar-link active' : 'sidebar-link'}`}
                     >
                       <Icon className="h-4 w-4" />
                       {item.title}

@@ -22,10 +22,21 @@ export async function GET(
     }
 
     const { id } = params;
-    const { showRawKey } = getQueryParams(req.url);
+    const queryParams = getQueryParams(req.url);
+    const { showRawKey, userId } = queryParams;
 
-    const provider = await prisma.provider.findUnique({
-      where: { id },
+    console.log(`Fetching provider ${id} for userId: ${userId || 'null'}`);
+
+    // Kullanıcı ID'si belirtilmişse, o kullanıcının provider'ını getir
+    // Aksi takdirde, global provider'ı getir (userId = null)
+    const whereClause = userId
+      ? { id, userId }
+      : { id };
+
+    console.log(`Provider where clause:`, whereClause);
+
+    const provider = await prisma.provider.findFirst({
+      where: whereClause,
       include: {
         models: true, // Provider'a ait modelleri de getir
       },
@@ -38,28 +49,8 @@ export async function GET(
       );
     }
 
-    // API anahtarını işle
-    let apiKey = provider.apiKey;
-
-    // showRawKey=true ise, anahtarı olduğu gibi göster
-    if (showRawKey !== 'true') {
-      // Normal durumda anahtarı maskele
-      if (apiKey && apiKey.length > 8) {
-        const firstFour = apiKey.substring(0, 4);
-        const lastFour = apiKey.substring(apiKey.length - 4);
-        const middleMask = '•'.repeat(apiKey.length - 8);
-        apiKey = `${firstFour}${middleMask}${lastFour}`;
-      } else if (apiKey) {
-        apiKey = '••••••••';
-      }
-    }
-
-    const responseProvider = {
-      ...provider,
-      apiKey
-    };
-
-    return NextResponse.json(responseProvider);
+    // API anahtarını açık olarak göster
+    return NextResponse.json(provider);
   } catch (error) {
     console.error("Error fetching AI provider:", error);
     return NextResponse.json(
@@ -85,9 +76,27 @@ export async function PATCH(
     const { id } = params;
     const data = await req.json();
 
+    // URL'den kullanıcı ID'sini al
+    const queryParams = getQueryParams(req.url);
+    const urlUserId = queryParams.userId;
+
+    // Kullanıcı ID'si belirtilmişse, o kullanıcı için provider güncelle
+    // Aksi takdirde, global provider güncelle (userId = null)
+    const userId = urlUserId || data.userId || null;
+
+    console.log(`Updating provider ${id} for userId: ${userId || 'null'}`);
+
+    // Kullanıcı ID'si belirtilmişse, o kullanıcının provider'ını kontrol et
+    // Aksi takdirde, global provider'ı kontrol et (userId = null)
+    const whereClause = userId
+      ? { id, userId }
+      : { id };
+
+    console.log(`Provider where clause for update:`, whereClause);
+
     // Provider'ın var olup olmadığını kontrol et
-    const existingProvider = await prisma.provider.findUnique({
-      where: { id },
+    const existingProvider = await prisma.provider.findFirst({
+      where: whereClause,
     });
 
     if (!existingProvider) {
@@ -104,25 +113,12 @@ export async function PATCH(
         name: data.name !== undefined ? data.name : undefined,
         description: data.description !== undefined ? data.description : undefined,
         apiKey: data.apiKey !== undefined ? data.apiKey : undefined,
+        userId: userId, // Kullanıcı ID'sini güncelle
       },
     });
 
-    // API anahtarını maskele
-    let maskedKey = updatedProvider.apiKey;
-    if (maskedKey && maskedKey.length > 8) {
-      const firstFour = maskedKey.substring(0, 4);
-      const lastFour = maskedKey.substring(maskedKey.length - 4);
-      const middleMask = '•'.repeat(maskedKey.length - 8);
-      maskedKey = `${firstFour}${middleMask}${lastFour}`;
-    } else if (maskedKey) {
-      maskedKey = '••••••••';
-    }
-
-    // Yanıtta API anahtarını maskele
-    return NextResponse.json({
-      ...updatedProvider,
-      apiKey: maskedKey
-    });
+    // API anahtarını açık olarak göster
+    return NextResponse.json(updatedProvider);
   } catch (error) {
     console.error("Error updating AI provider:", error);
     return NextResponse.json(
@@ -147,9 +143,23 @@ export async function DELETE(
 
     const { id } = params;
 
+    // URL'den kullanıcı ID'sini al
+    const queryParams = getQueryParams(req.url);
+    const userId = queryParams.userId;
+
+    console.log(`Deleting provider ${id} for userId: ${userId || 'null'}`);
+
+    // Kullanıcı ID'si belirtilmişse, o kullanıcının provider'ını kontrol et
+    // Aksi takdirde, global provider'ı kontrol et (userId = null)
+    const whereClause = userId
+      ? { id, userId }
+      : { id };
+
+    console.log(`Provider where clause for delete:`, whereClause);
+
     // Provider'ın var olup olmadığını kontrol et
-    const existingProvider = await prisma.provider.findUnique({
-      where: { id },
+    const existingProvider = await prisma.provider.findFirst({
+      where: whereClause,
     });
 
     if (!existingProvider) {

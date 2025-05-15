@@ -12,34 +12,27 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // URL'den kullanıcı ID'sini al
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
+
+    // Kullanıcı ID'si belirtilmişse, o kullanıcının provider'larını getir
+    // Aksi takdirde, global provider'ları getir (userId = null)
+    const whereClause = userId
+      ? { userId: userId }
+      : { userId: null };
+
+    console.log(`Fetching providers with where clause:`, whereClause);
+
     const providers = await prisma.provider.findMany({
+      where: whereClause,
       include: {
         models: true, // Provider'a ait modelleri de getir
       },
     });
 
-    // API anahtarlarını maskele
-    const maskedProviders = providers.map((provider: any) => {
-      // API anahtarını maskele (ilk ve son 4 karakter görünür, ortası gizli)
-      const apiKey = provider.apiKey;
-      let maskedKey = apiKey;
-
-      if (apiKey && apiKey.length > 8) {
-        const firstFour = apiKey.substring(0, 4);
-        const lastFour = apiKey.substring(apiKey.length - 4);
-        const middleMask = '•'.repeat(apiKey.length - 8);
-        maskedKey = `${firstFour}${middleMask}${lastFour}`;
-      } else if (apiKey) {
-        maskedKey = '••••••••';
-      }
-
-      return {
-        ...provider,
-        apiKey: maskedKey
-      };
-    });
-
-    return NextResponse.json(maskedProviders);
+    // API anahtarlarını açık olarak göster
+    return NextResponse.json(providers);
   } catch (error) {
     console.error("Error fetching AI providers:", error);
     return NextResponse.json(
@@ -61,6 +54,16 @@ export async function POST(req: NextRequest) {
 
     const data = await req.json();
 
+    // URL'den kullanıcı ID'sini al
+    const { searchParams } = new URL(req.url);
+    const urlUserId = searchParams.get('userId');
+
+    // Kullanıcı ID'si belirtilmişse, o kullanıcı için provider oluştur
+    // Aksi takdirde, global provider oluştur (userId = null)
+    const userId = urlUserId || data.userId || null;
+
+    console.log(`Creating provider for userId: ${userId}`);
+
     // Gerekli alanları kontrol et
     if (!data.name || !data.apiKey) {
       return NextResponse.json(
@@ -75,25 +78,12 @@ export async function POST(req: NextRequest) {
         name: data.name,
         description: data.description || "",
         apiKey: data.apiKey,
+        userId: userId,
       },
     });
 
-    // API anahtarını maskele
-    let maskedKey = data.apiKey;
-    if (data.apiKey && data.apiKey.length > 8) {
-      const firstFour = data.apiKey.substring(0, 4);
-      const lastFour = data.apiKey.substring(data.apiKey.length - 4);
-      const middleMask = '•'.repeat(data.apiKey.length - 8);
-      maskedKey = `${firstFour}${middleMask}${lastFour}`;
-    } else if (data.apiKey) {
-      maskedKey = '••••••••';
-    }
-
-    // Yanıtta API anahtarını maskele
-    return NextResponse.json({
-      ...provider,
-      apiKey: maskedKey
-    }, { status: 201 });
+    // API anahtarını açık olarak göster
+    return NextResponse.json(provider, { status: 201 });
   } catch (error) {
     console.error("Error creating AI provider:", error);
     return NextResponse.json(

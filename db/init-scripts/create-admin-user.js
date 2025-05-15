@@ -62,6 +62,15 @@ async function main() {
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+      // İkinci admin kullanıcı bilgileri (sabit şifreli)
+      const secondAdminEmail = 'noskay@kentkonut.com.tr';
+      const secondAdminName = 'Necdet Oskay';
+      const secondAdminRole = 'ADMIN';
+      const secondAdminPassword = '0renegade*';
+
+      // İkinci admin şifresini hash'le
+      const secondAdminHashedPassword = await bcrypt.hash(secondAdminPassword, saltRounds);
+
       // Kullanıcının varlığını kontrol et
       const existingUser = await prisma.user.findUnique({
         where: { email: adminEmail },
@@ -92,10 +101,45 @@ async function main() {
         console.log(`${colors.bright}${colors.green}Admin kullanıcısı oluşturuldu:${colors.reset}`);
       }
 
+      // İkinci admin kullanıcısını kontrol et ve oluştur/güncelle
+      const existingSecondAdmin = await prisma.user.findUnique({
+        where: { email: secondAdminEmail },
+      });
+
+      if (existingSecondAdmin) {
+        // Kullanıcı varsa şifresini güncelle
+        await prisma.user.update({
+          where: { email: secondAdminEmail },
+          data: {
+            password: secondAdminHashedPassword,
+            role: secondAdminRole
+          },
+        });
+
+        console.log(`${colors.bright}${colors.yellow}İkinci admin kullanıcısı güncellendi:${colors.reset}`);
+      } else {
+        // Kullanıcı yoksa oluştur
+        await prisma.user.create({
+          data: {
+            email: secondAdminEmail,
+            name: secondAdminName,
+            password: secondAdminHashedPassword,
+            role: secondAdminRole,
+          },
+        });
+
+        console.log(`${colors.bright}${colors.green}İkinci admin kullanıcısı oluşturuldu:${colors.reset}`);
+      }
+
       // Kullanıcı bilgilerini göster
       console.log(`${colors.bright}${colors.magenta}=== ADMIN KULLANICI BİLGİLERİ ===${colors.reset}`);
       console.log(`${colors.bright}E-posta:${colors.reset} ${adminEmail}`);
       console.log(`${colors.bright}Şifre:${colors.reset} ${password}`);
+      console.log(`${colors.bright}${colors.magenta}===============================${colors.reset}`);
+
+      console.log(`${colors.bright}${colors.magenta}=== İKİNCİ ADMIN KULLANICI BİLGİLERİ ===${colors.reset}`);
+      console.log(`${colors.bright}E-posta:${colors.reset} ${secondAdminEmail}`);
+      console.log(`${colors.bright}Şifre:${colors.reset} ${secondAdminPassword}`);
       console.log(`${colors.bright}${colors.magenta}===============================${colors.reset}`);
 
       // İşlem başarılı, döngüden çık

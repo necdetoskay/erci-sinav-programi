@@ -20,8 +20,12 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   questionPools QuestionPool[]
-  refreshTokens  RefreshToken[]
+  exams         Exam[]         // Kullanıcının oluşturduğu sınavlar
+  refreshTokens RefreshToken[]
   customRole    CustomRole?    @relation(fields: [roleId], references: [id])
+  settings      UserSetting[]  // Kullanıcı ayarları
+  providers     Provider[]     // Kullanıcının oluşturduğu yapay zeka sağlayıcıları
+  models        Model[]        // Kullanıcının oluşturduğu yapay zeka modelleri
 }
 
 model RefreshToken {
@@ -36,13 +40,13 @@ model RefreshToken {
   @@index([userId])
 }
 
+// VerificationToken modeli veritabanındaki tabloya göre düzenlendi
 model VerificationToken {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  type      String   // 'email', 'password-reset', etc.
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
 }
 
 model Exam {
@@ -54,9 +58,13 @@ model Exam {
   status           String        @default("draft")
   duration_minutes Int           @default(60)
   access_code      String?
+  createdById      String        // Oluşturan kullanıcının ID'si
+  createdBy        User          @relation(fields: [createdById], references: [id])
   exam_results     ExamResult[]
   questions        Question[]
   attempts         ExamAttempt[] // Added inverse relation for ExamAttempt
+
+  @@index([createdById])
 }
 
 model Question {
@@ -85,6 +93,9 @@ model ExamResult {
   answers           Json?
   created_at        DateTime  @default(now())
   exam              Exam      @relation(fields: [exam_id], references: [id], onDelete: Cascade)
+
+  // Sonucu görüntüleyebilecek kullanıcı (sınavı oluşturan kullanıcı ile aynı olacak)
+  // Bu alan doğrudan doldurulmayacak, sınav oluşturan kullanıcı üzerinden erişim kontrolü yapılacak
 }
 
 // Model for tracking individual exam attempts (for resuming exams)
@@ -194,15 +205,39 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+model GlobalSetting {
+  key       String   @id
+  value     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  value     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
 // Yapay zeka provider ve model tabloları
 model Provider {
   id          String   @id @default(cuid())
   name        String
   description String?
-  apiKey      String
+  apiKey      String   @db.VarChar(255) // API anahtarı 255 karaktere kadar olabilir
+  userId      String?  // Provider'ı oluşturan kullanıcı ID'si (null ise global provider)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   models      Model[]  // Provider'a ait modeller
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
 }
 
 model Model {
@@ -210,21 +245,26 @@ model Model {
   name        String
   details     String?
   codeName    String   // Modelin kodlamada kullanılan adı (microsoft/phi-4-reasoning-plus:free gibi)
+  apiCode     String?  // API kodu (openrouter, groq, google, vision, vb.)
   orderIndex  Int      @default(0) // Tabloda gösterim sırası
   isEnabled   Boolean  @default(true) // Etkinleştirme/devre dışı bırakma durumu
   providerId  String
+  userId      String?  // Model'i oluşturan kullanıcı ID'si (null ise global model)
   provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([providerId])
+  @@index([userId])
   @@index([orderIndex])
 }
 
 enum Role {
   USER
-  ADMIN
   PERSONEL
+  ADMIN
+  SUPERADMIN
 }
 
 enum Status {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getServerSession } from '@/lib/session';
 
 // Sonuç tipi
 interface ExamResult {
@@ -19,21 +20,35 @@ export async function GET(
   { params }: { params: { examId: string } }
 ) {
   try {
+    // Oturum kontrolü
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const examId = parseInt(params.examId);
 
     if (isNaN(examId)) {
       return NextResponse.json({ error: 'Geçersiz sınav ID' }, { status: 400 });
     }
 
-    // Sınavın mevcut olup olmadığını kontrol et
-    const exam = await db.exam.findUnique({
-      where: {
-        id: examId
-      }
+    // Sınavın mevcut olup olmadığını kontrol et ve kullanıcı erişimini doğrula
+    const whereCondition = {
+      id: examId
+    };
+
+    // Admin kullanıcıları sadece kendi oluşturdukları sınavlara erişebilir
+    // Superadmin tüm sınavlara erişebilir
+    if (session.user.role === 'ADMIN') {
+      whereCondition['createdById'] = session.user.id;
+    }
+
+    const exam = await db.exam.findFirst({
+      where: whereCondition
     });
 
     if (!exam) {
-      return NextResponse.json({ error: 'Sınav bulunamadı' }, { status: 404 });
+      return NextResponse.json({ error: 'Sınav bulunamadı veya erişim izniniz yok' }, { status: 404 });
     }
 
     // Sayfalama parametrelerini al
@@ -89,12 +104,37 @@ export async function DELETE(
   { params }: { params: { examId: string } }
 ) {
   try {
+    // Oturum kontrolü
+    const session = await getServerSession();
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const examId = parseInt(params.examId);
     const { searchParams } = new URL(request.url);
     const resultId = parseInt(searchParams.get('resultId') || '0');
 
     if (isNaN(examId) || isNaN(resultId) || resultId === 0) {
       return NextResponse.json({ error: 'Geçersiz ID' }, { status: 400 });
+    }
+
+    // Sınavın kullanıcıya ait olup olmadığını kontrol et
+    const whereCondition = {
+      id: examId
+    };
+
+    // Admin kullanıcıları sadece kendi oluşturdukları sınavlara erişebilir
+    // Superadmin tüm sınavlara erişebilir
+    if (session.user.role === 'ADMIN') {
+      whereCondition['createdById'] = session.user.id;
+    }
+
+    const exam = await db.exam.findFirst({
+      where: whereCondition
+    });
+
+    if (!exam) {
+      return NextResponse.json({ error: 'Sınav bulunamadı veya erişim izniniz yok' }, { status: 404 });
     }
 
     // Sonucun bu sınava ait olup olmadığını kontrol et

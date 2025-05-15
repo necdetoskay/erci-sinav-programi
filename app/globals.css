@@ -40,14 +40,14 @@ body {
   --background-end-rgb: 255, 255, 255;
 }
 
-/* Dark mode devre dışı bırakıldı */
-/* @media (prefers-color-scheme: dark) {
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
   :root {
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 0, 0, 0;
   }
-} */
+}
 
 /* Form element styles */
 select,
@@ -89,28 +89,28 @@ label,
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
   }
-  /* Dark mode devre dışı bırakıldı */
-  /* .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-  } */
+  /* Dark mode - Daha yüksek kontrast değerleri */
+  .dark {
+    --background: 240 10% 5%;
+    --foreground: 0 0% 100%;
+    --card: 240 10% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 240 10% 10%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 210 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 10% 20%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 10% 15%;
+    --muted-foreground: 0 0% 90%;
+    --accent: 210 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 10% 20%;
+    --input: 240 10% 15%;
+    --ring: 210 100% 60%;
+  }
 }
 
 @layer base {
@@ -120,6 +120,106 @@ label,
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Dark mode için özel düzenlemeler */
+.dark {
+  @apply bg-background text-foreground;
+}
+
+.dark body {
+  @apply bg-background text-foreground;
+}
+
+.dark .dashboard-card {
+  @apply bg-card text-card-foreground border border-border;
+}
+
+.dark .dashboard-value {
+  @apply text-white font-bold;
+}
+
+.dark .dashboard-title {
+  @apply text-gray-200;
+}
+
+.dark .dashboard-icon {
+  @apply text-primary;
+}
+
+.dark .dashboard-tab {
+  @apply text-gray-200 hover:text-white;
+}
+
+.dark .dashboard-tab.active {
+  @apply text-white border-primary;
+}
+
+/* Dark mode için tablo düzenlemeleri */
+.dark table {
+  @apply text-gray-200;
+}
+
+.dark th {
+  @apply text-gray-300 bg-card;
+}
+
+.dark td {
+  @apply text-gray-200 border-gray-700;
+}
+
+/* Dark mode için form elemanları */
+.dark input,
+.dark select,
+.dark textarea {
+  @apply bg-card text-gray-200 border-gray-700;
+}
+
+/* Dark mode için label ve placeholder */
+.dark label {
+  @apply text-gray-200;
+}
+
+.dark input::placeholder {
+  @apply text-gray-500/50;
+}
+
+/* Dark mode için butonlar */
+.dark .button-icon {
+  @apply text-gray-200 border-gray-600;
+}
+
+/* Dark mode için profil ve tema değiştirme ikonları */
+.dark .theme-toggle-icon,
+.dark .profile-icon {
+  @apply text-gray-200 border-gray-600;
+}
+
+/* Dark mode için sidebar ve header */
+.dark .sidebar {
+  @apply bg-card border-r border-gray-800;
+}
+
+.dark .sidebar-link {
+  @apply text-gray-300 hover:text-white hover:bg-gray-800;
+}
+
+.dark .sidebar-link.active {
+  @apply bg-gray-800 text-white;
+}
+
+.dark .header {
+  @apply bg-card border-b border-gray-800;
+}
+
+/* Dark mode için dropdown menüler */
+.dark .dropdown-content {
+  @apply bg-card border-gray-700 text-gray-200;
+}
+
+/* Dark mode için badge */
+.dark .badge {
+  @apply bg-gray-700 text-gray-200;
 }
 
 /* Özel animasyonlar */

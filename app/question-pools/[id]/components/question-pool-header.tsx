@@ -4,10 +4,14 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { QuestionPool } from "@/types/prisma";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { UpdateQuestionPool } from "./update-question-pool";
 import { DeleteQuestionPool } from "./delete-question-pool";
+import { ExportQuestions } from "./export-questions";
+import { ImportQuestions } from "./import-questions";
+import { PrintQuestions } from "./print-questions";
 
 interface QuestionPoolHeaderProps {
   initialData: QuestionPool | null;
@@ -82,6 +86,9 @@ export function QuestionPoolHeader({ initialData }: QuestionPoolHeaderProps) {
       </div>
       <div className="flex items-center gap-2">
         <UpdateQuestionPool data={questionPool} />
+        <ExportQuestions id={questionPool.id} title={questionPool.title} />
+        <ImportQuestions id={questionPool.id} />
+        <PrintQuestions id={questionPool.id} title={questionPool.title} />
         <DeleteQuestionPool id={questionPool.id} />
       </div>
     </div>

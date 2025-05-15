@@ -19,13 +19,15 @@ interface ModelManagementProps {
   setModels: React.Dispatch<React.SetStateAction<Model[]>>;
   providers: Provider[];
   selectedProviderId: string | null;
+  userId?: string | null; // Kullanıcı ID'si
 }
 
 export const ModelManagement: React.FC<ModelManagementProps> = ({
   models,
   setModels,
   providers,
-  selectedProviderId
+  selectedProviderId,
+  userId
 }) => {
   // Model form state'leri
   const [isModelDialogOpen, setIsModelDialogOpen] = useState(false);
@@ -33,8 +35,9 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
   const [currentModel, setCurrentModel] = useState<Model>({
     id: '',
     name: '',
-    details: '',
+    details: '', // Açıklama alanı formdan kaldırıldı ama model yapısında korunuyor
     codeName: '',
+    apiCode: '',
     providerId: '',
     orderIndex: 0,
     isEnabled: true
@@ -68,7 +71,10 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
     if (validateModelForm()) {
       try {
         // API'ye yeni model ekle
-        const response = await fetch('/api/ai-models', {
+        const url = userId ? `/api/ai-models?userId=${userId}` : '/api/ai-models';
+        console.log(`Adding model to: ${url}`);
+
+        const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -77,9 +83,11 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
             name: currentModel.name,
             details: currentModel.details,
             codeName: currentModel.codeName,
+            apiCode: currentModel.apiCode,
             providerId: currentModel.providerId,
             orderIndex: currentModel.orderIndex,
             isEnabled: currentModel.isEnabled,
+            userId: userId // Kullanıcı ID'sini de gönder
           }),
         });
 
@@ -97,6 +105,7 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
           name: '',
           details: '',
           codeName: '',
+          apiCode: '',
           providerId: '',
           orderIndex: 0,
           isEnabled: true
@@ -114,7 +123,13 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
     if (validateModelForm()) {
       try {
         // API'ye model güncelleme isteği gönder
-        const response = await fetch(`/api/ai-models/${currentModel.id}`, {
+        const url = userId
+          ? `/api/ai-models/${currentModel.id}?userId=${userId}`
+          : `/api/ai-models/${currentModel.id}`;
+
+        console.log(`Updating model at: ${url}`);
+
+        const response = await fetch(url, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -123,9 +138,11 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
             name: currentModel.name,
             details: currentModel.details,
             codeName: currentModel.codeName,
+            apiCode: currentModel.apiCode,
             providerId: currentModel.providerId,
             orderIndex: currentModel.orderIndex,
             isEnabled: currentModel.isEnabled,
+            userId: userId // Kullanıcı ID'sini de gönder
           }),
         });
 
@@ -144,8 +161,9 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
         setCurrentModel({
           id: '',
           name: '',
-          details: '',
+          details: '', // Açıklama alanı formdan kaldırıldı ama model yapısında korunuyor
           codeName: '',
+          apiCode: '',
           providerId: '',
           orderIndex: 0,
           isEnabled: true
@@ -162,7 +180,13 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
   const handleDeleteModel = async (id: string) => {
     try {
       // API'ye model silme isteği gönder
-      const response = await fetch(`/api/ai-models/${id}`, {
+      const url = userId
+        ? `/api/ai-models/${id}?userId=${userId}`
+        : `/api/ai-models/${id}`;
+
+      console.log(`Deleting model at: ${url}`);
+
+      const response = await fetch(url, {
         method: 'DELETE',
       });
 
@@ -190,13 +214,20 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
   const handleToggleModelStatus = async (id: string, isEnabled: boolean) => {
     try {
       // API'ye model güncelleme isteği gönder
-      const response = await fetch(`/api/ai-models/${id}`, {
+      const url = userId
+        ? `/api/ai-models/${id}?userId=${userId}`
+        : `/api/ai-models/${id}`;
+
+      console.log(`Toggling model status at: ${url}`);
+
+      const response = await fetch(url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          isEnabled
+          isEnabled,
+          userId: userId // Kullanıcı ID'sini de gönder
         }),
       });
 
@@ -249,8 +280,9 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
             setCurrentModel({
               id: '',
               name: '',
-              details: '',
+              details: '', // Açıklama alanı formdan kaldırıldı ama model yapısında korunuyor
               codeName: '',
+              apiCode: '',
               providerId: selectedProviderId || '',
               orderIndex: 0,
               isEnabled: true
@@ -275,6 +307,7 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
                   <TableHead>Model Adı</TableHead>
                   {!selectedProviderId && <TableHead>Provider</TableHead>}
                   <TableHead>Kod Adı</TableHead>
+                  <TableHead>API Kodu</TableHead>
                   <TableHead>Sıra</TableHead>
                   <TableHead>Durum</TableHead>
                   <TableHead className="text-right">İşlemler</TableHead>
@@ -288,6 +321,15 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
                       <TableCell>{getProviderName(model.providerId)}</TableCell>
                     )}
                     <TableCell className="font-mono text-sm">{model.codeName}</TableCell>
+                    <TableCell>
+                      {model.apiCode ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          API Kodu Var
+                        </span>
+                      ) : (
+                        <span className="text-red-500">Eksik</span>
+                      )}
+                    </TableCell>
                     <TableCell>{model.orderIndex}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
@@ -342,88 +384,74 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
                 : "Yeni bir yapay zeka modeli ekleyin"}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="modelName">Model Adı *</Label>
-              <Input
-                id="modelName"
-                value={currentModel.name}
-                onChange={(e) => setCurrentModel({ ...currentModel, name: e.target.value })}
-                placeholder="Örn: GPT-4, Claude 3, Phi-3"
-              />
-              {modelErrors.name && (
-                <p className="text-sm text-destructive">{modelErrors.name}</p>
-              )}
+          <div className="space-y-3 py-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="modelName">Model Adı *</Label>
+                <Input
+                  id="modelName"
+                  value={currentModel.name}
+                  onChange={(e) => setCurrentModel({ ...currentModel, name: e.target.value })}
+                  placeholder="Örn: GPT-4, Claude 3"
+                />
+                {modelErrors.name && (
+                  <p className="text-xs text-destructive">{modelErrors.name}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="modelProvider">Provider *</Label>
+                <Select
+                  value={currentModel.providerId}
+                  onValueChange={(value) => setCurrentModel({ ...currentModel, providerId: value })}
+                >
+                  <SelectTrigger id="modelProvider">
+                    <SelectValue placeholder="Provider seçin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providers.map((provider) => (
+                      <SelectItem key={provider.id} value={provider.id}>
+                        {provider.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {modelErrors.providerId && (
+                  <p className="text-xs text-destructive">{modelErrors.providerId}</p>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="modelProvider">Provider *</Label>
-              <Select
-                value={currentModel.providerId}
-                onValueChange={(value) => setCurrentModel({ ...currentModel, providerId: value })}
-              >
-                <SelectTrigger id="modelProvider">
-                  <SelectValue placeholder="Provider seçin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {providers.map((provider) => (
-                    <SelectItem key={provider.id} value={provider.id}>
-                      {provider.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {modelErrors.providerId && (
-                <p className="text-sm text-destructive">{modelErrors.providerId}</p>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="modelCodeName">Kod Adı *</Label>
+                <Input
+                  id="modelCodeName"
+                  value={currentModel.codeName}
+                  onChange={(e) => setCurrentModel({ ...currentModel, codeName: e.target.value })}
+                  placeholder="Örn: gpt-4, claude-3-opus"
+                />
+                {modelErrors.codeName && (
+                  <p className="text-xs text-destructive">{modelErrors.codeName}</p>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="modelOrder">Sıralama</Label>
+                <Input
+                  id="modelOrder"
+                  type="number"
+                  value={currentModel.orderIndex.toString()}
+                  onChange={(e) => setCurrentModel({
+                    ...currentModel,
+                    orderIndex: parseInt(e.target.value) || 0
+                  })}
+                  min="0"
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="modelCodeName">Kod Adı *</Label>
-              <Input
-                id="modelCodeName"
-                value={currentModel.codeName}
-                onChange={(e) => setCurrentModel({ ...currentModel, codeName: e.target.value })}
-                placeholder="Örn: gpt-4, claude-3-opus-20240229, phi-3"
-              />
-              {modelErrors.codeName && (
-                <p className="text-sm text-destructive">{modelErrors.codeName}</p>
-              )}
-              <p className="text-sm text-muted-foreground">
-                API isteklerinde kullanılacak model tanımlayıcısı
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="modelDetails">Açıklama</Label>
-              <Textarea
-                id="modelDetails"
-                value={currentModel.details || ''}
-                onChange={(e) => setCurrentModel({ ...currentModel, details: e.target.value })}
-                placeholder="Model hakkında kısa açıklama"
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="modelOrder">Sıralama</Label>
-              <Input
-                id="modelOrder"
-                type="number"
-                value={currentModel.orderIndex.toString()}
-                onChange={(e) => setCurrentModel({
-                  ...currentModel,
-                  orderIndex: parseInt(e.target.value) || 0
-                })}
-                min="0"
-              />
-              <p className="text-sm text-muted-foreground">
-                Modellerin listede gösterilme sırası (küçük değerler üstte gösterilir)
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <Label htmlFor="modelStatus">Aktif</Label>
+            <div className="flex items-center space-x-2 mb-2">
               <Switch
                 id="modelStatus"
                 checked={currentModel.isEnabled}
@@ -432,6 +460,22 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
                   isEnabled: checked
                 })}
               />
+              <Label htmlFor="modelStatus">Aktif</Label>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="modelApiCode">API Kodu</Label>
+              <Textarea
+                id="modelApiCode"
+                value={currentModel.apiCode || ''}
+                onChange={(e) => setCurrentModel({ ...currentModel, apiCode: e.target.value })}
+                placeholder={`{"model":"MODEL_NAME","messages":[{"role":"user","content":"PROMPT"}],"temperature":0.7,"max_tokens":2000}`}
+                className="font-mono text-xs"
+                rows={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                API isteklerinin doğru şekilde gönderilmesi için kullanılacak JSON kodu. MODEL_NAME ve PROMPT değerleri otomatik olarak değiştirilecektir. JavaScript fetch kodu yerine sadece JSON formatında API isteği gövdesi kullanın.
+              </p>
             </div>
           </div>
           <DialogFooter>

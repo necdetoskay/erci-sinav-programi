@@ -21,7 +21,6 @@ const navigation = [
   { name: 'Kullanıcılar', href: '/users', icon: UsersIcon }, // Kullanıcılar sayfası (varsayım)
   { name: 'Soru Havuzu', href: '/question-pools', icon: FileTextIcon }, // Soru Havuzu ikonu değiştirildi
   { name: 'Ayarlar', href: '/settings', icon: SettingsIcon },
-  { name: 'Öğrenci Sınav Girişi (Test)', href: '/exam/enter-email', icon: ClipboardCheckIcon }, // Test linki
   { name: 'Sınav Giriş Sayfası', href: '/exam', icon: ClipboardCheckIcon }, // Doğrudan sınav giriş sayfası
 ];
 

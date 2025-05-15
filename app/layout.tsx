@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic'; // Force dynamic rendering for the entir
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Next.js Fullstack Template",
-  description: "A fullstack template built with Next.js, Prisma, and JWT Authentication",
+  title: "Kentkonut Sınav Portalı",
+  description: "KentKonut A.Ş. KVKK, Sıfır Atık ve İSG eğitimleri sınav portalı",
 };
 
 // Next.js 13.4+ için viewport export'u ayrı olmalı
@@ -26,11 +26,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="tr" suppressHydrationWarning className="light" style={{ colorScheme: 'light' }}>
+    <html lang="tr" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="color-scheme" content="light" />
+        <meta name="color-scheme" content="light dark" />
 
         <style dangerouslySetInnerHTML={{
           __html: `
@@ -86,30 +86,9 @@ export default function RootLayout({
             }
           `
         }} />
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            // Sayfa yüklendiğinde çalışacak script
-            (function() {
-              // localStorage'dan theme değerini temizle
-              try {
-                localStorage.removeItem('theme');
-                localStorage.setItem('theme', 'light');
-                sessionStorage.removeItem('theme');
-                sessionStorage.setItem('theme', 'light');
-              } catch (e) {}
 
-              // Doküman elementine light sınıfını ekle, dark sınıfını kaldır
-              document.documentElement.classList.add('light');
-              document.documentElement.classList.remove('dark');
-              document.documentElement.style.colorScheme = 'light';
-
-              // Tema değişikliğini engelle
-              window.matchMedia('(prefers-color-scheme: dark)').addListener = function() {};
-            })();
-          `
-        }} />
       </head>
-      <body className={inter.className} style={{ backgroundColor: 'white', color: 'black' }}>
+      <body className={inter.className}>
         <LoadingProvider> {/* LoadingProvider en dışta */}
           <AuthProvider>  {/* AuthProvider, LoadingProvider içinde */}
             <ClientProviders>{children}</ClientProviders>

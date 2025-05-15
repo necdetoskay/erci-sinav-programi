@@ -45,7 +45,7 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
     const fetchResult = async () => {
       try {
         const response = await fetch(`/api/exams/${examId}/attempt/${attemptId}/result`);
-        
+
         if (!response.ok) {
           throw new Error("Sınav sonucu yüklenirken bir hata oluştu");
         }
@@ -93,7 +93,7 @@ export default function ExamResultPage({ params }: { params: { id: string } }) {
     );
   }
 
-  const percentage = Math.round((result.score || 0) * 100);
+  const percentage = Math.round(result.score || 0);
 
   return (
     <div className="container mx-auto max-w-4xl py-8">

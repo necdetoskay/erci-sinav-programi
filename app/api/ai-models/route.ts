@@ -12,12 +12,34 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // URL'den providerId parametresini al
+    // URL'den parametreleri al
     const url = new URL(req.url);
     const providerId = url.searchParams.get("providerId");
+    const userId = url.searchParams.get("userId");
+
+    console.log(`Fetching models for providerId: ${providerId || 'all'}, userId: ${userId || 'null'}, session user: ${session?.user?.id || 'unknown'}`);
 
     // Filtreleme koşullarını oluştur
-    const where = providerId ? { providerId } : {};
+    let where: any = {};
+
+    if (providerId) {
+      where.providerId = providerId;
+    }
+
+    // Kullanıcı ID'si belirtilmişse, o kullanıcının modellerini getir
+    // Aksi takdirde, global modelleri getir (userId = null)
+    // VEYA kullanıcıya özel modeller yoksa, global modelleri de getir
+    if (userId) {
+      where.userId = userId;
+    } else {
+      // Değişiklik: userId = null VEYA userId = session.user.id olan modelleri getir
+      where.OR = [
+        { userId: null },
+        { userId: session.user.id }
+      ];
+    }
+
+    console.log(`Model where clause:`, where);
 
     const models = await prisma.model.findMany({
       where,
@@ -51,6 +73,16 @@ export async function POST(req: NextRequest) {
 
     const data = await req.json();
 
+    // URL'den kullanıcı ID'sini al
+    const url = new URL(req.url);
+    const urlUserId = url.searchParams.get("userId");
+
+    // Kullanıcı ID'si belirtilmişse, o kullanıcı için model oluştur
+    // Aksi takdirde, global model oluştur (userId = null)
+    const userId = urlUserId || data.userId || null;
+
+    console.log(`Creating model for userId: ${userId || 'null'}`);
+
     // Gerekli alanları kontrol et
     if (!data.name || !data.providerId || !data.codeName) {
       return NextResponse.json(
@@ -60,8 +92,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Provider'ın var olup olmadığını kontrol et
-    const provider = await prisma.provider.findUnique({
-      where: { id: data.providerId },
+    const providerWhereClause = userId
+      ? { id: data.providerId, userId }
+      : { id: data.providerId };
+
+    console.log(`Provider where clause for model creation:`, providerWhereClause);
+
+    const provider = await prisma.provider.findFirst({
+      where: providerWhereClause,
     });
 
     if (!provider) {
@@ -75,6 +113,7 @@ export async function POST(req: NextRequest) {
     const highestOrderIndex = await prisma.model.findFirst({
       where: {
         providerId: data.providerId,
+        userId: userId,
       },
       orderBy: {
         orderIndex: 'desc',
@@ -89,7 +128,9 @@ export async function POST(req: NextRequest) {
         name: data.name,
         details: data.details || "",
         codeName: data.codeName,
+        apiCode: data.apiCode || null, // API kodunu ekle
         providerId: data.providerId,
+        userId: userId,
         orderIndex: highestOrderIndex ? highestOrderIndex.orderIndex + 1 : 0, // Mevcut en yüksek değerin bir fazlası
         isEnabled: data.isEnabled !== undefined ? data.isEnabled : true, // Varsayılan olarak etkin
       },

@@ -20,16 +20,17 @@ async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffe
 
 export async function POST(req: NextRequest) {
   try {
-    // JWT token'ını al
-    const tokenCookie = req.cookies.get('token')?.value;
+    // JWT token'ını al (access-token çerezinden)
+    const tokenCookie = req.cookies.get('access-token')?.value;
     if (!tokenCookie) {
-      return NextResponse.json({ message: 'Yetkisiz erişim.' }, { status: 401 });
+      return NextResponse.json({ message: 'Yetkisiz erişim. Lütfen tekrar giriş yapın.' }, { status: 401 });
     }
 
     // Token'ı doğrula
     const decoded = verify(tokenCookie, process.env.JWT_SECRET || 'default-secret') as {
       id: string;
       email: string;
+      role: string;
     };
 
     if (!decoded || !decoded.id) {
@@ -74,10 +75,26 @@ export async function POST(req: NextRequest) {
     if (file.type === 'text/plain') {
       textContent = fileBuffer.toString('utf-8');
     } else if (file.type === 'application/pdf') {
-      // const data = await pdf(fileBuffer); // Commented out due to build error
-      // textContent = data.text; // Commented out due to build error
-      console.warn("PDF processing is temporarily disabled due to a missing test file during build.");
-      return NextResponse.json({ message: 'PDF işleme geçici olarak devre dışı bırakıldı.' }, { status: 501 });
+      try {
+        // PDF dosyasını işle
+        const data = await pdf(fileBuffer);
+
+        // PDF'ten çıkarılan metni temizle ve düzenle
+        // Özel karakterleri ve HTML/XML etiketlerini temizle
+        textContent = data.text || '';
+        textContent = textContent.replace(/<[^>]*>/g, ''); // HTML/XML etiketlerini temizle
+        textContent = textContent.replace(/[^\w\s.,?!;:()\-"']/g, ' '); // Özel karakterleri temizle
+        textContent = textContent.replace(/\s+/g, ' ').trim(); // Fazla boşlukları temizle
+
+        console.log('PDF içeriği çıkarıldı:', textContent.substring(0, 100) + '...');
+
+        if (!textContent || textContent.trim() === '') {
+          return NextResponse.json({ message: 'PDF dosyası boş veya metin içeriği çıkarılamadı.' }, { status: 400 });
+        }
+      } catch (pdfError) {
+        console.error('PDF işleme hatası:', pdfError);
+        return NextResponse.json({ message: `PDF işleme hatası: ${pdfError.message}` }, { status: 500 });
+      }
     } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
       const result = await mammoth.extractRawText({ buffer: fileBuffer });
       textContent = result.value;

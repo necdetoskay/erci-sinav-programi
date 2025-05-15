@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { getServerSession } from '@/lib/session';
 
 // Sınav tipi
 interface Exam {
@@ -20,17 +21,33 @@ interface Exam {
 // GET: Sınav listesini döndürür
 export async function GET(request: Request) {
   try {
+    const session = await getServerSession();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const skip = (page - 1) * limit;
 
+    // Kullanıcı bazlı filtreleme için where koşulu
+    const whereCondition = {
+      createdById: session.user.id
+    };
+
+    // Admin ve Superadmin kullanıcılar tüm sınavları görebilir
+    const isAdmin = session.user.role === 'ADMIN' || session.user.role === 'SUPERADMIN';
+    const where = isAdmin ? {} : whereCondition;
+
     // Toplam sınav sayısını al
-    const totalCount = await db.exam.count();
+    const totalCount = await db.exam.count({ where });
     const totalPages = Math.ceil(totalCount / limit);
 
     // Sınavları al
     const exams = await db.exam.findMany({
+      where,
       skip,
       take: limit,
       orderBy: {
@@ -45,6 +62,13 @@ export async function GET(request: Request) {
         updated_at: true,
         access_code: true,
         duration_minutes: true,
+        createdById: true,
+        createdBy: {
+          select: {
+            name: true,
+            email: true
+          }
+        },
         _count: {
           select: {
             exam_results: true
@@ -75,6 +99,12 @@ export async function GET(request: Request) {
 // POST: Yeni sınav oluşturur
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession();
+
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { title, description, duration_minutes, access_code, status } = body;
 
@@ -89,6 +119,7 @@ export async function POST(request: Request) {
         duration_minutes: duration_minutes || 60,
         access_code: access_code || generateExamCode(),
         status: status || 'draft',
+        createdById: session.user.id, // Sınavı oluşturan kullanıcı
       }
     });
 

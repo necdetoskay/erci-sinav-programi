@@ -70,6 +70,8 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
     return acc;
   }, {} as Record<string, Model[]>);
 
+  console.log('Grouped models:', Object.keys(groupedModels).length, 'providers');
+
   return (
     <div className="space-y-4 py-4">
       {/* API Durumu */}
@@ -125,7 +127,7 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
           id="count"
           type="number"
           min={1}
-          max={10}
+          max={25}
           value={count}
           onChange={(e) => setCount(parseInt(e.target.value) || 1)}
         />
@@ -166,22 +168,28 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
             <SelectValue placeholder={isLoadingModels ? "Modeller yükleniyor..." : "Model seçin"} />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(groupedModels).map(([providerId, providerModels]) => {
-              const provider = providers.find(p => p.id === providerId);
-              return (
-                <React.Fragment key={providerId}>
-                  <SelectGroup>
-                    <SelectLabel>{provider?.name || "Bilinmeyen Provider"}</SelectLabel>
-                    {providerModels.map(model => (
-                      <SelectItem key={model.id} value={model.codeName}>
-                        {model.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                  <SelectSeparator />
-                </React.Fragment>
-              );
-            })}
+            {Object.keys(groupedModels).length === 0 ? (
+              <div className="p-2 text-center text-sm text-muted-foreground">
+                Kullanılabilir model bulunamadı. Lütfen ayarlar sayfasından model ekleyin.
+              </div>
+            ) : (
+              Object.entries(groupedModels).map(([providerId, providerModels]) => {
+                const provider = providers.find(p => p.id === providerId);
+                return (
+                  <React.Fragment key={providerId}>
+                    <SelectGroup>
+                      <SelectLabel>{provider?.name || "Bilinmeyen Provider"}</SelectLabel>
+                      {providerModels.map(model => (
+                        <SelectItem key={model.id} value={model.codeName}>
+                          {model.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                  </React.Fragment>
+                );
+              })
+            )}
           </SelectContent>
         </Select>
         {getError("model") && (

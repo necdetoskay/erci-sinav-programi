@@ -22,7 +22,7 @@ export interface Model {
 // Zod şeması (API'nin beklediği alanlara göre güncellenebilir)
 export const formSchema = z.object({
   promptText: z.string().min(10, { message: "Prompt en az 10 karakter olmalıdır." }),
-  count: z.coerce.number().min(1, "En az 1 soru üretilmeli").max(10, "En fazla 10 soru üretilebilir"), // API limiti 10
+  count: z.coerce.number().min(1, "En az 1 soru üretilmeli").max(25, "En fazla 25 soru üretilebilir"), // API limiti 25
   // optionsPerQuestion: z.coerce.number().min(2).max(6), // API bunu bekliyor, ekleyelim
   model: z.string(), // Artık enum yerine string kullanıyoruz çünkü modeller dinamik olarak yüklenecek
   // difficulty API tarafından doğrudan kullanılmıyor, prompt'a eklenebilir

@@ -3,10 +3,15 @@ import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { QuestionPool } from "@prisma/client";
+import { QuestionPool, User } from "@prisma/client";
 
 interface QuestionPoolWithQuestions extends QuestionPool {
   questions: any[];
+  createdBy?: {
+    name: string;
+    email: string;
+    role: string;
+  };
 }
 
 interface QuestionPoolListProps {
@@ -45,6 +50,11 @@ export function QuestionPoolList({ questionPools }: QuestionPoolListProps) {
               <div className="flex justify-between text-sm text-muted-foreground">
                 <div>
                   <p>{pool.subject}</p>
+                  {pool.createdBy && (
+                    <p className="text-xs text-muted-foreground">
+                      {pool.createdBy.name || pool.createdBy.email}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p>{pool.questions.length} Soru</p>

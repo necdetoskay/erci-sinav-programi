@@ -117,6 +117,7 @@ export const parseGeneratedText = (text: string, count: number, difficulty: "eas
   // Eğer istenen sayıda soru parse edilemediyse uyarı ver
   if (questions.length !== count) {
     console.warn(`Expected ${count} questions, but parsed ${questions.length}. API response format might be inconsistent.`);
+    console.log("Raw API response:", text); // Ham API yanıtını logla
     // toast.warning(`API ${count} soru üretmedi (${questions.length} üretildi). Yanıt formatı tutarsız olabilir.`); // Kullanıcıyı çok fazla uyarmamak için kaldırılabilir
   }
 

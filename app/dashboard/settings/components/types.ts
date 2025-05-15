@@ -15,6 +15,7 @@ export interface Model {
   name: string;
   details: string;
   codeName: string; // Modelin kodlamada kullanılan adı (microsoft/phi-4-reasoning-plus:free gibi)
+  apiCode?: string; // API kodu (openrouter, groq, google, vision, vb.)
   orderIndex: number; // Tabloda gösterim sırası
   isEnabled: boolean; // Etkinleştirme/devre dışı bırakma durumu
   providerId: string;

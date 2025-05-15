@@ -119,7 +119,7 @@ export default function RegisterPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="name">Ad Soyad</Label>
+              <Label htmlFor="name" className="text-foreground">Ad Soyad</Label>
               <Input
                 id="name"
                 name="name"
@@ -133,7 +133,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">E-posta Adresi</Label>
+              <Label htmlFor="email" className="text-foreground">E-posta Adresi</Label>
               <Input
                 id="email"
                 name="email"
@@ -147,7 +147,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Şifre</Label>
+              <Label htmlFor="password" className="text-foreground">Şifre</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -211,7 +211,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Şifre Tekrarı</Label>
+              <Label htmlFor="confirmPassword" className="text-foreground">Şifre Tekrarı</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"

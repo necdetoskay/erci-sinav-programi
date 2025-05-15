@@ -29,21 +29,34 @@ export async function GET(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
+    // Kullanıcı bazlı erişim kontrolü
+    let whereCondition: any = {
+      poolId: parseInt(params.id)
+    };
+
+    // Admin kullanıcıları sadece kendi oluşturdukları soru havuzlarına erişebilir
+    // Superadmin tüm soru havuzlarına erişebilir
+    if (session.user.role !== 'SUPERADMIN') {
+      whereCondition.pool = {
+        userId: session.user.id
+      };
+    }
+
+    console.log("Sorular getiriliyor, koşul:", JSON.stringify(whereCondition));
+
     const questions = await db.poolQuestion.findMany({
-      where: {
-        poolId: parseInt(params.id),
-        pool: {
-          userId: session.user.id,
-        },
-      },
+      where: whereCondition,
       orderBy: {
         createdAt: "desc",
       },
     });
 
+    console.log(`${questions.length} soru bulundu.`);
+
     return NextResponse.json(questions);
   } catch (error) {
-    return new NextResponse("Internal Error", { status: 500 });
+    console.error("Sorular getirilirken hata:", error);
+    return new NextResponse(`Internal Error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 });
   }
 }
 
