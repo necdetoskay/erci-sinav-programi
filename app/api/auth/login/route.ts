@@ -15,6 +15,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { email, password, rememberMe } = body;
 
+    console.log("Login attempt:", { email, rememberMe });
+
     if (!email || !password) {
       return NextResponse.json(
         { message: 'Email and password are required' },
@@ -26,18 +28,28 @@ export async function POST(request: Request) {
       where: { email },
     });
 
-    if (!user || !user.password) {
+    if (!user) {
+      console.log(`User not found: ${email}`);
       return NextResponse.json(
-        { message: 'Invalid email or password' },
+        { message: 'Geçersiz e-posta veya şifre' },
+        { status: 401 }
+      );
+    }
+
+    if (!user.password) {
+      console.log(`User has no password: ${email}`);
+      return NextResponse.json(
+        { message: 'Kullanıcı şifresi ayarlanmamış. Lütfen sistem yöneticisiyle iletişime geçin.' },
         { status: 401 }
       );
     }
 
     // E-posta doğrulaması kontrolü
     if (!user.emailVerified) {
+      console.log(`User email not verified: ${email}`);
       return NextResponse.json(
         {
-          message: 'Please verify your email before logging in',
+          message: 'Hesabınız henüz onaylanmamıştır. Lütfen sistem yöneticisiyle iletişime geçin.',
           needsVerification: true,
           email: user.email
         },
@@ -45,14 +57,18 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log(`Comparing password for user: ${email}`);
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
+      console.log(`Invalid password for user: ${email}`);
       return NextResponse.json(
-        { message: 'Invalid email or password' },
+        { message: 'Geçersiz e-posta veya şifre' },
         { status: 401 }
       );
     }
+
+    console.log(`Password valid for user: ${email}, role: ${user.role}`);
 
     const userPayload: UserPayload = {
       id: user.id,
@@ -101,9 +117,17 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Login error:', error);
+
+    // Daha detaylı hata mesajı
     const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    console.error('Error details:', errorMessage);
+
+    if (error instanceof Error && error.stack) {
+      console.error('Error stack:', error.stack);
+    }
+
     return NextResponse.json(
-      { message: 'Error logging in', error: errorMessage },
+      { message: 'Giriş yapılırken bir hata oluştu', error: errorMessage },
       { status: 500 }
     );
   }

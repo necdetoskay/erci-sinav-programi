@@ -130,6 +130,39 @@ export default function ExamStartPage() {
         }
     }, [currentQuestion, answerCheckResult]); // Depend on currentQuestion and answerCheckResult
 
+    // Sağ tıklama ve metin seçimini engelleme fonksiyonları
+    useEffect(() => {
+        // Sağ tıklama engelleme
+        const handleContextMenu = (e: MouseEvent) => {
+            e.preventDefault();
+            return false;
+        };
+
+        // Metin seçimini engelleme
+        const disableSelection = (e: Event) => {
+            e.preventDefault();
+            return false;
+        };
+
+        // Kopyalama engelleme
+        const disableCopy = (e: ClipboardEvent) => {
+            e.preventDefault();
+            return false;
+        };
+
+        // Event listener'ları ekle
+        document.addEventListener('contextmenu', handleContextMenu);
+        document.addEventListener('selectstart', disableSelection);
+        document.addEventListener('copy', disableCopy);
+
+        // Cleanup
+        return () => {
+            document.removeEventListener('contextmenu', handleContextMenu);
+            document.removeEventListener('selectstart', disableSelection);
+            document.removeEventListener('copy', disableCopy);
+        };
+    }, []);
+
     // Sınav verilerini çekmek için useEffect
     useEffect(() => {
         const fetchExamData = async () => {
@@ -333,7 +366,7 @@ export default function ExamStartPage() {
 
     // Ana render
     return (
-        <div className="flex min-h-screen p-4 md:p-8 bg-gray-100 dark:bg-gray-950">
+        <div className="flex min-h-screen p-4 md:p-8 bg-gray-100 dark:bg-gray-950 select-none">
             {/* Sol Kolon: Soru Alanı */}
             <div className="flex-1 pr-4 md:pr-8">
                 <Card className="w-full h-full flex flex-col">

@@ -19,11 +19,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Şimdilik tüm aktif sınavları getir
+    // Şimdilik tüm yayındaki sınavları getir
     // İlerleyen aşamalarda personele özel sınav atama sistemi eklenebilir
     const exams = await prisma.exam.findMany({
       where: {
-        status: "active", // Sadece aktif sınavları getir
+        status: "published", // Sadece yayındaki sınavları getir
       },
       select: {
         id: true,

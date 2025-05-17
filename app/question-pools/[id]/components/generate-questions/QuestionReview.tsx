@@ -36,11 +36,6 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
           >
             {currentQuestion.approved ? "Onaylandı ✓" : "Onayla"}
           </Button>
-          {currentStep === totalSteps && (
-            <Button onClick={saveApprovedQuestions}>
-              Onaylanan Soruları Kaydet
-            </Button>
-          )}
         </div>
       </div>
 
@@ -111,16 +106,23 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
         >
           Önceki Soru
         </Button>
-        <Button
-          variant="outline"
-          disabled={currentStep === totalSteps}
-          onClick={() => {
-            const nextStep = Math.min(totalSteps, currentStep + 1);
-            if (setCurrentStep) setCurrentStep(nextStep);
-          }}
-        >
-          Sonraki Soru
-        </Button>
+        <div className="flex items-center gap-2">
+          {currentStep === totalSteps && (
+            <Button onClick={saveApprovedQuestions}>
+              Onaylanan Soruları Kaydet
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            disabled={currentStep === totalSteps}
+            onClick={() => {
+              const nextStep = Math.min(totalSteps, currentStep + 1);
+              if (setCurrentStep) setCurrentStep(nextStep);
+            }}
+          >
+            Sonraki Soru
+          </Button>
+        </div>
       </div>
     </div>
   );

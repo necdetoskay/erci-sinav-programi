@@ -64,7 +64,8 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           <div className="h-4 w-32 bg-muted rounded"></div>
         </div>
         <div className="text-center mt-4">
-          <p className="text-xl font-semibold text-primary dark:text-primary-foreground">
+          <p className="text-xl font-semibold mb-2">Kent Konut Sınav Portalı</p>
+          <p className="text-lg text-primary dark:text-primary-foreground">
             Yükleniyor{dots}
           </p>
           <p className="text-sm text-muted-foreground mt-1">{message}</p>

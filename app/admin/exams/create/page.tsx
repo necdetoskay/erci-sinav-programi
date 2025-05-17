@@ -28,13 +28,14 @@ import {
 } from '@/components/ui/form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { ExamStatus, ExamStatusLabels, ExamStatusValues } from '@/lib/constants/exam-status';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Sınav adı zorunludur'),
   description: z.string().optional(),
   duration_minutes: z.string(),
   access_code: z.string().optional(),
-  status: z.enum(['draft', 'active', 'completed', 'archived']),
+  status: z.enum(ExamStatusValues as [string, ...string[]]),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -50,7 +51,7 @@ function CreateExamFormComponent() {
       description: '',
       duration_minutes: '60',
       access_code: '',
-      status: 'draft',
+      status: ExamStatus.DRAFT,
     },
   });
 
@@ -243,14 +244,15 @@ function CreateExamFormComponent() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="draft">Taslak</SelectItem>
-                            <SelectItem value="active">Aktif</SelectItem>
-                            <SelectItem value="completed">Tamamlandı</SelectItem>
-                            <SelectItem value="archived">Arşivlenmiş</SelectItem>
+                            {ExamStatusValues.map((statusValue) => (
+                              <SelectItem key={statusValue} value={statusValue}>
+                                {ExamStatusLabels[statusValue as ExamStatus]}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormDescription className="text-xs">
-                          Sadece &quot;Aktif&quot; durumdaki sınavlara katılım sağlanabilir.
+                          Sadece &quot;{ExamStatusLabels[ExamStatus.ACTIVE]}&quot; durumdaki sınavlara katılım sağlanabilir.
                         </FormDescription>
                         <FormMessage />
                       </>

@@ -12,14 +12,24 @@ export async function POST(
 
     // Oturum kontrolü
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Bu işlemi gerçekleştirmek için giriş yapmanız gerekmektedir." }, { status: 401 });
+    }
+
+    // Kullanıcı rolü kontrolü - sadece PERSONEL rolündeki kullanıcılar sınava katılabilir
+    if (session.user.role !== "PERSONEL") {
+      return NextResponse.json({
+        error: "Sınava katılmak için personel hesabıyla giriş yapmanız gerekmektedir. Şu anda " +
+          (session.user.role === 'ADMIN' ? 'Yönetici' :
+           session.user.role === 'SUPERADMIN' ? 'Süper Yönetici' :
+           session.user.role) + " hesabıyla giriş yapmış durumdasınız."
+      }, { status: 403 });
     }
 
     const examId = parseInt(params.id);
 
     if (isNaN(examId)) {
       return NextResponse.json(
-        { error: "Invalid exam ID" },
+        { error: "Geçersiz sınav ID'si. Lütfen geçerli bir sınav ID'si girin." },
         { status: 400 }
       );
     }
@@ -29,7 +39,7 @@ export async function POST(
 
     if (!user || !user.name || !user.email) {
       return NextResponse.json(
-        { error: "User information not found in session" },
+        { error: "Kullanıcı bilgileri bulunamadı. Lütfen tekrar giriş yapın." },
         { status: 400 }
       );
     }

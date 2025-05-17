@@ -17,6 +17,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Breadcrumb } from '../../../../components/breadcrumb';
+import { ResetToastModal } from './components/ResetToastModal';
+import { ExamStatus, ExamStatusLabels, ExamStatusValues } from '@/lib/constants/exam-status';
 
 export default function EditExamPage({ params }: { params: { examId: string } }) {
   const router = useRouter();
@@ -27,9 +29,12 @@ export default function EditExamPage({ params }: { params: { examId: string } })
   const [description, setDescription] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('60');
   const [accessCode, setAccessCode] = useState('');
-  const [status, setStatus] = useState('draft');
+  const [status, setStatus] = useState<ExamStatus>(ExamStatus.DRAFT);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [exam, setExam] = useState<{ title: string } | null>(null);
+  const [exam, setExam] = useState<{ title: string, status: ExamStatus } | null>(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [originalStatus, setOriginalStatus] = useState('');
 
   // Sınav süresi seçenekleri
   const durationOptions = [
@@ -60,7 +65,13 @@ export default function EditExamPage({ params }: { params: { examId: string } })
         setDurationMinutes(exam.duration_minutes.toString());
         setAccessCode(exam.access_code || '');
         setStatus(exam.status);
+        setOriginalStatus(exam.status);
         setExam(exam);
+
+        // Katılımcı sayısını al
+        if (exam._count && exam._count.attempts) {
+          setAttemptCount(exam._count.attempts);
+        }
       } catch (error) {
         console.error('Sınav yüklenirken hata:', error);
         toast.error('Sınav yüklenemedi. Lütfen daha sonra tekrar deneyin.');
@@ -93,6 +104,16 @@ export default function EditExamPage({ params }: { params: { examId: string } })
       return;
     }
 
+    // Eğer sınav "Yayında" durumundan "Taslak" durumuna çevriliyorsa ve katılımcı varsa
+    if (originalStatus === ExamStatus.ACTIVE && status === ExamStatus.DRAFT && attemptCount > 0) {
+      setShowResetModal(true);
+      return;
+    }
+
+    await saveExam();
+  };
+
+  const saveExam = async () => {
     try {
       setIsSubmitting(true);
 
@@ -190,6 +211,19 @@ export default function EditExamPage({ params }: { params: { examId: string } })
         </div>
       </div>
 
+      {/* Sınavı taslak durumuna çevirme onay modalı */}
+      <ResetToastModal
+        examId={parseInt(examId)}
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onConfirm={() => {
+          setShowResetModal(false);
+          setAttemptCount(0);
+          saveExam();
+        }}
+        attemptCount={attemptCount}
+      />
+
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader className="py-4">
@@ -260,14 +294,15 @@ export default function EditExamPage({ params }: { params: { examId: string } })
                     <SelectValue placeholder="Durum seçin" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="draft">Taslak</SelectItem>
-                    <SelectItem value="active">Aktif</SelectItem>
-                    <SelectItem value="completed">Tamamlandı</SelectItem>
-                    <SelectItem value="archived">Arşivlenmiş</SelectItem>
+                    {ExamStatusValues.map((statusValue) => (
+                      <SelectItem key={statusValue} value={statusValue}>
+                        {ExamStatusLabels[statusValue as ExamStatus]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Sadece &quot;Aktif&quot; durumdaki sınavlara katılım sağlanabilir.
+                  Sadece &quot;{ExamStatusLabels[ExamStatus.ACTIVE]}&quot; durumdaki sınavlara katılım sağlanabilir.
                 </p>
               </div>
 

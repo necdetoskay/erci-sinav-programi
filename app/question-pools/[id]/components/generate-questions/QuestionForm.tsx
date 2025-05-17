@@ -76,30 +76,30 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
     <div className="space-y-4 py-4">
       {/* API Durumu */}
       {apiStatus === 'checking' && (
-        <Alert className="bg-yellow-50 border-yellow-400">
-          <Loader2 className="h-4 w-4 text-yellow-600 animate-spin" />
-          <AlertTitle>Yapay Zeka Durumu Kontrol Ediliyor</AlertTitle>
-          <AlertDescription>
+        <Alert className="bg-yellow-50 border-yellow-400 dark:bg-yellow-900 dark:border-yellow-700">
+          <Loader2 className="h-4 w-4 text-yellow-600 dark:text-yellow-300 animate-spin" />
+          <AlertTitle className="dark:text-white">Yapay Zeka Durumu Kontrol Ediliyor</AlertTitle>
+          <AlertDescription className="dark:text-gray-100">
             {apiStatusMessage}
           </AlertDescription>
         </Alert>
       )}
 
       {apiStatus === 'error' && (
-        <Alert className="bg-red-50 border-red-400">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertTitle>Yapay Zeka Servisi Hatası</AlertTitle>
-          <AlertDescription>
+        <Alert className="bg-red-50 border-red-400 dark:bg-red-900 dark:border-red-700">
+          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-300" />
+          <AlertTitle className="dark:text-white">Yapay Zeka Servisi Hatası</AlertTitle>
+          <AlertDescription className="dark:text-gray-100">
             {apiStatusMessage}
           </AlertDescription>
         </Alert>
       )}
 
       {apiStatus === 'ready' && (
-        <Alert className="bg-green-50 border-green-400">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertTitle>Yapay Zeka Servisi Hazır</AlertTitle>
-          <AlertDescription>
+        <Alert className="bg-green-50 border-green-400 dark:bg-green-900 dark:border-green-700">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-300" />
+          <AlertTitle className="dark:text-white">Yapay Zeka Servisi Hazır</AlertTitle>
+          <AlertDescription className="dark:text-gray-100">
             {apiStatusMessage}
           </AlertDescription>
         </Alert>
@@ -169,16 +169,47 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
           </SelectTrigger>
           <SelectContent>
             {Object.keys(groupedModels).length === 0 ? (
-              <div className="p-2 text-center text-sm text-muted-foreground">
+              <div className="p-2 text-center text-sm text-muted-foreground dark:text-gray-100">
                 Kullanılabilir model bulunamadı. Lütfen ayarlar sayfasından model ekleyin.
               </div>
             ) : (
               Object.entries(groupedModels).map(([providerId, providerModels]) => {
-                const provider = providers.find(p => p.id === providerId);
+                // Provider adını belirle
+                let providerName = "Bilinmeyen Provider";
+
+                // Provider ID'ye göre özel durumları kontrol et
+                if (providerId === "openrouter") {
+                  providerName = "Open Router";
+                } else if (providerId.includes("openrouter")) {
+                  providerName = "Open Router";
+                } else if (providerId.includes("openai")) {
+                  providerName = "OpenAI";
+                } else if (providerId.includes("anthropic")) {
+                  providerName = "Anthropic";
+                } else if (providerId.includes("google")) {
+                  providerName = "Google";
+                } else {
+                  // Provider listesinden bul
+                  const foundProvider = providers.find(p => p.id === providerId);
+                  if (foundProvider) {
+                    providerName = foundProvider.name;
+                  }
+                }
+
+                // Llama modelleri için özel kontrol
+                const hasLlamaModels = providerModels.some(model =>
+                  model.name.toLowerCase().includes('llama'));
+
+                if (hasLlamaModels && providerName === "Bilinmeyen Provider") {
+                  providerName = "Open Router";
+                }
+
+                console.log(`Provider ID: ${providerId}, Provider Name: ${providerName}`);
+
                 return (
                   <React.Fragment key={providerId}>
                     <SelectGroup>
-                      <SelectLabel>{provider?.name || "Bilinmeyen Provider"}</SelectLabel>
+                      <SelectLabel className="dark:text-white font-medium">{providerName}</SelectLabel>
                       {providerModels.map(model => (
                         <SelectItem key={model.id} value={model.codeName}>
                           {model.name}

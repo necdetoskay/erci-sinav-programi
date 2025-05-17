@@ -39,7 +39,7 @@ export default function BulkImportPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!userList.trim()) {
       toast.error('Lütfen personel listesini girin');
       return;
@@ -163,9 +163,12 @@ export default function BulkImportPage() {
                     onCheckedChange={(checked) => setAutoVerify(checked as boolean)}
                   />
                   <Label htmlFor="autoVerify">
-                    Hesapları otomatik olarak doğrula
+                    Hesapları otomatik olarak onayla
                   </Label>
                 </div>
+                <p className="text-xs text-muted-foreground ml-6">
+                  Bu seçenek işaretlendiğinde, oluşturulan hesaplar otomatik olarak onaylanır ve kullanıcılar hemen giriş yapabilir. İşaretlenmezse, hesaplar yönetici tarafından manuel olarak onaylanmalıdır.
+                </p>
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button variant="outline" onClick={handleReset} disabled={isSubmitting}>

@@ -43,6 +43,7 @@ export default function UserForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordTouched, setPasswordTouched] = useState(false);
   const [role, setRole] = useState<string>("USER");
   const [emailVerified, setEmailVerified] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +57,23 @@ export default function UserForm({
       setRole(user.role);
       setEmailVerified(!!user.emailVerified);
     }
+
+    // Şifre alanlarını her zaman boş bırak ve dokunulmamış olarak işaretle
+    setPassword("");
+    setConfirmPassword("");
+    setPasswordTouched(false);
+
+    // Tarayıcının otomatik doldurmasını engellemek için form alanlarını sıfırla
+    const resetPasswordFields = () => {
+      const passwordInput = document.getElementById("password") as HTMLInputElement;
+      const confirmPasswordInput = document.getElementById("confirmPassword") as HTMLInputElement;
+
+      if (passwordInput) passwordInput.value = "";
+      if (confirmPasswordInput) confirmPasswordInput.value = "";
+    };
+
+    // Form yüklendikten sonra şifre alanlarını sıfırla
+    setTimeout(resetPasswordFields, 100);
   }, [user, mode]);
 
   // Form doğrulama
@@ -72,15 +90,18 @@ export default function UserForm({
       newErrors.email = "Geçerli bir e-posta adresi giriniz";
     }
 
+    // Yeni kullanıcı eklerken şifre zorunlu
     if (mode === "add" && !password) {
       newErrors.password = "Şifre alanı zorunludur";
     }
 
+    // Yeni kullanıcı eklerken şifre tekrarı zorunlu ve eşleşmeli
     if (mode === "add" && password !== confirmPassword) {
       newErrors.confirmPassword = "Şifreler eşleşmiyor";
     }
 
-    if (mode === "edit" && password && password !== confirmPassword) {
+    // Düzenleme modunda şifre girilmişse, şifre tekrarı da girilmeli ve eşleşmeli
+    if (mode === "edit" && passwordTouched && password && password !== confirmPassword) {
       newErrors.confirmPassword = "Şifreler eşleşmiyor";
     }
 
@@ -103,12 +124,15 @@ export default function UserForm({
     setIsSubmitting(true);
 
     try {
+      // Şifre alanı dolu ve dokunulmuş ise şifreyi güncelle
+      const hasPasswordChange = mode === "edit" && passwordTouched && password.trim() !== "";
+
       const userData = {
         name,
         email,
         role,
         emailVerified,
-        ...(password ? { password } : {}),
+        ...(mode === "add" || hasPasswordChange ? { password } : {}),
       };
 
       const url = mode === "add" ? "/api/users" : `/api/users/${user?.id}`;
@@ -165,7 +189,7 @@ export default function UserForm({
   const availableRoles = getAvailableRoles();
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} autoComplete="off">
       <Card className={isModal ? "border-0 shadow-none" : ""}>
         <CardContent className="space-y-4 pt-4">
           <div className="grid gap-2">
@@ -197,45 +221,82 @@ export default function UserForm({
             )}
           </div>
 
-          <div className="flex items-center space-x-2 py-2">
-            <input
-              type="checkbox"
-              id="emailVerified"
-              checked={emailVerified}
-              onChange={(e) => setEmailVerified(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-            />
-            <Label htmlFor="emailVerified" className="text-sm font-medium">
-              E-posta onaylandı olarak işaretle
-            </Label>
+          <div className="grid gap-2">
+            <Label htmlFor="emailVerified" className="text-sm font-medium">Hesap Onayı</Label>
+            <div className="flex items-center space-x-2 py-1">
+              <input
+                type="checkbox"
+                id="emailVerified"
+                checked={emailVerified}
+                onChange={(e) => setEmailVerified(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-gray-600">
+                {emailVerified
+                  ? "Hesap onaylı (Kullanıcı sisteme giriş yapabilir)"
+                  : "Hesap onaylı değil (Kullanıcı sisteme giriş yapamaz)"}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Bu seçeneği işaretlerseniz, kullanıcı hesabı onaylanmış olarak işaretlenir ve sisteme giriş yapabilir.
+            </p>
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="password">
-              {mode === "add" ? "Şifre" : "Şifre (Değiştirmek için doldurun)"}
+              {mode === "add" ? "Şifre" : "Yeni Şifre (Değiştirmek istemiyorsanız boş bırakın)"}
             </Label>
             <Input
               id="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setPassword(newValue);
+                // Sadece değer boş değilse dokunulmuş olarak işaretle
+                if (newValue.trim() !== "") {
+                  setPasswordTouched(true);
+                } else {
+                  setPasswordTouched(false);
+                }
+              }}
               placeholder={mode === "add" ? "Şifre" : "Yeni şifre (opsiyonel)"}
               className={errors.password ? "border-red-500" : ""}
+              required={mode === "add"} // Sadece yeni kullanıcı eklerken zorunlu
+              autoComplete="new-password" // Tarayıcının otomatik doldurmasını engelle
+              key={`password-${user?.id || 'new'}-${Date.now()}`} // Her form açılışında yeni bir key oluştur
             />
             {errors.password && (
               <p className="text-sm text-red-500">{errors.password}</p>
             )}
+            {mode === "edit" && (
+              <p className="text-xs text-gray-500">
+                Şifre değiştirmek istemiyorsanız bu alanı boş bırakın. Mevcut şifre korunacaktır.
+              </p>
+            )}
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="confirmPassword">Şifre Tekrarı</Label>
+            <Label htmlFor="confirmPassword">
+              {mode === "add" ? "Şifre Tekrarı" : "Yeni Şifre Tekrarı (Değiştirmek istemiyorsanız boş bırakın)"}
+            </Label>
             <Input
               id="confirmPassword"
               type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Şifre tekrarı"
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setConfirmPassword(newValue);
+                // Şifre alanı dolu ise ve şifre tekrarı alanı da dolu ise dokunulmuş olarak işaretle
+                if (password.trim() !== "" && newValue.trim() !== "") {
+                  setPasswordTouched(true);
+                }
+              }}
+              placeholder={mode === "add" ? "Şifre tekrarı" : "Yeni şifre tekrarı (opsiyonel)"}
               className={errors.confirmPassword ? "border-red-500" : ""}
+              required={mode === "add"} // Sadece yeni kullanıcı eklerken zorunlu
+              autoComplete="new-password" // Tarayıcının otomatik doldurmasını engelle
+              key={`confirm-password-${user?.id || 'new'}-${Date.now()}`} // Her form açılışında yeni bir key oluştur
             />
             {errors.confirmPassword && (
               <p className="text-sm text-red-500">{errors.confirmPassword}</p>

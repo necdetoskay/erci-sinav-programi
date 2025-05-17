@@ -19,6 +19,11 @@ const nextConfig = {
   skipTrailingSlashRedirect: true,
   skipMiddlewareUrlNormalize: true,
 
+  // Runtime config - client tarafında erişilebilir environment değişkenleri
+  publicRuntimeConfig: {
+    appUrl: process.env.PUBLIC_SERVER_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  },
+
   experimental: {
     // Deneysel özellikler
   },

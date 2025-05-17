@@ -111,6 +111,19 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
           throw new Error('Provider verileri alınamadı');
         }
         const providersData = await providersResponse.json();
+        console.log('Loaded providers:', providersData);
+
+        // OpenRouter provider'ı yoksa manuel olarak ekle
+        const openRouterProvider = providersData.find((p: Provider) => p.name === 'Open Router');
+        if (!openRouterProvider) {
+          providersData.push({
+            id: 'openrouter',
+            name: 'Open Router',
+            apiKey: '',
+            models: []
+          });
+        }
+
         setProviders(providersData);
 
         // Modelleri getir - hem global hem de kullanıcıya özel modelleri almak için
@@ -128,11 +141,25 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
 
         console.log('Active models:', activeModels);
 
-        setModels(activeModels);
+        // Modellerin provider bilgilerini kontrol et ve düzelt
+        const modelsWithFixedProviders = activeModels.map((model: Model) => {
+          // Eğer model adı "llama" içeriyorsa ve provider ID'si bulunamadıysa, OpenRouter olarak ayarla
+          if (model.name.toLowerCase().includes('llama') &&
+              (!model.providerId || !providersData.find((p: Provider) => p.id === model.providerId))) {
+            console.log(`Fixing provider for model: ${model.name}`);
+            return {
+              ...model,
+              providerId: 'openrouter'
+            };
+          }
+          return model;
+        });
+
+        setModels(modelsWithFixedProviders);
 
         // Eğer aktif model varsa, ilk aktif modeli seç
-        if (activeModels.length > 0) {
-          setModel(activeModels[0].codeName);
+        if (modelsWithFixedProviders.length > 0) {
+          setModel(modelsWithFixedProviders[0].codeName);
         }
       } catch (error) {
         console.error('Provider ve Model verileri yüklenirken hata:', error);
@@ -330,7 +357,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Yapay Zeka ile Soru Üret</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-foreground dark:text-white font-medium">
             {currentStep === 0
               ? "Üretilecek soru sayısını ve kullanılacak modeli seçin."
               : "Üretilen soruları inceleyin ve onaylayın."}

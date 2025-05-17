@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic'; // Force dynamic rendering for the entir
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Kentkonut Sınav Portalı",
-  description: "KentKonut A.Ş. KVKK, Sıfır Atık ve İSG eğitimleri sınav portalı",
+  title: "Kent Konut Sınav Portalı",
+  description: "Kent Konut A.Ş. KVKK, Sıfır Atık ve İSG eğitimleri sınav portalı",
 };
 
 // Next.js 13.4+ için viewport export'u ayrı olmalı

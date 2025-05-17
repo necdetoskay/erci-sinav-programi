@@ -63,7 +63,7 @@ interface Exam {
 async function fetchExamAndQuestions(examId: number, setExam: any, setQuestions: any, setLoading: any) {
   try {
     setLoading(true);
-    
+
     // Önce sınavı getir
     const examResponse = await fetch(`/api/admin/exams/${examId}`);
     if (!examResponse.ok) {
@@ -71,18 +71,18 @@ async function fetchExamAndQuestions(examId: number, setExam: any, setQuestions:
     }
     const examData = await examResponse.json();
     setExam(examData);
-    
+
     // API'den gelen soruları uygun formata dönüştür
     const formattedQuestions = (examData.questions || []).map((q: any) => ({
       ...q,
-      options: Array.isArray(q.options) 
+      options: Array.isArray(q.options)
         ? q.options.map((text: string, index: number) => ({
             id: `${q.id}-option-${index + 1}`,
             text: text
           }))
         : []
     }));
-    
+
     setQuestions(formattedQuestions);
   } catch (error) {
     console.error('Veri yüklenirken hata:', error);
@@ -95,13 +95,13 @@ async function fetchExamAndQuestions(examId: number, setExam: any, setQuestions:
 export default function ExamQuestionsPage({ params }: { params: { examId: string } }) {
   const router = useRouter();
   const examId = parseInt(params.examId);
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exam, setExam] = useState<Exam | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [activeTab, setActiveTab] = useState('edit');
-  
+
   const difficultyOptions = [
     { value: 'easy', label: 'Kolay' },
     { value: 'medium', label: 'Orta' },
@@ -140,20 +140,29 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
     fetchExamAndQuestions(examId, setExam, setQuestions, setLoading);
   }, [examId]);
 
+  // Sınav "Taslak" durumunda değilse, düzenleme modunu devre dışı bırak
+  useEffect(() => {
+    if (exam && exam.status !== 'draft') {
+      // Sadece önizleme modunu aktif et
+      setActiveTab('preview');
+      toast.info('Sınav yayında olduğu için sorular düzenlenemez. Düzenlemek için sınavı taslak durumuna çevirmeniz gerekiyor.');
+    }
+  }, [exam]);
+
   // Soruyu sil
   const removeQuestion = (index: number) => {
     if (questions.length === 1) {
       toast.error('En az bir soru olmalıdır');
       return;
     }
-    
+
     const newQuestions = questions.filter((_, i) => i !== index);
     // Pozisyonları güncelle
     const updatedQuestions = newQuestions.map((q, i) => ({
       ...q,
       position: i + 1,
     }));
-    
+
     setQuestions(updatedQuestions);
   };
 
@@ -197,12 +206,12 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
     // Validasyon
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
-      
+
       if (!q.question_text.trim()) {
         toast.error(`Soru ${i+1}: Soru metni boş olamaz`);
         return;
       }
-      
+
       // Şık validasyonu düzeltildi
       for (const option of q.options) {
         if (!option.text.trim()) {
@@ -211,10 +220,10 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
         }
       }
     }
-    
+
     try {
       setSaving(true);
-      
+
       // API'ye gönderilecek şekilde soruları formatla
       const formattedQuestions = questions.map((q) => ({
         id: q.id,
@@ -225,7 +234,7 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
         difficulty: q.difficulty,
         position: q.position,
       }));
-      
+
       const response = await fetch(`/api/admin/exams/${examId}/questions`, {
         method: 'POST',
         headers: {
@@ -233,14 +242,14 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
         },
         body: JSON.stringify({ questions: formattedQuestions }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Sorular kaydedilirken bir hata oluştu');
       }
-      
+
       toast.success('Sorular başarıyla kaydedildi');
-      
+
       // Sınav listesi sayfasına dön
       router.push('/admin/exams');
     } catch (error) {
@@ -259,7 +268,7 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
   // Sürükleme işlemi tamamlandığında
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
-    
+
     if (active.id !== over.id) {
       setQuestions((items) => {
         const oldIndex = items.findIndex(
@@ -268,7 +277,7 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
         const newIndex = items.findIndex(
           (item) => (item.id?.toString() || `question-${items.indexOf(item)}`) === over.id
         );
-        
+
         const newItems = arrayMove(items, oldIndex, newIndex);
         // Pozisyonları güncelle
         return newItems.map((item, index) => ({
@@ -299,13 +308,13 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
 
   return (
     <div className="container mx-auto p-6">
-      <Breadcrumb 
+      <Breadcrumb
         items={[
           { label: 'Yönetim', href: '/admin' },
           { label: 'Sınavlar', href: '/admin/exams' },
           { label: exam?.title || 'Sınav', href: `/admin/exams/${params.examId}` },
           { label: 'Sorular' }
-        ]} 
+        ]}
       />
       <div className="flex justify-between items-center">
         <div>
@@ -315,27 +324,33 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
           </p>
         </div>
         <div className="flex gap-4">
-          <AddQuestion 
-            examId={examId} 
-            onQuestionAdded={() => {
-              fetchExamAndQuestions(examId, setExam, setQuestions, setLoading);
-            }} 
-          />
-          <AddFromPool 
-            examId={examId} 
-            onQuestionsAdded={() => {
-              fetchExamAndQuestions(examId, setExam, setQuestions, setLoading);
-            }} 
-          />
+          {exam?.status === 'draft' && (
+            <>
+              <AddQuestion
+                examId={examId}
+                onQuestionAdded={() => {
+                  fetchExamAndQuestions(examId, setExam, setQuestions, setLoading);
+                }}
+              />
+              <AddFromPool
+                examId={examId}
+                onQuestionsAdded={() => {
+                  fetchExamAndQuestions(examId, setExam, setQuestions, setLoading);
+                }}
+              />
+            </>
+          )}
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="edit">Soruları Düzenle</TabsTrigger>
+          <TabsTrigger value="edit" disabled={exam?.status !== 'draft'}>
+            {exam?.status === 'draft' ? 'Soruları Düzenle' : 'Düzenleme Devre Dışı'}
+          </TabsTrigger>
           <TabsTrigger value="preview">Önizleme</TabsTrigger>
         </TabsList>
-        
+
         {/* Düzenleme Görünümü */}
         <TabsContent value="edit">
           {questions.length === 0 ? (
@@ -354,7 +369,7 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
                 items={questions.map((q, i) => q.id?.toString() || `question-${i}`)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="space-y-2">
+                <div className="space-y-6">
                   {questions.map((question, index) => (
                     <DraggableQuestion
                       key={question.id?.toString() || `question-${index}`}
@@ -368,7 +383,7 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
             </DndContext>
           )}
         </TabsContent>
-        
+
         {/* Önizleme Görünümü */}
         <TabsContent value="preview">
           <Card className="mb-6">
@@ -377,55 +392,70 @@ export default function ExamQuestionsPage({ params }: { params: { examId: string
             </CardHeader>
             <CardContent className="space-y-8">
               {questions.map((question, qIndex) => (
-                <div key={qIndex} className="space-y-4">
-                  <div className="font-medium">
-                    Soru {qIndex + 1}: {question.question_text}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-4">
-                    {question.options.map((option, oIndex) => (
-                      <div 
-                        key={oIndex} 
-                        className={`p-3 rounded-md border ${
-                          question.correct_answer === getOptionLetter(oIndex) 
-                            ? 'border-green-500 bg-green-50 dark:bg-green-950/30' 
-                            : 'border-muted'
-                        }`}
-                      >
-                        <span className="font-medium">{getOptionLetter(oIndex)}.</span> {option.text}
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {question.explanation && (
-                    <div className="mt-2 text-sm p-3 bg-muted/50 rounded-md">
-                      <span className="font-medium">Açıklama:</span> {question.explanation}
+                <Card key={qIndex} className={`mb-6 border-2 ${qIndex % 2 === 0 ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white dark:bg-slate-950'}`}>
+                  <CardHeader className="pb-2 border-b">
+                    <div className="flex items-center">
+                      <Badge variant="outline" className="mr-2 px-2 py-1 text-base">
+                        {qIndex + 1}
+                      </Badge>
+                      <CardTitle className="text-lg font-bold">
+                        {question.question_text}
+                      </CardTitle>
                     </div>
-                  )}
-                </div>
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {question.options.map((option, oIndex) => (
+                        <div
+                          key={oIndex}
+                          className={`p-3 rounded-md border-2 ${
+                            question.correct_answer === getOptionLetter(oIndex)
+                              ? 'border-green-500 bg-green-50 dark:bg-green-950/30'
+                              : 'border-muted'
+                          }`}
+                        >
+                          <span className="font-medium text-base">{getOptionLetter(oIndex)}.</span> {option.text}
+                        </div>
+                      ))}
+                    </div>
+
+                    {question.explanation && (
+                      <div className="mt-2 p-3 bg-muted/50 rounded-md border border-muted">
+                        <span className="font-medium">Açıklama:</span> {question.explanation}
+                      </div>
+                    )}
+
+                    <div className="flex justify-between text-xs text-muted-foreground pt-2">
+                      <div>Zorluk: <Badge variant="outline">{question.difficulty === 'easy' ? 'Kolay' : question.difficulty === 'medium' ? 'Orta' : 'Zor'}</Badge></div>
+                      <div>Doğru Cevap: <Badge>{question.correct_answer}</Badge></div>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-      
+
       <div className="flex justify-between">
-        <Button 
-          variant="outline" 
-          onClick={() => router.push('/admin/exams')}
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/admin/exams/${examId}`)}
         >
-          İptal
+          {exam?.status === 'draft' ? 'İptal' : 'Geri Dön'}
         </Button>
-        
-        <Button 
-          onClick={saveQuestions}
-          disabled={saving || questions.length === 0}
-          className="gap-2"
-        >
-          <Save className="h-4 w-4" />
-          {saving ? 'Kaydediliyor...' : 'Soruları Kaydet'}
-        </Button>
+
+        {exam?.status === 'draft' && (
+          <Button
+            onClick={saveQuestions}
+            disabled={saving || questions.length === 0}
+            className="gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'Kaydediliyor...' : 'Soruları Kaydet'}
+          </Button>
+        )}
       </div>
     </div>
   );
-} 
+}

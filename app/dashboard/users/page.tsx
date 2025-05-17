@@ -248,20 +248,21 @@ function UsersTable() {
               <TableHead>Ad Soyad</TableHead>
               <TableHead>E-posta</TableHead>
               <TableHead>Rol</TableHead>
+              <TableHead>Hesap Durumu</TableHead>
               <TableHead className="text-right">İşlemler</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4">
+                <TableCell colSpan={6} className="text-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                   <p className="mt-2">Kullanıcılar yükleniyor...</p>
                 </TableCell>
               </TableRow>
             ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-4">
+                <TableCell colSpan={6} className="text-center py-4 empty-state-message">
                   {users.length === 0 ? "Henüz kullanıcı bulunmuyor." : "Arama kriterlerine uygun kullanıcı bulunamadı."}
                 </TableCell>
               </TableRow>
@@ -294,6 +295,19 @@ function UsersTable() {
                           : "Kullanıcı"
                       }
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {user.emailVerified ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <CheckCircle2 className="mr-1 h-3 w-3" />
+                        Onaylı
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                        <AlertCircle className="mr-1 h-3 w-3" />
+                        Onaysız
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button

@@ -37,9 +37,9 @@ async function createTransporter(userId?: string) {
       EMAIL_FROM: settings.EMAIL_FROM,
     });
 
-    // Gerekli ayarlar yoksa, varsayılan değerleri kullan
-    const smtpHost = settings.SMTP_HOST || process.env.SMTP_HOST || 'localhost';
-    const emailFrom = settings.EMAIL_FROM || process.env.EMAIL_FROM || 'noreply@kentkonut.com.tr';
+    // Anonim SMTP yapılandırması kullan
+    const smtpHost = settings.SMTP_HOST || process.env.SMTP_HOST || '172.41.41.14';
+    const emailFrom = settings.EMAIL_FROM || process.env.EMAIL_FROM || 'noskay@kentkonut.com.tr';
 
     console.log('Using SMTP host:', smtpHost);
     console.log('Using email from:', emailFrom);
@@ -47,21 +47,12 @@ async function createTransporter(userId?: string) {
     const config: any = {
       host: smtpHost,
       port: Number(settings.SMTP_PORT || process.env.SMTP_PORT || '25'),
-      secure: settings.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === 'true',
+      secure: false,
+      auth: null, // Kimlik doğrulama kullanma
       tls: {
-        rejectUnauthorized: settings.TLS_REJECT_UNAUTHORIZED !== 'false' && process.env.TLS_REJECT_UNAUTHORIZED !== 'false',
+        rejectUnauthorized: false // TLS sertifika doğrulaması kapalı
       }
     };
-
-    // Kimlik doğrulama kullanılacaksa ekle
-    if ((settings.SMTP_AUTH_ENABLED === 'true' || process.env.SMTP_AUTH_ENABLED === 'true') &&
-        (settings.SMTP_USER || process.env.SMTP_USER) &&
-        (settings.SMTP_PASS || process.env.SMTP_PASS)) {
-      config.auth = {
-        user: settings.SMTP_USER || process.env.SMTP_USER,
-        pass: settings.SMTP_PASS || process.env.SMTP_PASS,
-      };
-    }
 
     const transporter = nodemailer.createTransport(config);
 
@@ -107,9 +98,11 @@ export async function sendPasswordResetEmail(to: string, token: string, name?: s
   try {
     console.log('Sending password reset email to:', to);
 
-    // Şifre sıfırlama URL'i oluştur
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+    // Şifre sıfırlama URL'i oluştur - PUBLIC_SERVER_URL değişkenini kullan
+    const baseUrl = process.env.PUBLIC_SERVER_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
     const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
+
+    console.log('Using base URL for password reset:', baseUrl);
 
     // Şifre sıfırlama bağlantısını her zaman konsola yazdır (geliştirme amaçlı)
     console.log('==== PASSWORD RESET LINK (FOR DEVELOPMENT) ====');
@@ -209,9 +202,11 @@ export async function sendVerificationEmail(to: string, token: string) {
   try {
     console.log('Sending verification email to:', to);
 
-    // Doğrulama URL'i oluştur
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
+    // Doğrulama URL'i oluştur - PUBLIC_SERVER_URL değişkenini kullan
+    const baseUrl = process.env.PUBLIC_SERVER_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
     const verificationUrl = `${baseUrl}/auth/verify?token=${token}`;
+
+    console.log('Using base URL for verification:', baseUrl);
 
     // Doğrulama bağlantısını her zaman konsola yazdır (geliştirme amaçlı)
     console.log('==== VERIFICATION LINK (FOR DEVELOPMENT) ====');
@@ -256,11 +251,11 @@ export async function sendVerificationEmail(to: string, token: string) {
             <h2>Kentkonut Sınav Portalı</h2>
           </div>
           <div class="content">
-            <h3>E-posta Adresinizi Doğrulayın</h3>
+            <h3>Hesabınızı Onaylayın</h3>
             <p>Merhaba,</p>
             <p>Kentkonut Sınav Portalı'na kaydolduğunuz için teşekkür ederiz. Hesabınızı etkinleştirmek için lütfen aşağıdaki bağlantıya tıklayın:</p>
             <p style="text-align: center; margin: 30px 0;">
-              <a href="${verificationUrl}" class="button">E-posta Adresimi Doğrula</a>
+              <a href="${verificationUrl}" class="button">Hesabımı Onayla</a>
             </p>
             <p>Veya aşağıdaki bağlantıyı tarayıcınıza kopyalayın:</p>
             <p>${verificationUrl}</p>
@@ -279,7 +274,7 @@ export async function sendVerificationEmail(to: string, token: string) {
     const info = await transporter.sendMail({
       from: fromEmail,
       to,
-      subject: 'Kentkonut Sınav Portalı - E-posta Doğrulama',
+      subject: 'Kentkonut Sınav Portalı - Hesap Onayı',
       html,
     });
 

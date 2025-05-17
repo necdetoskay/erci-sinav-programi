@@ -1,0 +1,110 @@
+version: '3.8'
+#docker build -t necdetoskay/kent-konut-sinav-portali:latest .
+
+# Portainer için etiketler
+x-portainer:
+  project-name: "kent-konut-sinav-portali"
+  description: "Kent Konut Sınav Portalı - Next.js Uygulaması (Docker Hub)"
+
+services:
+  app:
+    container_name: kent-konut-sinav-portali
+    # Docker Hub'dan imajı çek
+    image: necdetoskay/kent-konut-sinav-portali:latest
+    labels:
+      - "com.docker.compose.project=kent-konut-sinav-portali"
+      - "com.docker.compose.service=app"
+    restart: always
+    ports:
+      - "3003:3000" # Host port 3003 mapped to container port 3000
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:P@ssw0rd@db:5432/postgres?schema=public
+      - JWT_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+      - REFRESH_TOKEN_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+      - ACCESS_TOKEN_EXPIRES_IN=15m
+      - REFRESH_TOKEN_EXPIRES_IN=7d
+      # Sunucu dış erişim adresi - Şifre sıfırlama e-postaları vb. için kullanılır
+      # Bu değer, sunucunun dışarıdan erişilebilir IP adresi veya domain adı olmalıdır
+      # NEXT_PUBLIC_APP_URL değeri docker-entrypoint.sh tarafından otomatik olarak belirlenecek
+      - ENCRYPTION_KEY=aB7cD9eF2gH5jK8mN0pQ3rS6tU1vW4xY
+      # SMTP ayarları - Anonim SMTP yapılandırması
+      - SMTP_HOST=172.41.41.14
+      - SMTP_PORT=25
+      - SMTP_SECURE=false
+      - SMTP_AUTH_ENABLED=false
+      - EMAIL_FROM=noskay@kentkonut.com.tr
+      - TLS_REJECT_UNAUTHORIZED=false
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      # Kalıcı veri dizinleri için host yolları
+      - ./persistent-data/uploads:/app/uploads
+      - ./persistent-data/logs:/app/logs
+    # Doğrudan komut çalıştır
+    command: >
+      sh -c "
+        echo 'Veritabanı bağlantısı bekleniyor...' &&
+        sleep 10 &&
+        echo 'Prisma şeması oluşturuluyor...' &&
+        npx prisma db push --accept-data-loss &&
+        echo 'Admin kullanıcısı oluşturuluyor...' &&
+        node db/init-scripts/create-superadmin.js &&
+        echo 'Uygulama başlatılıyor...' &&
+        node server.js
+      "
+
+  db:
+    container_name: kent-konut-db
+    image: postgres:15-alpine
+    labels:
+      - "com.docker.compose.project=kent-konut-sinav-portali"
+      - "com.docker.compose.service=db"
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=P@ssw0rd
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./persistent-data/postgres:/var/lib/postgresql/data
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_connections=on"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - app-network
+
+  pgadmin:
+    container_name: kent-konut-pgadmin
+    image: dpage/pgadmin4
+    labels:
+      - "com.docker.compose.project=kent-konut-sinav-portali"
+      - "com.docker.compose.service=pgadmin"
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_LISTEN_PORT=80
+    ports:
+      - "8080:80"
+    volumes:
+      - ./persistent-data/pgadmin:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+# Kalıcı veri dizinleri oluşturulmalıdır
+# mkdir -p persistent-data/postgres persistent-data/pgadmin persistent-data/uploads logs
+
+networks:
+  app-network:
+    driver: bridge

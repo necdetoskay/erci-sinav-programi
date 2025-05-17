@@ -11,6 +11,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    // İstek verilerini al (sadece bir kez)
+    const requestData = await request.json();
+
     const {
       SMTP_HOST,
       SMTP_PORT,
@@ -22,8 +25,19 @@ export async function POST(request: Request) {
       RECIPIENT_EMAIL, // Alıcı e-posta adresi
       SMTP_AUTH_ENABLED, // Kimlik doğrulama kullanılıp kullanılmayacağı
       SAVE_SETTINGS, // Ayarları kaydetme seçeneği
-      USER_ID // Hangi kullanıcı için ayarları kaydedeceğimizi belirten ID
-    } = await request.json();
+      USER_ID, // Hangi kullanıcı için ayarları kaydedeceğimizi belirten ID
+      CUSTOM_SUBJECT,
+      CUSTOM_TEXT,
+      CUSTOM_HTML
+    } = requestData;
+
+    console.log('Test email request data:', {
+      SMTP_HOST,
+      SMTP_PORT,
+      SMTP_SECURE: String(SMTP_SECURE),
+      EMAIL_FROM,
+      TLS_REJECT_UNAUTHORIZED: String(TLS_REJECT_UNAUTHORIZED)
+    });
 
     if (!SMTP_HOST) {
       return NextResponse.json({ message: 'SMTP host is required' }, { status: 400 });
@@ -37,34 +51,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Sender email is required' }, { status: 400 });
     }
 
-    // Create transporter config
+    // Anonim SMTP yapılandırması kullan
     const transportConfig: any = {
-      host: SMTP_HOST,
-      port: Number(SMTP_PORT),
-      secure: SMTP_SECURE === true || SMTP_PORT == 465, // Use provided value or assume based on port
+      host: SMTP_HOST || '172.41.41.14',
+      port: Number(SMTP_PORT || '25'),
+      secure: SMTP_SECURE === true || SMTP_SECURE === 'true',
+      auth: null, // Kimlik doğrulama kullanma
       tls: {
-        rejectUnauthorized: TLS_REJECT_UNAUTHORIZED !== false, // Default to true unless explicitly set to false
-      },
+        rejectUnauthorized: TLS_REJECT_UNAUTHORIZED === true || TLS_REJECT_UNAUTHORIZED === 'true'
+      }
     };
 
-    // Only add auth if auth is enabled and credentials are provided
-    if (SMTP_AUTH_ENABLED === true && SMTP_USER && SMTP_PASS) {
-      transportConfig.auth = {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      };
-    }
+    console.log('Using transport config:', transportConfig);
 
     // Create a transporter using the provided settings
     const transporter = nodemailer.createTransport(transportConfig);
-
-    // İstek verilerini al
-    const requestData = await request.json();
-
-    // Özel e-posta içeriği varsa kullan
-    const CUSTOM_SUBJECT = requestData.CUSTOM_SUBJECT;
-    const CUSTOM_TEXT = requestData.CUSTOM_TEXT;
-    const CUSTOM_HTML = requestData.CUSTOM_HTML;
 
     // Send a test email
     await transporter.sendMail({
@@ -136,6 +137,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Test email sent successfully' }, { status: 200 });
   } catch (error: any) {
     console.error('Error sending test email:', error);
-    return NextResponse.json({ message: 'Error sending test email', error: error.message }, { status: 500 });
+
+    // Daha detaylı hata mesajı
+    let errorMessage = error.message || 'Unknown error';
+
+    // Nodemailer hata detaylarını kontrol et
+    if (error.code) {
+      errorMessage += ` (Code: ${error.code})`;
+    }
+
+    if (error.command) {
+      errorMessage += ` (Command: ${error.command})`;
+    }
+
+    // SMTP sunucu yanıtını kontrol et
+    if (error.response) {
+      errorMessage += ` - Server response: ${error.response}`;
+    }
+
+    return NextResponse.json({
+      message: 'Error sending test email',
+      error: errorMessage,
+      details: {
+        code: error.code,
+        command: error.command,
+        response: error.response,
+        responseCode: error.responseCode,
+        stack: error.stack
+      }
+    }, { status: 500 });
   }
 }

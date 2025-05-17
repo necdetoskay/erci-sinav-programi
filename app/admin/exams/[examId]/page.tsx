@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, PenSquare, Share2, BarChart2 } from 'lucide-react';
+import { Edit, PenSquare, Share2, BarChart2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Breadcrumb } from '../../../components/breadcrumb';
+import { ParticipantsTable } from './components/ParticipantsTable';
+import { ExamStatus, ExamStatusLabels } from '@/lib/constants/exam-status';
 
 interface Question {
   id: number;
@@ -35,7 +37,7 @@ interface Exam {
 export default function ExamDetailPage({ params }: { params: { examId: string } }) {
   const router = useRouter();
   const examId = parseInt(params.examId);
-  
+
   const [loading, setLoading] = useState(true);
   const [exam, setExam] = useState<Exam | null>(null);
 
@@ -44,11 +46,11 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
       try {
         setLoading(true);
         const response = await fetch(`/api/admin/exams/${examId}`);
-        
+
         if (!response.ok) {
           throw new Error('Sınav yüklenirken bir hata oluştu');
         }
-        
+
         const data = await response.json();
         setExam(data);
       } catch (error) {
@@ -97,12 +99,12 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
 
   return (
     <div className="container mx-auto p-6">
-      <Breadcrumb 
+      <Breadcrumb
         items={[
           { label: 'Yönetim', href: '/admin' },
           { label: 'Sınavlar', href: '/admin/exams' },
           { label: exam?.title || 'Sınav Detayı' }
-        ]} 
+        ]}
       />
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -116,10 +118,21 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
             <Edit className="h-4 w-4 mr-2" />
             Düzenle
           </Button>
-          <Button onClick={() => router.push(`/admin/exams/${examId}/questions`)}>
-            <PenSquare className="h-4 w-4 mr-2" />
-            Soruları Düzenle
-          </Button>
+          {/* Taslak durumunda "Soruları Düzenle", diğer durumlarda "Soruları Görüntüle" butonu göster */}
+          {exam.status === ExamStatus.DRAFT ? (
+            <Button onClick={() => router.push(`/admin/exams/${examId}/questions`)}>
+              <PenSquare className="h-4 w-4 mr-2" />
+              Soruları Düzenle
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/admin/exams/${examId}/questions`)}
+            >
+              <PenSquare className="h-4 w-4 mr-2" />
+              Soruları Görüntüle
+            </Button>
+          )}
         </div>
       </div>
 
@@ -131,8 +144,11 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Durum</span>
-              <Badge variant={exam.status === 'published' ? 'default' : 'secondary'}>
-                {exam.status === 'published' ? 'Yayında' : 'Taslak'}
+              <Badge variant={exam.status === ExamStatus.ACTIVE ? 'default' : 'secondary'}>
+                {exam.status === ExamStatus.ACTIVE ? ExamStatusLabels[ExamStatus.ACTIVE] :
+                 exam.status === ExamStatus.COMPLETED ? ExamStatusLabels[ExamStatus.COMPLETED] :
+                 exam.status === ExamStatus.ARCHIVED ? ExamStatusLabels[ExamStatus.ARCHIVED] :
+                 ExamStatusLabels[ExamStatus.DRAFT]}
               </Badge>
             </div>
             <div className="flex justify-between items-center">
@@ -162,17 +178,17 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
               </span>
             </div>
             <div className="flex gap-2 mt-6">
-              {exam.status === 'published' && (
+              {exam.status === ExamStatus.ACTIVE && (
                 <>
-                  <Button 
-                    className="flex-1" 
+                  <Button
+                    className="flex-1"
                     variant="outline"
                     onClick={() => router.push(`/admin/exams/${examId}/share`)}
                   >
                     <Share2 className="h-4 w-4 mr-2" />
                     Paylaş
                   </Button>
-                  <Button 
+                  <Button
                     className="flex-1"
                     onClick={() => router.push(`/admin/exams/${examId}/results`)}
                   >
@@ -185,6 +201,19 @@ export default function ExamDetailPage({ params }: { params: { examId: string } 
           </CardContent>
         </Card>
       </div>
+
+      {/* Personel Sınav Geçmişi Tablosu - Her durumda göster */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Personel Sınav Geçmişi</CardTitle>
+          <CardDescription>
+            Sınava giriş yapmış veya tamamlamış tüm personelin bilgileri
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ParticipantsTable examId={examId} />
+        </CardContent>
+      </Card>
     </div>
   );
-} 
+}

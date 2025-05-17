@@ -7,13 +7,13 @@ async function getSettings() {
   try {
     // Tüm ayarları getir
     const allSettings = await prisma.setting.findMany();
-    
+
     // Ayarları bir objeye dönüştür
     const settings = allSettings.reduce((acc, setting) => {
       acc[setting.key] = setting.value;
       return acc;
     }, {});
-    
+
     return settings;
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -25,20 +25,20 @@ async function sendVerificationEmail(to, token) {
   try {
     console.log('Fetching email settings...');
     const settings = await getSettings();
-    
+
     if (!settings.SMTP_HOST || !settings.EMAIL_FROM) {
       console.error('Missing required email settings (SMTP_HOST or EMAIL_FROM)');
       return;
     }
-    
+
     // Doğrulama URL'i oluştur
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
     const verificationUrl = `${baseUrl}/auth/verify?token=${token}`;
-    
+
     console.log('==== VERIFICATION LINK ====');
     console.log(verificationUrl);
     console.log('==========================');
-    
+
     // Transporter oluştur
     console.log('Creating email transporter with settings:', {
       SMTP_HOST: settings.SMTP_HOST,
@@ -47,7 +47,7 @@ async function sendVerificationEmail(to, token) {
       SMTP_AUTH_ENABLED: settings.SMTP_AUTH_ENABLED,
       EMAIL_FROM: settings.EMAIL_FROM,
     });
-    
+
     const config = {
       host: settings.SMTP_HOST,
       port: Number(settings.SMTP_PORT || '25'),
@@ -56,7 +56,7 @@ async function sendVerificationEmail(to, token) {
         rejectUnauthorized: settings.TLS_REJECT_UNAUTHORIZED !== 'false',
       }
     };
-    
+
     // Kimlik doğrulama kullanılacaksa ekle
     if (settings.SMTP_AUTH_ENABLED === 'true' && settings.SMTP_USER && settings.SMTP_PASS) {
       config.auth = {
@@ -64,11 +64,11 @@ async function sendVerificationEmail(to, token) {
         pass: settings.SMTP_PASS,
       };
     }
-    
+
     const transporter = nodemailer.createTransport(config);
-    
+
     console.log(`Sending verification email to ${to} from ${settings.EMAIL_FROM}`);
-    
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -88,11 +88,11 @@ async function sendVerificationEmail(to, token) {
             <h2>Erci Sınav Programı</h2>
           </div>
           <div class="content">
-            <h3>E-posta Adresinizi Doğrulayın</h3>
+            <h3>Hesabınızı Onaylayın</h3>
             <p>Merhaba,</p>
             <p>Erci Sınav Programı'na kaydolduğunuz için teşekkür ederiz. Hesabınızı etkinleştirmek için lütfen aşağıdaki bağlantıya tıklayın:</p>
             <p style="text-align: center; margin: 30px 0;">
-              <a href="${verificationUrl}" class="button">E-posta Adresimi Doğrula</a>
+              <a href="${verificationUrl}" class="button">Hesabımı Onayla</a>
             </p>
             <p>Veya aşağıdaki bağlantıyı tarayıcınıza kopyalayın:</p>
             <p>${verificationUrl}</p>
@@ -105,14 +105,14 @@ async function sendVerificationEmail(to, token) {
       </body>
       </html>
     `;
-    
+
     const info = await transporter.sendMail({
       from: settings.EMAIL_FROM,
       to,
-      subject: 'Erci Sınav Programı - E-posta Doğrulama',
+      subject: 'Erci Sınav Programı - Hesap Onayı',
       html,
     });
-    
+
     console.log('Email sent successfully:', info.messageId);
     console.log('Verification email sent successfully!');
     return true;

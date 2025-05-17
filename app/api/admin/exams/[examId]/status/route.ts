@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { ExamStatus, ExamStatusValues } from "@/lib/constants/exam-status";
 
 // PUT: Sınav durumunu günceller
 export async function PUT(
@@ -15,8 +16,8 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Rol kontrolü (sadece ADMIN ve USER rollerine izin ver)
-    if (session.user.role !== "ADMIN" && session.user.role !== "USER") {
+    // Rol kontrolü (sadece ADMIN, USER ve SUPERADMIN rollerine izin ver)
+    if (session.user.role !== "ADMIN" && session.user.role !== "USER" && session.user.role !== "SUPERADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -33,9 +34,9 @@ export async function PUT(
     const { status } = body;
 
     // Durum kontrolü
-    if (!status || !["draft", "active", "completed", "archived"].includes(status)) {
+    if (!status || !ExamStatusValues.includes(status as ExamStatus)) {
       return NextResponse.json(
-        { error: "Invalid status. Must be one of: draft, active, completed, archived" },
+        { error: `Invalid status. Must be one of: ${ExamStatusValues.join(", ")}` },
         { status: 400 }
       );
     }
@@ -60,7 +61,7 @@ export async function PUT(
         id: examId,
       },
       data: {
-        status,
+        status: status as ExamStatus,
       },
     });
 

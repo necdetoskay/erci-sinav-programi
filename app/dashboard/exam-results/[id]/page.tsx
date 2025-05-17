@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,15 +72,30 @@ export default function ExamResultDetailPage({ params }: { params: { id: string 
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
-    const fetchExamDetails = async () => {
+    // Yeniden deneme mekanizması ile API çağrısı yapan fonksiyon
+    const fetchExamDetails = async (retryCount = 0) => {
       try {
         setIsLoading(true);
 
-        // Sınav detaylarını getir
-        const detailResponse = await fetch(`/api/exams/${examId}/results`);
+        // Önbellek kontrolü için zaman damgası ve başlıklar ekleyin
+        const timestamp = Date.now();
+        const detailResponse = await fetch(`/api/exams/${examId}/results?t=${timestamp}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
 
+        // Yanıt başarısız ise ve maksimum yeniden deneme sayısına ulaşılmadıysa
         if (!detailResponse.ok) {
-          throw new Error("Sınav detayları yüklenirken bir hata oluştu");
+          if ((detailResponse.status === 403 || detailResponse.status === 401) && retryCount < 3) {
+            console.log(`API çağrısı başarısız oldu (${detailResponse.status}), yeniden deneniyor... (${retryCount + 1}/3)`);
+            // Kısa bir bekleme süresi ekleyin
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Yeniden deneyin
+            return fetchExamDetails(retryCount + 1);
+          }
+          throw new Error(`Sınav detayları yüklenirken bir hata oluştu (${detailResponse.status})`);
         }
 
         const detailData = await detailResponse.json();
@@ -94,8 +110,35 @@ export default function ExamResultDetailPage({ params }: { params: { id: string 
       }
     };
 
+    // Önce oturum kontrolü yapıp sonra veri çekme
+    const checkSessionAndFetchData = async () => {
+      try {
+        // Oturum kontrolü
+        const sessionResponse = await fetch('/api/auth/me', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+
+        // Oturum yoksa veya geçersizse, kısa bir süre bekleyip yeniden deneyin
+        if (!sessionResponse.ok) {
+          console.log('Oturum kontrolü başarısız, kısa bir süre sonra yeniden denenecek...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return checkSessionAndFetchData();
+        }
+
+        // Oturum geçerliyse, sınav detaylarını getirin
+        await fetchExamDetails();
+      } catch (error) {
+        console.error("Oturum kontrolü veya veri çekme hatası:", error);
+        toast.error("Sınav detayları yüklenirken bir hata oluştu");
+        setIsLoading(false);
+      }
+    };
+
     if (!isNaN(examId)) {
-      fetchExamDetails();
+      checkSessionAndFetchData();
     }
   }, [examId]);
 
@@ -179,7 +222,7 @@ export default function ExamResultDetailPage({ params }: { params: { id: string 
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 exam-results-page">
       <div className="flex items-center justify-between mb-6">
         <div>
           <Button
@@ -242,21 +285,21 @@ export default function ExamResultDetailPage({ params }: { params: { id: string 
               <CardContent>
                 <dl className="grid grid-cols-2 gap-4">
                   <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Oluşturulma Tarihi</dt>
+                    <dt className="text-sm font-medium text-muted-foreground card-description">Oluşturulma Tarihi</dt>
                     <dd className="text-lg">
                       {format(new Date(examDetail.created_at), "PPP", { locale: tr })}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Süre</dt>
+                    <dt className="text-sm font-medium text-muted-foreground card-description">Süre</dt>
                     <dd className="text-lg">{examDetail.duration_minutes} dakika</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Soru Sayısı</dt>
+                    <dt className="text-sm font-medium text-muted-foreground card-description">Soru Sayısı</dt>
                     <dd className="text-lg">{examDetail.question_count}</dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Katılımcı Sayısı</dt>
+                    <dt className="text-sm font-medium text-muted-foreground card-description">Katılımcı Sayısı</dt>
                     <dd className="text-lg">{statistics?.participantCount || 0}</dd>
                   </div>
                 </dl>
@@ -270,7 +313,7 @@ export default function ExamResultDetailPage({ params }: { params: { id: string 
               <CardContent>
                 <dl className="space-y-4">
                   <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Ortalama Puan</dt>
+                    <dt className="text-sm font-medium text-muted-foreground card-description">Ortalama Puan</dt>
                     <dd>
                       <div className="flex items-center gap-2">
                         <Progress value={statistics?.averageScore || 0} className="h-2" />
@@ -280,16 +323,16 @@ export default function ExamResultDetailPage({ params }: { params: { id: string 
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <dt className="text-sm font-medium text-muted-foreground">En Yüksek Puan</dt>
+                      <dt className="text-sm font-medium text-muted-foreground card-description">En Yüksek Puan</dt>
                       <dd className="text-lg">{statistics?.highestScore.toFixed(1) || 0}/100</dd>
                     </div>
                     <div>
-                      <dt className="text-sm font-medium text-muted-foreground">En Düşük Puan</dt>
+                      <dt className="text-sm font-medium text-muted-foreground card-description">En Düşük Puan</dt>
                       <dd className="text-lg">{statistics?.lowestScore.toFixed(1) || 0}/100</dd>
                     </div>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-muted-foreground">Ortalama Tamamlama Süresi</dt>
+                    <dt className="text-sm font-medium text-muted-foreground card-description">Ortalama Tamamlama Süresi</dt>
                     <dd className="text-lg">{formatDuration(statistics?.averageCompletionTime || null)}</dd>
                   </div>
                 </dl>
@@ -346,7 +389,7 @@ export default function ExamResultDetailPage({ params }: { params: { id: string 
           <Card>
             <CardHeader>
               <CardTitle>Katılımcı Listesi</CardTitle>
-              <CardDescription>
+              <CardDescription className="card-description">
                 Sınava katılan kullanıcıların performans detayları
               </CardDescription>
             </CardHeader>
@@ -372,20 +415,20 @@ export default function ExamResultDetailPage({ params }: { params: { id: string 
                   <TableBody>
                     {participants.map((participant) => (
                       <TableRow key={participant.id}>
-                        <TableCell className="font-medium">{participant.participantName}</TableCell>
-                        <TableCell>{participant.participantEmail}</TableCell>
-                        <TableCell>{participant.score.toFixed(1)}/100</TableCell>
-                        <TableCell className="text-green-600">{participant.correctAnswers}</TableCell>
-                        <TableCell className="text-red-600">{participant.incorrectAnswers}</TableCell>
-                        <TableCell>
+                        <TableCell className="font-medium table-cell">{participant.participantName}</TableCell>
+                        <TableCell className="table-cell">{participant.participantEmail}</TableCell>
+                        <TableCell className="table-cell">{participant.score.toFixed(1)}/100</TableCell>
+                        <TableCell className="text-green-600 table-cell">{participant.correctAnswers}</TableCell>
+                        <TableCell className="text-red-600 table-cell">{participant.incorrectAnswers}</TableCell>
+                        <TableCell className="table-cell">
                           {format(new Date(participant.startTime), "Pp", { locale: tr })}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="table-cell">
                           {participant.completionTime
                             ? `${participant.completionTime} dk`
                             : "-"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="table-cell">
                           <Badge className={
                             participant.status === "SUBMITTED" ? "bg-green-500" :
                             participant.status === "TIMED_OUT" ? "bg-amber-500" :

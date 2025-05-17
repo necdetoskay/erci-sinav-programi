@@ -102,7 +102,7 @@ label,
     --secondary: 240 10% 20%;
     --secondary-foreground: 0 0% 100%;
     --muted: 240 10% 15%;
-    --muted-foreground: 0 0% 90%;
+    --muted-foreground: 0 0% 100%; /* Tam beyaz renk - maksimum kontrast */
     --accent: 210 100% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 100% 50%;
@@ -131,6 +131,12 @@ label,
   @apply bg-background text-foreground;
 }
 
+/* Dialog bileşeni için yüksek kontrast */
+.dark .DialogDescription,
+.dark [class*="DialogDescription"] {
+  @apply text-gray-100 !important;
+}
+
 .dark .dashboard-card {
   @apply bg-card text-card-foreground border border-border;
 }
@@ -157,15 +163,103 @@ label,
 
 /* Dark mode için tablo düzenlemeleri */
 .dark table {
-  @apply text-gray-200;
+  @apply text-white;
 }
 
 .dark th {
-  @apply text-gray-300 bg-card;
+  @apply text-white bg-gray-800;
 }
 
 .dark td {
-  @apply text-gray-200 border-gray-700;
+  @apply text-white border-gray-700;
+}
+
+/* Sınavlar sayfası için özel tablo düzenlemeleri */
+.dark tr {
+  @apply text-white;
+}
+
+.dark [class*="sinav-adi"],
+.dark [class*="sinav-kodu"],
+.dark [class*="durum"],
+.dark [class*="katilim"],
+.dark .text-gray-900,
+.dark td,
+.dark th,
+.dark tr,
+.dark tbody,
+.dark table {
+  @apply text-white !important;
+}
+
+/* Sınavlar sayfası için özel stil */
+.dark table * {
+  @apply text-white !important;
+}
+
+/* Tablo arka plan renkleri için özel düzenleme */
+.dark .bg-white {
+  @apply bg-gray-800 !important;
+}
+
+/* Tablo hücreleri için arka plan rengi */
+.dark tbody tr {
+  @apply bg-gray-800 border-gray-700 !important;
+}
+
+/* Tablo satırları için hover efekti */
+.dark tr:hover {
+  @apply bg-gray-700 !important;
+}
+
+/* Tablo içindeki muted-foreground sınıfı için özel düzenleme */
+.dark .text-muted-foreground,
+.dark [class*="text-muted-foreground"] {
+  @apply text-gray-100 !important;
+}
+
+/* Sınav kayıtları sayfası için özel dark mode düzenlemeleri */
+.dark .exam-results-page .text-muted-foreground,
+.dark .text-muted-foreground {
+  @apply text-gray-100; /* Daha açık gri renk - neredeyse beyaz */
+}
+
+.dark .exam-results-page .card-description,
+.dark .card-description {
+  @apply text-gray-100; /* Kart açıklamaları için daha açık renk */
+}
+
+.dark .exam-results-page .table-cell,
+.dark .table-cell {
+  @apply text-white; /* Tablo hücreleri için beyaz renk */
+}
+
+/* Bilgi ve uyarı mesajları için yüksek kontrast */
+.dark [class*="personel-bulunamadi"],
+.dark [class*="henuz-sinav-olusturulmamis"],
+.dark .empty-state-message {
+  @apply text-gray-100 !important;
+}
+
+/* Sınavlar sayfası için özel dark mode düzenlemeleri */
+.dark p {
+  @apply text-gray-100; /* Paragraflar için daha açık renk */
+}
+
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  @apply text-white; /* Başlıklar için beyaz renk */
+}
+
+/* Tüm sayfalardaki CardDescription bileşenleri için */
+.dark .card-content {
+  @apply text-gray-200; /* Kart içeriği için daha açık renk */
+}
+
+/* CardDescription bileşenleri için yüksek kontrast */
+.dark .card-description,
+.dark [class*="CardDescription"],
+.dark [class*="cardDescription"] {
+  @apply text-gray-100 !important; /* Daha yüksek kontrast için açık renk */
 }
 
 /* Dark mode için form elemanları */
@@ -180,8 +274,10 @@ label,
   @apply text-gray-200;
 }
 
-.dark input::placeholder {
-  @apply text-gray-500/50;
+.dark input::placeholder,
+.dark textarea::placeholder,
+.dark select::placeholder {
+  @apply text-gray-500 opacity-60;
 }
 
 /* Dark mode için butonlar */

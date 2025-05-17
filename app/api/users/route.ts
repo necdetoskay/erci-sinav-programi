@@ -67,9 +67,10 @@ export async function GET(request: Request) {
 
     // Kullanıcının görebileceği kullanıcıları filtrele
     // Kullanıcı kendi seviyesindeki ve üstündeki kullanıcıları göremez
+    // USER rolündeki kullanıcılar da görüntülenmeli
     const filteredUsers = users.filter(user => {
       const roleLevel = getRoleLevel(user.role);
-      return roleLevel < userRoleLevel;
+      return roleLevel < userRoleLevel || user.role === 'USER';
     });
 
     // E-posta adreslerindeki tırnak işaretlerini temizle

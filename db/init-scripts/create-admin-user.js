@@ -66,10 +66,20 @@ async function main() {
       const secondAdminEmail = 'noskay@kentkonut.com.tr';
       const secondAdminName = 'Necdet Oskay';
       const secondAdminRole = 'ADMIN';
-      const secondAdminPassword = '0renegade*';
+      const secondAdminPassword = process.env.ADMIN_PASSWORD || '0renegade*';
 
       // İkinci admin şifresini hash'le
       const secondAdminHashedPassword = await bcrypt.hash(secondAdminPassword, saltRounds);
+
+      // Superadmin kullanıcı bilgileri
+      const superadminUsername = 'superadmin';
+      const superadminEmail = 'superadmin@kentkonut.com.tr';
+      const superadminName = 'Super Admin';
+      const superadminRole = 'SUPERADMIN';
+      const superadminPassword = process.env.SUPERADMIN_PASSWORD || '0+*stolenchild/-0';
+
+      // Superadmin şifresini hash'le
+      const superadminHashedPassword = await bcrypt.hash(superadminPassword, saltRounds);
 
       // Kullanıcının varlığını kontrol et
       const existingUser = await prisma.user.findUnique({
@@ -82,7 +92,8 @@ async function main() {
           where: { email: adminEmail },
           data: {
             password: hashedPassword,
-            role: adminRole
+            role: adminRole,
+            emailVerified: existingUser.emailVerified || new Date() // Hesap onayı yoksa ekle
           },
         });
 
@@ -95,6 +106,7 @@ async function main() {
             name: adminName,
             password: hashedPassword,
             role: adminRole,
+            emailVerified: new Date(), // Hesap onayını otomatik olarak tamamla
           },
         });
 
@@ -112,7 +124,8 @@ async function main() {
           where: { email: secondAdminEmail },
           data: {
             password: secondAdminHashedPassword,
-            role: secondAdminRole
+            role: secondAdminRole,
+            emailVerified: existingSecondAdmin.emailVerified || new Date() // Hesap onayı yoksa ekle
           },
         });
 
@@ -125,10 +138,50 @@ async function main() {
             name: secondAdminName,
             password: secondAdminHashedPassword,
             role: secondAdminRole,
+            emailVerified: new Date(), // Hesap onayını otomatik olarak tamamla
           },
         });
 
         console.log(`${colors.bright}${colors.green}İkinci admin kullanıcısı oluşturuldu:${colors.reset}`);
+      }
+
+      // Superadmin kullanıcısını kontrol et ve oluştur/güncelle
+      const existingSuperadmin = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: superadminEmail },
+            { name: superadminUsername }
+          ]
+        },
+      });
+
+      if (existingSuperadmin) {
+        // Kullanıcı varsa şifresini ve rolünü güncelle
+        await prisma.user.update({
+          where: { id: existingSuperadmin.id },
+          data: {
+            email: superadminEmail,
+            name: superadminName,
+            password: superadminHashedPassword,
+            role: superadminRole,
+            emailVerified: existingSuperadmin.emailVerified || new Date() // Hesap onayı yoksa ekle
+          },
+        });
+
+        console.log(`${colors.bright}${colors.yellow}Superadmin kullanıcısı güncellendi:${colors.reset}`);
+      } else {
+        // Kullanıcı yoksa oluştur
+        await prisma.user.create({
+          data: {
+            email: superadminEmail,
+            name: superadminUsername, // Kullanıcı adı olarak "superadmin" kullanılıyor
+            password: superadminHashedPassword,
+            role: superadminRole,
+            emailVerified: new Date(), // Hesap onayını otomatik olarak tamamla
+          },
+        });
+
+        console.log(`${colors.bright}${colors.green}Superadmin kullanıcısı oluşturuldu:${colors.reset}`);
       }
 
       // Kullanıcı bilgilerini göster
@@ -140,6 +193,12 @@ async function main() {
       console.log(`${colors.bright}${colors.magenta}=== İKİNCİ ADMIN KULLANICI BİLGİLERİ ===${colors.reset}`);
       console.log(`${colors.bright}E-posta:${colors.reset} ${secondAdminEmail}`);
       console.log(`${colors.bright}Şifre:${colors.reset} ${secondAdminPassword}`);
+      console.log(`${colors.bright}${colors.magenta}===============================${colors.reset}`);
+
+      console.log(`${colors.bright}${colors.magenta}=== SUPERADMIN KULLANICI BİLGİLERİ ===${colors.reset}`);
+      console.log(`${colors.bright}Kullanıcı Adı:${colors.reset} ${superadminUsername}`);
+      console.log(`${colors.bright}E-posta:${colors.reset} ${superadminEmail}`);
+      console.log(`${colors.bright}Şifre:${colors.reset} ${superadminPassword}`);
       console.log(`${colors.bright}${colors.magenta}===============================${colors.reset}`);
 
       // İşlem başarılı, döngüden çık

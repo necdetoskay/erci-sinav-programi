@@ -363,8 +363,41 @@ export default function TakeExamPage({ params }: { params: { id: string } }) {
 
 
 
+  // Sağ tıklama ve metin seçimini engelleme fonksiyonları
+  useEffect(() => {
+    // Sağ tıklama engelleme
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Metin seçimini engelleme
+    const disableSelection = (e: Event) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Kopyalama engelleme
+    const disableCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Event listener'ları ekle
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('selectstart', disableSelection);
+    document.addEventListener('copy', disableCopy);
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('selectstart', disableSelection);
+      document.removeEventListener('copy', disableCopy);
+    };
+  }, []);
+
   return (
-    <div className="container mx-auto max-w-4xl">
+    <div className="container mx-auto max-w-4xl select-none">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">{examData.title}</h1>
         <div className="flex items-center gap-4">
@@ -388,7 +421,7 @@ export default function TakeExamPage({ params }: { params: { id: string } }) {
         </CardHeader>
         <CardContent>
           {/* Sayfa odakta değilken içeriği bulanıklaştır */}
-          <div className={`relative ${!isPageFocused ? "select-none" : ""}`}>
+          <div className="relative">
             {!isPageFocused && (
               <div className="absolute inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-md z-10 flex items-center justify-center">
                 <div className="text-center p-6 bg-background rounded-lg shadow-lg">

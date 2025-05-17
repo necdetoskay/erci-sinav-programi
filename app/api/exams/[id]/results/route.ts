@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
+
 // GET: Belirli bir sınavın sonuçlarını getir
 export async function GET(
   req: NextRequest,
@@ -15,8 +17,8 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Rol kontrolü (ADMIN ve USER rollerine izin ver)
-    if (session.user.role !== "ADMIN" && session.user.role !== "USER") {
+    // Rol kontrolü (ADMIN, USER ve SUPERADMIN rollerine izin ver)
+    if (session.user.role !== "ADMIN" && session.user.role !== "USER" && session.user.role !== "SUPERADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -221,12 +223,26 @@ export async function GET(
       participants: formattedParticipants,
     };
 
-    return NextResponse.json(response);
+    // Önbellek kontrolü için başlıklar ekleyin
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    });
   } catch (error) {
     console.error("Error fetching exam results:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      }
     );
   }
 }

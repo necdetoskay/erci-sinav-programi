@@ -44,7 +44,7 @@ function HomeComponent() {
   return (
     <div className="flex h-screen items-center justify-center">
       <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">Erci Sınav Programı</h1>
+        <h1 className="text-2xl font-bold mb-4">Kent Konut Sınav Portalı</h1>
         <p>Yükleniyor, lütfen bekleyiniz...</p>
       </div>
     </div>
@@ -56,7 +56,7 @@ export default function Home() {
     <Suspense fallback={
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Erci Sınav Programı</h1>
+          <h1 className="text-2xl font-bold mb-4">Kent Konut Sınav Portalı</h1>
           <p>Yükleniyor...</p>
         </div>
       </div>

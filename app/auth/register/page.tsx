@@ -105,7 +105,7 @@ export default function RegisterPage() {
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Hesap Oluşturun</CardTitle>
+          <CardTitle className="text-2xl text-center">Kent Konut Sınav Portalı</CardTitle>
           <CardDescription className="text-center">
             Sınav sistemine kayıt olmak için bilgilerinizi girin
           </CardDescription>

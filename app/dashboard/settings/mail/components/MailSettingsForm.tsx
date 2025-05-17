@@ -28,7 +28,7 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
   const [tlsRejectUnauthorized, setTlsRejectUnauthorized] = useState(
     initialSettings.TLS_REJECT_UNAUTHORIZED !== 'false'
   );
-  
+
   // UI state
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,7 +50,7 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
 
   const handleSaveSettings = async () => {
     setIsSaving(true);
-    
+
     try {
       const settingsToUpdate = {
         SMTP_HOST: smtpHost,
@@ -62,7 +62,7 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
         EMAIL_FROM: emailFrom,
         TLS_REJECT_UNAUTHORIZED: tlsRejectUnauthorized.toString()
       };
-      
+
       const response = await fetch('/api/settings/mail', {
         method: 'POST',
         headers: {
@@ -70,11 +70,11 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
         },
         body: JSON.stringify(settingsToUpdate),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to save settings');
       }
-      
+
       toast.success('E-posta ayarları başarıyla kaydedildi');
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -86,19 +86,22 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
 
   const handleSendTestEmail = async () => {
     setIsSendingTest(true);
-    
+
     try {
       // Use current form values, not saved settings
       const testSettings = {
         SMTP_HOST: smtpHost,
         SMTP_PORT: smtpPort,
-        SMTP_SECURE: smtpSecure,
+        SMTP_SECURE: smtpSecure.toString(),
+        SMTP_AUTH_ENABLED: authEnabled.toString(),
         SMTP_USER: authEnabled ? smtpUser : '',
         SMTP_PASS: authEnabled ? smtpPass : '',
         EMAIL_FROM: emailFrom,
-        TLS_REJECT_UNAUTHORIZED: tlsRejectUnauthorized
+        TLS_REJECT_UNAUTHORIZED: tlsRejectUnauthorized.toString()
       };
-      
+
+      console.log('Sending test email with settings:', testSettings);
+
       const response = await fetch('/api/settings/test-email', {
         method: 'POST',
         headers: {
@@ -106,16 +109,35 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
         },
         body: JSON.stringify(testSettings),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to send test email');
       }
-      
+
       toast.success('Test e-postası başarıyla gönderildi');
     } catch (error: any) {
       console.error('Error sending test email:', error);
-      toast.error(`Test e-postası gönderilemedi: ${error.message}`);
+
+      let errorMessage = 'Test e-postası gönderilemedi';
+
+      if (error.message) {
+        errorMessage += `: ${error.message}`;
+      }
+
+      // Eğer response içinde hata detayı varsa göster
+      if (error.response) {
+        try {
+          const errorData = await error.response.json();
+          if (errorData.error) {
+            errorMessage += ` - ${errorData.error}`;
+          }
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsSendingTest(false);
     }
@@ -168,7 +190,7 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
               />
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2 mt-4">
             <Switch
               id="smtp-secure"
@@ -177,7 +199,7 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
             />
             <Label htmlFor="smtp-secure">Güvenli Bağlantı (SSL/TLS)</Label>
           </div>
-          
+
           <div className="flex items-center space-x-2 mt-4">
             <Switch
               id="tls-reject-unauthorized"
@@ -187,9 +209,9 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
             <Label htmlFor="tls-reject-unauthorized">TLS Sertifika Doğrulaması</Label>
           </div>
         </div>
-        
+
         <Separator />
-        
+
         {/* Kimlik Doğrulama Bölümü */}
         <div>
           <h3 className="text-lg font-medium mb-4">Kimlik Doğrulama</h3>
@@ -201,7 +223,7 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
             />
             <Label htmlFor="auth-enabled">Kimlik Doğrulama Kullan</Label>
           </div>
-          
+
           {authEnabled && (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -240,9 +262,9 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
             </div>
           )}
         </div>
-        
+
         <Separator />
-        
+
         {/* Gönderici Ayarları */}
         <div>
           <h3 className="text-lg font-medium mb-4">Gönderici Ayarları</h3>
@@ -259,8 +281,8 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="w-full sm:w-auto">
-          <Button 
-            onClick={handleSaveSettings} 
+          <Button
+            onClick={handleSaveSettings}
             disabled={isSaving}
             className="w-full"
           >
@@ -269,9 +291,9 @@ export function MailSettingsForm({ initialSettings, isLoading }: MailSettingsFor
           </Button>
         </div>
         <div className="w-full sm:w-auto">
-          <Button 
-            variant="outline" 
-            onClick={handleSendTestEmail} 
+          <Button
+            variant="outline"
+            onClick={handleSendTestEmail}
             disabled={isSendingTest || !smtpHost || !emailFrom}
             className="w-full"
           >

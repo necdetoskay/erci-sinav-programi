@@ -2,47 +2,47 @@ version: '3.8'
 
 # Portainer için etiketler
 x-portainer:
-  project-name: "erci-sinav-programi"
-  description: "Erci Sınav Programı - Next.js Uygulaması"
+  project-name: "kent-konut-sinav-portali"
+  description: "Kent Konut Sınav Portalı - Next.js Uygulaması"
 
 services:
   app:
-    container_name: erci-sinav-programi
-    # Using locally built image
-    image: necdetoskay/erci-sinav-programi:latest
+    container_name: kent-konut-sinav-portali
+    build:
+      context: .
+      dockerfile: Dockerfile
     labels:
-      - "com.docker.compose.project=erci-sinav-programi"
+      - "com.docker.compose.project=kent-konut-sinav-portali"
       - "com.docker.compose.service=app"
     restart: always
     ports:
-      - "3000:3000" # Host port 3000 mapped to container port 3000
+      - "3003:3000" # Host port 3003 mapped to container port 3000
     environment:
-      - NODE_ENV=development # Geliştirme moduna ayarlandı
+      - NODE_ENV=production
       - DATABASE_URL=postgresql://postgres:P@ssw0rd@db:5432/postgres?schema=public
-      - JWT_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ= # JWT için güvenli anahtar
-      - REFRESH_TOKEN_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ= # Refresh token için güvenli anahtar
-      - ACCESS_TOKEN_EXPIRES_IN=15m # Access token süresi
-      - REFRESH_TOKEN_EXPIRES_IN=7d # Refresh token süresi
-      - NEXT_PUBLIC_APP_URL=http://localhost:3000 # Dış erişim URL'i
-      - ADMIN_PASSWORD=Bi41*42* # Admin şifresi
-      - DEBUG=true # Hata ayıklama için
+      - JWT_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+      - REFRESH_TOKEN_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+      - ACCESS_TOKEN_EXPIRES_IN=15m
+      - REFRESH_TOKEN_EXPIRES_IN=7d    
+      - ENCRYPTION_KEY=aB7cD9eF2gH5jK8mN0pQ3rS6tU1vW4xY
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - app-network
     volumes:
-      # Bind mount kullanarak yerel dizinleri belirtiyoruz
-      - ./persistent-data-dev/uploads:/app/uploads
-      - ./logs:/app/logs
-    # Entrypoint olarak init-admin.sh kullanılıyor
-    # Bu script veritabanı migrasyonlarını çalıştırır ve admin kullanıcısını oluşturur
-    entrypoint: ["/bin/sh", "-c", "echo 'Waiting for database to be ready...' && sleep 10 && /app/db/init-scripts/init-admin.sh && node server.js"]
+      - ./sinav-portali/persistent-data/uploads:/app/uploads
+      - ./sinav-portali/logs:/app/logs
+      - ./sinav-portali/docker-entrypoint.sh:/docker-entrypoint.sh
+  
+    entrypoint: ["/docker-entrypoint.sh"]
+    command: ["node", "server.js"]
 
   db:
-    container_name: erci-sinav-db
+    container_name: kent-konut-db
     image: postgres:15-alpine
     labels:
-      - "com.docker.compose.project=erci-sinav-programi"
+      - "com.docker.compose.project=kent-konut-sinav-portali"
       - "com.docker.compose.service=db"
     restart: always
     environment:
@@ -52,7 +52,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./persistent-data-dev/postgres:/var/lib/postgresql/data
+      - ./sinav-portali/persistent-data/postgres:/var/lib/postgresql/data
     command: ["postgres", "-c", "log_statement=all", "-c", "log_connections=on"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
@@ -64,10 +64,10 @@ services:
       - app-network
 
   pgadmin:
-    container_name: erci-sinav-pgadmin
+    container_name: kent-konut-pgadmin
     image: dpage/pgadmin4
     labels:
-      - "com.docker.compose.project=erci-sinav-programi"
+      - "com.docker.compose.project=kent-konut-sinav-portali"
       - "com.docker.compose.service=pgadmin"
     restart: always
     environment:
@@ -77,13 +77,14 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./persistent-data-dev/pgadmin:/var/lib/pgadmin
+      - ./sinav-portali/persistent-data/pgadmin:/var/lib/pgadmin
     depends_on:
       - db
     networks:
       - app-network
 
-# Bind mount kullanıldığı için volume tanımlamalarına gerek yok
+# Kalıcı veri dizinleri oluşturulmalıdır
+# mkdir -p persistent-data/postgres persistent-data/pgadmin persistent-data/uploads logs
 
 networks:
   app-network:

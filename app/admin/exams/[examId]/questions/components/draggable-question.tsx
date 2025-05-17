@@ -53,21 +53,23 @@ export function DraggableQuestion({ question, index, onRemove }: DraggableQuesti
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <Card className={isDragging ? "border-primary" : ""}>
+    <div ref={setNodeRef} style={style} className="mb-4">
+      <Card className={`border-2 ${isDragging ? "border-primary" : ""} ${index % 2 === 0 ? 'bg-slate-50 dark:bg-slate-900' : 'bg-white dark:bg-slate-950'}`}>
         <CardContent className="flex items-center justify-between p-4">
           <div className="flex items-center gap-4 flex-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="cursor-grab active:cursor-grabbing" 
-              {...attributes} 
+            <Button
+              variant="ghost"
+              size="sm"
+              className="cursor-grab active:cursor-grabbing"
+              {...attributes}
               {...listeners}
             >
               <GripVertical className="h-4 w-4 text-muted-foreground" />
             </Button>
-            <div className="font-medium min-w-[80px]">Soru {index + 1}</div>
-            <div className="flex-1 line-clamp-1">{question.question_text}</div>
+            <Badge variant="outline" className="min-w-[60px] flex justify-center text-base">
+              {index + 1}
+            </Badge>
+            <div className="flex-1 line-clamp-1 font-medium">{question.question_text}</div>
             <Badge variant={
               question.difficulty === 'easy' ? 'secondary' :
               question.difficulty === 'medium' ? 'default' : 'destructive'
@@ -75,12 +77,12 @@ export function DraggableQuestion({ question, index, onRemove }: DraggableQuesti
               {difficultyOptions.find(opt => opt.value === question.difficulty)?.label}
             </Badge>
           </div>
-          
+
           <div className="flex items-center gap-2 ml-4">
             <QuestionDetails question={question} index={index} />
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onRemove}
               className="text-destructive"
             >
@@ -91,4 +93,4 @@ export function DraggableQuestion({ question, index, onRemove }: DraggableQuesti
       </Card>
     </div>
   );
-} 
+}

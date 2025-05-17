@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Çıkış Yap | Erci Sınav Programı",
-  description: "Erci Sınav Programı'ndan güvenli çıkış yapın",
+  title: "Çıkış Yap | Kent Konut Sınav Portalı",
+  description: "Kent Konut Sınav Portalı'ndan güvenli çıkış yapın",
 };
 
 export default function SignOutLayout({

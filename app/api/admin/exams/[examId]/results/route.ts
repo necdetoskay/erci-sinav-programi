@@ -66,32 +66,47 @@ export async function GET(
 
     const totalPages = Math.ceil(totalCount / limit);
 
-    // Sonuçları getir
-    const results = await db.examResult.findMany({
-      where: {
-        exam_id: examId
-      },
-      orderBy: {
-        created_at: 'desc'
-      },
-      skip,
-      take: limit
-    });
+    try {
+      // Sonuçları getir
+      const results = await db.examResult.findMany({
+        where: {
+          exam_id: examId
+        },
+        orderBy: {
+          created_at: 'desc'
+        },
+        skip,
+        take: limit
+      });
 
-    // Ortalama puanı hesapla
-    let averageScore = 0;
-    if (results.length > 0) {
-      const totalScore = results.reduce((sum: number, result: any) => sum + (result.score || 0), 0);
-      averageScore = Math.round(totalScore / results.length);
+      // Sonuçları doğrula ve null değerleri işle
+      const validResults = results.map(result => ({
+        ...result,
+        score: result.score === null ? 0 : result.score,
+        total_questions: result.total_questions === null ? 0 : result.total_questions,
+        participant_email: result.participant_email === null ? '' : result.participant_email,
+        start_time: result.start_time || null,
+        end_time: result.end_time || null
+      }));
+
+      // Ortalama puanı hesapla
+      let averageScore = 0;
+      if (validResults.length > 0) {
+        const totalScore = validResults.reduce((sum, result) => sum + (result.score || 0), 0);
+        averageScore = Math.round(totalScore / validResults.length);
+      }
+
+      return NextResponse.json({
+        results: validResults,
+        totalCount,
+        totalPages,
+        currentPage: page,
+        averageScore
+      });
+    } catch (dbError) {
+      console.error('Database error fetching exam results:', dbError);
+      return NextResponse.json({ error: 'Veritabanından sonuçlar alınırken bir hata oluştu' }, { status: 500 });
     }
-
-    return NextResponse.json({
-      results,
-      totalCount,
-      totalPages,
-      currentPage: page,
-      averageScore
-    });
   } catch (error) {
     console.error('Error fetching exam results:', error);
     return NextResponse.json({ error: 'Sınav sonuçları yüklenirken bir hata oluştu' }, { status: 500 });

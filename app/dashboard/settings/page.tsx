@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { UISettings } from './components/UISettings';
 import { AppSettings } from './components/AppSettings';
 import { MailSettings } from './components/MailSettings';
+import { SystemSettings } from './components/SystemSettings';
 import { ProviderManagement } from './components/ProviderManagement';
 import { ModelManagement } from './components/ModelManagement';
 import { Provider, Model } from './components/types';
@@ -105,6 +106,7 @@ function SettingsContent() {
           <TabsTrigger value="ui">Kullanıcı Arayüzü</TabsTrigger>
           <TabsTrigger value="app">Uygulama</TabsTrigger>
           <TabsTrigger value="mail">E-posta</TabsTrigger>
+          <TabsTrigger value="system">Sistem</TabsTrigger>
           <TabsTrigger value="ai">Yapay Zeka</TabsTrigger>
         </TabsList>
 
@@ -118,6 +120,10 @@ function SettingsContent() {
 
         <TabsContent value="mail" className="space-y-4">
           <MailSettings userId={selectedUserId} />
+        </TabsContent>
+
+        <TabsContent value="system" className="space-y-4">
+          <SystemSettings />
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-6">

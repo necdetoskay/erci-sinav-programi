@@ -15,14 +15,12 @@ export async function sendMail({ to, subject, text, html }: MailOptions) {
   try {
     console.log("E-posta gönderme işlemi başlatılıyor...");
 
-    // Sabit mail ayarları kullan
+    // Anonim SMTP yapılandırması kullan
     const mailConfig = {
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      username: "kentkonut.sinav@gmail.com",
-      password: "Kent.Konut.2024",
-      from: "kentkonut.sinav@gmail.com"
+      host: "172.41.41.14",  // Exchange Server adresi
+      port: 25,              // SMTP port
+      secure: false,         // TLS kullanımı (25 portu için false)
+      from: "noskay@kentkonut.com.tr"
     };
 
     console.log("Mail ayarları:", mailConfig);
@@ -32,10 +30,10 @@ export async function sendMail({ to, subject, text, html }: MailOptions) {
       host: mailConfig.host,
       port: mailConfig.port,
       secure: mailConfig.secure,
-      auth: {
-        user: mailConfig.username,
-        pass: mailConfig.password,
-      },
+      auth: null,            // Kimlik doğrulama olmadan
+      tls: {
+        rejectUnauthorized: false  // Sertifika doğrulama sorunları için
+      }
     });
 
     // E-posta gönder

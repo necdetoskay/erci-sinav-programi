@@ -33,9 +33,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, UserPlus, FileImport, RefreshCw } from "lucide-react";
+import { Search, UserPlus, FileText, RefreshCw } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Pagination } from "@/components/ui/pagination";
+import { Pagination } from "@/app/components/ui/pagination";
 
 interface User {
   id: string;
@@ -209,7 +209,7 @@ export default function AdminUsersPage() {
         <div className="flex flex-col sm:flex-row gap-2">
           <Button asChild variant="outline">
             <LoadingLink href="/admin/users/bulk-import">
-              <FileImport className="mr-2 h-4 w-4" />
+              <FileText className="mr-2 h-4 w-4" />
               Toplu İçe Aktar
             </LoadingLink>
           </Button>
@@ -294,19 +294,20 @@ export default function AdminUsersPage() {
               <TableHead>Ad Soyad</TableHead>
               <TableHead>E-posta</TableHead>
               <TableHead>Rol</TableHead>
+              <TableHead>Hesap Durumu</TableHead>
               <TableHead>İşlemler</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   Kullanıcılar yükleniyor...
                 </TableCell>
               </TableRow>
             ) : users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   Kullanıcı bulunamadı
                 </TableCell>
               </TableRow>
@@ -326,6 +327,23 @@ export default function AdminUsersPage() {
                     <Badge variant={getRoleBadgeVariant(user.role)}>
                       {getRoleName(user.role)}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {user.emailVerified ? (
+                      <Badge variant="success" className="bg-green-100 text-green-800 hover:bg-green-200">
+                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Onaylı
+                      </Badge>
+                    ) : (
+                      <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-200">
+                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Onaysız
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">

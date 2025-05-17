@@ -1,0 +1,88 @@
+version: '3.8'
+# docker build -t kent-konut-sinav-portali .
+# Portainer için etiketler
+x-portainer:
+  project-name: "kent-konut-sinav-portali-local"
+  description: "Kent Konut Sınav Portalı - Next.js Uygulaması (Yerel İmaj)"
+
+services:
+  app:
+    container_name: kent-konut-sinav-portali
+    image: kent-konut-sinav-portali:fix  # Yeni düzeltilmiş imajı kullan
+    labels:
+      - "com.docker.compose.project=kent-konut-sinav-portali"
+      - "com.docker.compose.service=app"
+    restart: always
+    ports:
+      - "3003:3000" # Host port 3003 mapped to container port 3000
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:P@ssw0rd@db:5432/postgres?schema=public
+      - JWT_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+      - REFRESH_TOKEN_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+      - ACCESS_TOKEN_EXPIRES_IN=15m
+      - REFRESH_TOKEN_EXPIRES_IN=7d
+      - ENCRYPTION_KEY=aB7cD9eF2gH5jK8mN0pQ3rS6tU1vW4xY
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - ./persistent-data/uploads:/app/uploads
+      - ./persistent-data/logs:/app/logs
+
+    # Entrypoint yerine doğrudan komut çalıştıralım
+    command: ["node", "server.js"]
+
+  db:
+    container_name: kent-konut-db
+    image: postgres:15-alpine
+    labels:
+      - "com.docker.compose.project=kent-konut-sinav-portali"
+      - "com.docker.compose.service=db"
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=P@ssw0rd
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./persistent-data/postgres:/var/lib/postgresql/data
+    command: ["postgres", "-c", "log_statement=all", "-c", "log_connections=on"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - app-network
+
+  pgadmin:
+    container_name: kent-konut-pgadmin
+    image: dpage/pgadmin4
+    labels:
+      - "com.docker.compose.project=kent-konut-sinav-portali"
+      - "com.docker.compose.service=pgadmin"
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_LISTEN_PORT=80
+    ports:
+      - "8080:80"
+    volumes:
+      - ./persistent-data/pgadmin:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+# Kalıcı veri dizinleri oluşturulmalıdır
+# mkdir -p persistent-data/postgres persistent-data/pgadmin persistent-data/uploads persistent-data/logs
+
+networks:
+  app-network:
+    driver: bridge

@@ -92,6 +92,13 @@ export async function POST(
       return NextResponse.json({ error: 'Sınav bulunamadı veya erişim izniniz yok' }, { status: 404 });
     }
 
+    // Sınav "Taslak" durumunda değilse soru eklenemez
+    if (exam.status !== 'draft') {
+      return NextResponse.json({
+        error: 'Sadece "Taslak" durumundaki sınavlara soru eklenebilir. Sınavı taslak durumuna çevirin ve tekrar deneyin.'
+      }, { status: 403 });
+    }
+
     const body = await request.json();
     const { questions } = body;
 

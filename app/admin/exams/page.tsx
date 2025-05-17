@@ -30,14 +30,22 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { MoreHorizontal, Plus, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { Breadcrumb } from '../../components/breadcrumb';
+import { ExamStatus, ExamStatusLabels, ExamStatusValues } from '@/lib/constants/exam-status';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Exam {
   id: number;
   title: string;
-  status: 'draft' | 'active' | 'completed' | 'archived';
+  status: string; // ExamStatus değerlerini alacak
   created_at: string;
   updated_at: string;
   access_code: string; // Sınav kodunu ekle
@@ -52,6 +60,7 @@ function ExamsTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState<string | null>(null);
+  const [updatingExamId, setUpdatingExamId] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchExams() {
@@ -97,6 +106,38 @@ function ExamsTable() {
 
   function handleShareExam(examId: number) {
     router.push(`/admin/exams/${examId}/share`);
+  }
+
+  // Sınav durumunu değiştirme fonksiyonu
+  async function handleStatusChange(examId: number, newStatus: string) {
+    try {
+      setUpdatingExamId(examId);
+
+      const response = await fetch(`/api/admin/exams/${examId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Sınav durumu güncellenirken bir hata oluştu');
+      }
+
+      // Başarılı olduğunda, sınav listesini güncelle
+      setExams(exams.map(exam =>
+        exam.id === examId ? { ...exam, status: newStatus } : exam
+      ));
+
+      toast.success('Sınav durumu başarıyla güncellendi');
+    } catch (error) {
+      console.error('Sınav durumu güncellenirken hata:', error);
+      toast.error('Sınav durumu güncellenirken bir hata oluştu');
+    } finally {
+      setUpdatingExamId(null);
+    }
   }
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -145,14 +186,16 @@ function ExamsTable() {
       {/* Breadcrumb kaldırıldı */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Sınavlar</h1>
-        <Button onClick={handleCreateExam}>
-          <Plus className="mr-2 h-4 w-4" />
-          Yeni Sınav
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleCreateExam}>
+            <Plus className="mr-2 h-4 w-4" />
+            Yeni Sınav
+          </Button>
+        </div>
       </div>
 
       {/* Card bileşeni kaldırıldı, tablo doğrudan div içine alındı */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
           {loading ? (
             <div className="flex justify-center py-8 px-6"> {/* Padding eklendi */}
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
@@ -184,31 +227,53 @@ function ExamsTable() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-gray-900">Sınav Adı</TableHead>
-                    <TableHead className="text-gray-900">Sınav Kodu</TableHead>
-                    <TableHead className="text-gray-900">Durum</TableHead>
-                    <TableHead className="text-gray-900">Katılım</TableHead>
-                    <TableHead className="text-right text-gray-900">İşlem</TableHead>
+                    <TableHead>Sınav Adı</TableHead>
+                    <TableHead>Sınav Kodu</TableHead>
+                    <TableHead>Durum</TableHead>
+                    <TableHead>Katılım</TableHead>
+                    <TableHead className="text-right">İşlem</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {exams.map((exam) => (
                     <TableRow key={exam.id}>
-                      <TableCell className="font-medium text-gray-900">{exam.title}</TableCell>
-                      <TableCell className="text-gray-900">{exam.access_code}</TableCell>
+                      <TableCell className="font-medium">{exam.title}</TableCell>
+                      <TableCell>{exam.access_code}</TableCell>
                       <TableCell>
-                        {exam.status === 'active' ? (
-                          <Badge variant="default">Aktif</Badge>
-                        ) : exam.status === 'completed' ? (
-                          <Badge variant="success">Tamamlandı</Badge>
-                        ) : exam.status === 'archived' ? (
-                          <Badge variant="outline">Arşivlenmiş</Badge>
-                        ) : (
-                          <Badge variant="secondary">Taslak</Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {exam.status === ExamStatus.ACTIVE ? (
+                            <Badge variant="default">{ExamStatusLabels[ExamStatus.ACTIVE]}</Badge>
+                          ) : exam.status === ExamStatus.COMPLETED ? (
+                            <Badge variant="success">{ExamStatusLabels[ExamStatus.COMPLETED]}</Badge>
+                          ) : exam.status === ExamStatus.ARCHIVED ? (
+                            <Badge variant="outline">{ExamStatusLabels[ExamStatus.ARCHIVED]}</Badge>
+                          ) : (
+                            <Badge variant="secondary">{ExamStatusLabels[ExamStatus.DRAFT]}</Badge>
+                          )}
+
+                          <Select
+                            value={exam.status}
+                            onValueChange={(value) => handleStatusChange(exam.id, value)}
+                            disabled={updatingExamId === exam.id}
+                          >
+                            <SelectTrigger className="w-[140px] h-8">
+                              <SelectValue placeholder="Durum Değiştir" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ExamStatusValues.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  <div className="flex items-center gap-2">
+                                    {exam.status === status && <Check className="h-4 w-4" />}
+                                    <span>{ExamStatusLabels[status as ExamStatus]}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </TableCell>
-                      <TableCell className="text-gray-900">
-                        {exam.status === 'active' || exam.status === 'completed' ?
+                      <TableCell>
+                        {exam.status === ExamStatus.ACTIVE || exam.status === ExamStatus.COMPLETED ?
                           `${exam.participantCount}/${exam.totalParticipants || 'Sınırsız'}` :
                           '0/0'}
                       </TableCell>
@@ -226,12 +291,12 @@ function ExamsTable() {
                             <DropdownMenuItem onClick={() => handleEditExam(exam.id)}>
                               Düzenle
                             </DropdownMenuItem>
-                            {(exam.status === 'active' || exam.status === 'completed') && (
+                            {(exam.status === ExamStatus.ACTIVE || exam.status === ExamStatus.COMPLETED) && (
                               <DropdownMenuItem onClick={() => handleViewResults(exam.id)}>
                                 Sonuçlar
                               </DropdownMenuItem>
                             )}
-                            {exam.status === 'active' && (
+                            {exam.status === ExamStatus.ACTIVE && (
                               <DropdownMenuItem onClick={() => handleShareExam(exam.id)}>
                                 Paylaş
                               </DropdownMenuItem>

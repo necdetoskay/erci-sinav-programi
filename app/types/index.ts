@@ -31,6 +31,7 @@ export interface UpdateUserData {
   email: string;
   role: UserRole;
   password?: string;
+  emailVerified?: boolean;
 }
 
 // Rol tipi

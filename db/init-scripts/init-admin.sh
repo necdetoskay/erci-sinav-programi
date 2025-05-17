@@ -1,5 +1,5 @@
 #!/bin/sh
-# Bu script, veritabanı migrasyonlarını çalıştırır ve admin kullanıcısını oluşturur/günceller
+# Bu script, veritabanı migrasyonlarını çalıştırır ve superadmin kullanıcısını oluşturur/günceller
 
 # Renkli konsol çıktısı için
 RED='\033[0;31m'
@@ -39,9 +39,9 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     echo "${YELLOW}Prisma client yeniden oluşturuluyor...${NC}"
     npx prisma generate
 
-    # Admin kullanıcısını oluştur/güncelle
-    echo "${YELLOW}Admin kullanıcısı oluşturuluyor/güncelleniyor...${NC}"
-    node /app/db/init-scripts/create-admin-user.js
+    # Superadmin kullanıcısını oluştur/güncelle
+    echo "${YELLOW}Superadmin kullanıcısı oluşturuluyor/güncelleniyor...${NC}"
+    node /app/db/init-scripts/create-superadmin.js
 
     break
   else

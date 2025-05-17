@@ -46,8 +46,16 @@ export async function GET(request: Request) {
     }
 
     // Kullanıcı bazında veya global ayarları getir
+    console.log(`[SettingsAPI] Fetching ${scope} settings for user ${session.user.id}`);
     const settings = await getSettings(scope === 'user' ? session.user.id : undefined);
-    console.log(`Settings for current user ${session.user.id}:`, settings);
+    console.log(`[SettingsAPI] Settings for ${scope} scope, user ${session.user.id}:`, settings);
+
+    // PUBLIC_SERVER_URL değerini özellikle log'a yaz
+    if (scope === 'global') {
+      console.log(`[SettingsAPI] PUBLIC_SERVER_URL from global settings:`, settings.PUBLIC_SERVER_URL || 'Not set');
+      console.log(`[SettingsAPI] PUBLIC_SERVER_URL from env:`, process.env.PUBLIC_SERVER_URL || 'Not set');
+    }
+
     return NextResponse.json(settings, { status: 200 });
   } catch (error) {
     console.error('Error fetching settings:', error);

@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ExamAttemptStatus } from "@/types/prisma";
 import { Button } from '@/components/ui/button'; // Button import edildi
 import { toast } from 'sonner'; // toast import edildi
+import { useAppUrl } from '@/hooks/useAppUrl'; // useAppUrl hook'unu import et
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,30 +33,57 @@ interface ExamResultResponse {
 export default function ExamResultsPage() {
     const params = useParams();
     const router = useRouter(); // useRouter hook'u kullanıldı
+    const appUrl = useAppUrl(); // useAppUrl hook'unu kullan
     const attemptId = params.attemptId as string;
     const [result, setResult] = useState<ExamResultResponse | null>(null); // Tip güncellendi
     const [isLoading, setIsLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false); // Deleting state
     const [error, setError] = useState<string | null>(null);
 
+    // appUrl değiştiğinde log ekle
+    useEffect(() => {
+        console.log("[ExamResultsPage] useAppUrl hook'undan gelen URL:", appUrl);
+    }, [appUrl]);
+
     useEffect(() => {
         const fetchResult = async () => {
             if (!attemptId) return;
             setIsLoading(true);
             setError(null);
+            console.log("[ExamResultsPage] Sonuçlar alınıyor, attemptId:", attemptId);
+
             try {
                 // API endpoint'inden veriyi çek
+                console.log("[ExamResultsPage] API isteği yapılıyor:", `/api/exam/attempt/${attemptId}/results`);
                 const response = await fetch(`/api/exam/attempt/${attemptId}/results`);
+
+                console.log("[ExamResultsPage] API yanıtı alındı, status:", response.status);
+
                 if (!response.ok) {
                     const errorData = await response.json();
+                    console.error("[ExamResultsPage] API hatası:", errorData);
                     throw new Error(errorData.message || 'Sonuçlar alınamadı.');
                 }
-                const data: ExamResultResponse = await response.json(); // Gelen veriyi doğru tiple al
-                setResult(data);
+
+                const data = await response.json(); // Önce veriyi al
+                console.log("[ExamResultsPage] API'den alınan veri:", data);
+
+                // Veriyi doğru tiple işle
+                const resultData: ExamResultResponse = {
+                    attemptId: data.attemptId,
+                    examTitle: data.examTitle,
+                    score: data.score,
+                    totalQuestions: data.totalQuestions,
+                    percentage: data.percentage,
+                    status: data.status as ExamAttemptStatus
+                };
+
+                console.log("[ExamResultsPage] İşlenen sonuç verisi:", resultData);
+                setResult(resultData);
 
             } catch (err: any) {
                 setError(err.message || 'Sonuçlar yüklenirken bir hata oluştu.');
-                console.error("Sonuçları alma hatası:", err);
+                console.error("[ExamResultsPage] Sonuçları alma hatası:", err);
             } finally {
                 setIsLoading(false);
             }
@@ -73,14 +101,14 @@ export default function ExamResultsPage() {
             });
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.message || 'Failed to delete attempt.');
+                throw new Error(data.message || 'Deneme silinemedi.');
             }
-            toast.success("Attempt Deleted", { description: "You can now retake the exam." });
+            toast.success("Deneme Silindi", { description: "Şimdi sınavı tekrar alabilirsiniz." });
             // Redirect back to the start page after successful deletion
             router.push('/exam/enter-code');
         } catch (err: any) {
-            console.error("Error deleting attempt:", err);
-            toast.error("Deletion Failed", { description: err.message || 'Could not delete the exam attempt.' });
+            console.error("Deneme silme hatası:", err);
+            toast.error("Silme Başarısız", { description: err.message || 'Sınav denemesi silinemedi.' });
         } finally {
             setIsDeleting(false);
         }
@@ -129,7 +157,17 @@ export default function ExamResultsPage() {
                     {/* İleride daha fazla detay eklenebilir */}
                     {/* <p>Süre: {result.timeTaken ? `${Math.floor(result.timeTaken / 60)}dk ${result.timeTaken % 60}sn` : '-'}</p> */}
                 </CardContent>
-                <CardFooter className="flex justify-center">
+                <CardFooter className="flex flex-col gap-4">
+                    {/* Sınav Giriş Linki */}
+                    <div className="text-center">
+                        <p className="text-sm text-muted-foreground mb-2">
+                            Sınav giriş linki: <span className="font-medium">{appUrl}/exam</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            (Debug) Dış erişim URL'si: {appUrl}
+                        </p>
+                    </div>
+
                     {/* Delete Attempt Button */}
                      <AlertDialog>
                         <AlertDialogTrigger asChild>

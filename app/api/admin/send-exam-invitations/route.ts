@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import nodemailer from "nodemailer";
+import { getGlobalSettings } from "@/lib/settings";
+
+export const dynamic = 'force-dynamic'; // Force dynamic rendering
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,6 +42,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Sınav durumunu kontrol et - taslak sınavlar için e-posta gönderimi engelle
+    if (exam.status !== "published") {
+      return NextResponse.json(
+        { error: "Taslak durumdaki sınavlar için e-posta gönderilemez. Lütfen önce sınavı yayınlayın." },
+        { status: 400 }
+      );
+    }
+
+    // Global ayarları getir
+    const globalSettings = await getGlobalSettings();
+    const publicServerUrl = globalSettings.PUBLIC_SERVER_URL || process.env.PUBLIC_SERVER_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    console.log("Dış erişim URL'si:", publicServerUrl);
+
     // Her kullanıcıya e-posta gönder
     console.log("E-posta gönderiliyor...");
 
@@ -46,10 +63,30 @@ export async function POST(req: NextRequest) {
     const results = await Promise.all(
       users.map(async (user: { name: string; email: string }) => {
         try {
-          const emailText = emailBody ||
-            `Sayın ${user.name},\n\n${exam.title} sınavına katılmanız için davet edildiniz.\n\nSınav Kodu: ${exam.access_code}\n\nSınava giriş yapmak için aşağıdaki linki kullanabilirsiniz:\n${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/exam/enter-code\n\nSaygılarımızla,\nKent Konut A.Ş.`;
+          // Varsayılan şablon - yer tutucularla
+          let defaultTemplate = `Sayın {USER_NAME},\n\n{EXAM_TITLE} sınavına katılmanız için davet edildiniz.\n\nSınav Kodu: {EXAM_CODE}\n\nSınava giriş yapmak için aşağıdaki linki kullanabilirsiniz:\n{EXAM_LINK}\n\nSaygılarımızla,\nKent Konut A.Ş.`;
 
-          const emailSubject = subject || `${exam.title} - Sınav Davetiyesi`;
+          // Gelen şablonda yer tutucuları değiştir
+          let processedEmailBody = emailBody || defaultTemplate;
+
+          // Düz metin versiyonu için yer tutucuları gerçek değerlerle değiştir
+          const plainTextBody = processedEmailBody
+            .replace(/\{EXAM_TITLE\}/g, exam.title)
+            .replace(/\{EXAM_CODE\}/g, exam.access_code)
+            .replace(/\{EXAM_LINK\}/g, `${publicServerUrl}/exam`)
+            .replace(/\{USER_NAME\}/g, user.name);
+
+          // HTML versiyonu için yer tutucuları kalın (bold) gerçek değerlerle değiştir
+          const examLink = `${publicServerUrl}/exam`;
+          let htmlBody = processedEmailBody
+            .replace(/\{EXAM_TITLE\}/g, `<strong>${exam.title}</strong>`)
+            .replace(/\{EXAM_CODE\}/g, `<strong>${exam.access_code}</strong>`)
+            .replace(/\{EXAM_LINK\}/g, `<a href="${examLink}"><strong>${examLink}</strong></a>`)
+            .replace(/\{USER_NAME\}/g, `<strong>${user.name}</strong>`);
+
+          // Konu satırındaki yer tutucuları değiştir
+          let processedSubject = subject || `{EXAM_TITLE} - Sınav Davetiyesi`;
+          processedSubject = processedSubject.replace(/\{EXAM_TITLE\}/g, exam.title);
 
           console.log(`E-posta gönderiliyor: ${user.email}`);
 
@@ -67,13 +104,75 @@ export async function POST(req: NextRequest) {
             }
           });
 
+          // HTML içeriğini satır sonlarını <br> etiketlerine dönüştür
+          htmlBody = htmlBody.replace(/\n/g, "<br>");
+
+          // HTML içeriğini daha profesyonel bir şablona yerleştir
+          htmlBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .email-container {
+      padding: 20px;
+      border: 1px solid #e0e0e0;
+      border-radius: 5px;
+    }
+    .email-header {
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .email-footer {
+      margin-top: 30px;
+      padding-top: 10px;
+      border-top: 1px solid #f0f0f0;
+      font-size: 12px;
+      color: #777;
+    }
+    strong {
+      color: #0056b3;
+    }
+    a {
+      color: #0056b3;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <div class="email-header">
+      <img src="https://kentkonut.com.tr/wp-content/uploads/2023/05/kent-konut-logo.png" alt="Kent Konut Logo" style="max-width: 150px;">
+    </div>
+    <div class="email-content">
+      ${htmlBody}
+    </div>
+    <div class="email-footer">
+      Bu e-posta Kent Konut A.Ş. Sınav Portalı tarafından otomatik olarak gönderilmiştir.
+    </div>
+  </div>
+</body>
+</html>
+          `;
+
           // E-posta gönder
           const info = await transporter.sendMail({
             from: "noskay@kentkonut.com.tr", // Sabit gönderen adresi
             to: user.email,
-            subject: emailSubject,
-            text: emailText,
-            html: emailText.replace(/\n/g, "<br>")
+            subject: processedSubject,
+            text: plainTextBody, // Düz metin versiyonu
+            html: htmlBody // HTML versiyonu (kalın değerlerle)
           });
 
           console.log(`E-posta başarıyla gönderildi: ${user.email}, messageId: ${info.messageId}`);

@@ -1,0 +1,96 @@
+# ---- Base Stage ----
+FROM node:20-alpine AS base
+WORKDIR /app
+
+# ---- Dependencies Stage ----
+FROM base AS deps
+WORKDIR /app
+
+# package.json ve lock dosyasını kopyala
+COPY package.json ./
+COPY package-lock.json* ./
+
+# Paket yöneticisine göre bağımlılıkları yükle
+RUN npm ci
+
+# ---- Builder Stage ----
+FROM base AS builder
+WORKDIR /app
+
+# Build için gerekli olabilecek derleme araçları (node-gyp bağımlılıkları için)
+RUN apk update && apk add --no-cache libc6-compat python3 make g++
+
+# Bağımlılıkları bir önceki aşamadan kopyala
+COPY --from=deps /app/node_modules ./node_modules
+# Tüm proje dosyalarını kopyala
+COPY . .
+
+# Prisma Client'ı oluştur
+RUN npx prisma generate
+
+# Disable Nextjs telemetry
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build için gerekli ortam değişkenleri
+ENV JWT_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+ENV REFRESH_TOKEN_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+ENV ACCESS_TOKEN_EXPIRES_IN=15m
+ENV REFRESH_TOKEN_EXPIRES_IN=7d
+ENV DATABASE_URL=postgresql://postgres:P@ssw0rd@localhost:5432/postgres?schema=public
+ENV ENCRYPTION_KEY=aB7cD9eF2gH5jK8mN0pQ3rS6tU1vW4xY
+ENV PUBLIC_SERVER_URL=http://localhost:3003
+
+# Uygulamayı build et
+RUN npm run build
+
+# ---- Runner Stage (Production Image) ----
+FROM base AS runner
+WORKDIR /app
+
+# Sadece runtime için gerekli sistem paketlerini yükle
+RUN apk update && apk add --no-cache libc6-compat openssl postgresql-client bash
+
+# Güvenlik için root olmayan bir kullanıcı oluştur
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    chown -R nextjs:nodejs /app
+
+# Ortam değişkenleri
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV JWT_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+ENV REFRESH_TOKEN_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+ENV ACCESS_TOKEN_EXPIRES_IN=15m
+ENV REFRESH_TOKEN_EXPIRES_IN=7d
+ENV ENCRYPTION_KEY=aB7cD9eF2gH5jK8mN0pQ3rS6tU1vW4xY
+ENV PUBLIC_SERVER_URL=http://localhost:3003
+
+# Gerekli dosyaları kopyala
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+# Veritabanı başlatma scriptlerini kopyala
+COPY --from=builder --chown=nextjs:nodejs /app/db ./db
+
+# Admin kullanıcı oluşturma scriptini kopyala
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+
+# Docker entrypoint scriptini kopyala ve çalıştırılabilir yap
+COPY --from=builder --chown=nextjs:nodejs /app/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+RUN mkdir -p /app/uploads /app/logs && \
+    chown -R nextjs:nodejs /app/uploads /app/logs
+
+# Kullanıcıyı nextjs olarak ayarla - USER direktifini kaldırdık
+# USER nextjs
+
+# Port ve diğer ayarlar
+EXPOSE 3000
+ENV PORT=3000
+
+# Uygulamayı başlat
+CMD ["node", "server.js"]

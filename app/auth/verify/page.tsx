@@ -11,7 +11,7 @@ export default function VerifyEmailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isVerified, setIsVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,21 +51,21 @@ export default function VerifyEmailPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">E-posta Doğrulama</CardTitle>
+          <CardTitle className="text-2xl text-center">Hesap Onayı</CardTitle>
           <CardDescription className="text-center">
-            Hesabınızın e-posta doğrulama durumu
+            Hesabınızın onay durumu
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center p-6">
           {isLoading ? (
             <div className="flex flex-col items-center space-y-4">
               <Loader2 className="h-16 w-16 animate-spin text-primary" />
-              <p className="text-lg">E-posta adresiniz doğrulanıyor...</p>
+              <p className="text-lg">Hesabınız onaylanıyor...</p>
             </div>
           ) : isVerified ? (
             <div className="flex flex-col items-center space-y-4">
               <CheckCircle className="h-16 w-16 text-green-500" />
-              <p className="text-lg text-center">E-posta adresiniz başarıyla doğrulandı!</p>
+              <p className="text-lg text-center">Hesabınız başarıyla onaylandı!</p>
               <p className="text-center text-gray-600">
                 Artık hesabınıza giriş yapabilirsiniz.
               </p>
@@ -73,9 +73,9 @@ export default function VerifyEmailPage() {
           ) : (
             <div className="flex flex-col items-center space-y-4">
               <XCircle className="h-16 w-16 text-red-500" />
-              <p className="text-lg text-center">E-posta doğrulama başarısız oldu.</p>
+              <p className="text-lg text-center">Hesap onayı başarısız oldu.</p>
               <p className="text-center text-gray-600">
-                {error || 'Doğrulama bağlantısı geçersiz veya süresi dolmuş olabilir.'}
+                {error || 'Onay bağlantısı geçersiz veya süresi dolmuş olabilir.'}
               </p>
             </div>
           )}

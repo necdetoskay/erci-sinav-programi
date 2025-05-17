@@ -47,7 +47,7 @@ export default function LoginPage() {
         if (response.status === 403 && result.needsVerification) {
           setVerificationNeeded(true);
           setVerificationEmail(result.email || email);
-          toast.error("E-posta adresinizi doğrulamanız gerekiyor");
+          toast.error(result.message || "Hesabınız henüz onaylanmamıştır. Lütfen sistem yöneticisiyle iletişime geçin.");
         } else {
           const errorMessage = result.message || result.error || "Giriş yapılamadı";
           toast.error(errorMessage);
@@ -76,7 +76,7 @@ export default function LoginPage() {
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Giriş Yap</CardTitle>
+          <CardTitle className="text-2xl text-center">Kent Konut Sınav Portalı</CardTitle>
           <CardDescription className="text-center">
             E-posta ve şifrenizle giriş yapın
           </CardDescription>
@@ -91,7 +91,7 @@ export default function LoginPage() {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-yellow-700">
-                      E-posta adresinizi doğrulamanız gerekiyor. Lütfen <strong>{verificationEmail}</strong> adresine gönderilen doğrulama e-postasını kontrol edin.
+                      Hesabınız henüz onaylanmamıştır. Lütfen sistem yöneticisiyle iletişime geçin veya <strong>{verificationEmail}</strong> adresine gönderilen onay e-postasını kontrol edin.
                     </p>
                   </div>
                 </div>

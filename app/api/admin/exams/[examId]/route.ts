@@ -48,7 +48,8 @@ export async function GET(
         },
         _count: {
           select: {
-            exam_results: true
+            exam_results: true,
+            attempts: true
           }
         }
       }
@@ -63,6 +64,11 @@ export async function GET(
       ...exam,
       participantCount: exam._count.exam_results,
       totalParticipants: 0, // Bu değer şu an için 0 olarak ayarlanacak
+      _count: {
+        ...exam._count,
+        // Katılımcı sayısını ekle
+        attempts: exam._count.attempts || 0
+      }
     };
 
     return NextResponse.json(formattedExam);
