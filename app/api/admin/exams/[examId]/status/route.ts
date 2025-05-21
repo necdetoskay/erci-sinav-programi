@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { ExamStatus, ExamStatusValues } from "@/lib/constants/exam-status";
+import { ActivityType, EntityType } from "@/lib/activity-logger";
 
 // PUT: Sınav durumunu günceller
 export async function PUT(
@@ -64,6 +65,34 @@ export async function PUT(
         status: status as ExamStatus,
       },
     });
+
+    // Aktivite kaydı oluştur
+    try {
+      let activityType = ActivityType.EXAM_UPDATED;
+      let activityTitle = "Sınav Güncellendi";
+      let activityDescription = `"${exam.title}" sınavının durumu güncellendi`;
+
+      // Eğer sınav yayınlandıysa özel aktivite tipi kullan
+      if (status === "published") {
+        activityType = ActivityType.EXAM_PUBLISHED;
+        activityTitle = "Sınav Yayınlandı";
+        activityDescription = `"${exam.title}" sınavı yayınlandı`;
+      }
+
+      await prisma.activity.create({
+        data: {
+          type: activityType,
+          title: activityTitle,
+          description: activityDescription,
+          userId: session.user.id,
+          entityId: examId.toString(),
+          entityType: EntityType.EXAM,
+        }
+      });
+    } catch (activityError) {
+      console.error('Error creating activity log:', activityError);
+      // Aktivite kaydı oluşturma hatası sınav durumu güncellemeyi etkilemeyecek
+    }
 
     return NextResponse.json({
       message: "Exam status updated successfully",

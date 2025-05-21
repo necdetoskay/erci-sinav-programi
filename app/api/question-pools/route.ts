@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { QuestionPoolStatus } from "@/types/prisma";
+import { ActivityType, EntityType } from "@/lib/activity-logger";
 
 // Validation schema for creating/updating question pools
 const questionPoolSchema = z.object({
@@ -10,6 +12,7 @@ const questionPoolSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   // grade: z.string().min(1, "Grade is required"), // Prisma şemasından kaldırıldığı için buradan da kaldırıldı
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+  status: z.enum([QuestionPoolStatus.ACTIVE, QuestionPoolStatus.INACTIVE]).default(QuestionPoolStatus.ACTIVE),
 });
 
 // GET /api/question-pools
@@ -117,7 +120,7 @@ export async function POST(req: NextRequest) {
     console.log("Creating question pool with data:", {
       ...validatedData,
       userId: session.user.id,
-      status: "ACTIVE"
+      status: validatedData.status || QuestionPoolStatus.ACTIVE
     });
 
     // QuestionPool oluştur - Sadece doğrulanmış ve gerekli alanları açıkça belirtelim
@@ -128,12 +131,29 @@ export async function POST(req: NextRequest) {
         subject: validatedData.subject,
         difficulty: validatedData.difficulty,
         userId: session.user.id, // Bu ID'nin geçerli olduğundan emin olduk
-        status: "ACTIVE" // Varsayılan veya belirlenen durum
+        status: validatedData.status || QuestionPoolStatus.ACTIVE // Varsayılan veya belirlenen durum
         // grade alanı şemada olmadığı için eklenmiyor
       },
     });
 
     console.log("Created question pool:", JSON.stringify(questionPool, null, 2));
+
+    // Aktivite kaydı oluştur
+    try {
+      await db.activity.create({
+        data: {
+          type: ActivityType.QUESTION_POOL_CREATED,
+          title: 'Yeni Soru Havuzu Oluşturuldu',
+          description: `"${validatedData.title}" soru havuzu oluşturuldu`,
+          userId: session.user.id,
+          entityId: questionPool.id.toString(),
+          entityType: EntityType.QUESTION_POOL,
+        }
+      });
+    } catch (activityError) {
+      console.error('Error creating activity log:', activityError);
+      // Aktivite kaydı oluşturma hatası soru havuzu oluşturmayı etkilemeyecek
+    }
 
     return NextResponse.json(questionPool, { status: 201 });
   } catch (error) {

@@ -8,13 +8,18 @@ export enum ExamAttemptStatus {
   GRADED = 'GRADED'
 }
 
+export enum QuestionPoolStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE'
+}
+
 export interface QuestionPool {
   id: number;
   title: string;
   description: string | null;
   subject: string;
   difficulty: string;
-  status: string;
+  status: QuestionPoolStatus;
   createdAt: Date;
   updatedAt: Date;
 }

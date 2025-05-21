@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { QuestionPoolStatus } from "@/types/prisma";
 
 const questionPoolSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   subject: z.string().min(1, "Subject is required"),
-  grade: z.string().min(1, "Grade is required"),
   difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+  status: z.enum([QuestionPoolStatus.ACTIVE, QuestionPoolStatus.INACTIVE]).default(QuestionPoolStatus.ACTIVE),
 });
 
 // GET /api/question-pools/[id]

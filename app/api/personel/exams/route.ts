@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     // İlerleyen aşamalarda personele özel sınav atama sistemi eklenebilir
     const exams = await prisma.exam.findMany({
       where: {
-        status: "published", // Sadece yayındaki sınavları getir
+        status: "active", // Sadece yayındaki (active) sınavları getir
       },
       select: {
         id: true,

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +9,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icons } from "@/components/ui/icons";
 import { toast } from "sonner";
+import { loadFormState, clearFormState } from "@/lib/auth-fetch";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -19,6 +22,35 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [verificationNeeded, setVerificationNeeded] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [savedFormState, setSavedFormState] = useState<any>(null);
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
+
+  // URL parametrelerini ve kaydedilmiş form durumunu kontrol et
+  useEffect(() => {
+    // URL parametrelerini kontrol et
+    const sessionExpiredParam = searchParams.get('sessionExpired');
+    const callbackUrl = searchParams.get('callbackUrl');
+
+    if (sessionExpiredParam === 'true') {
+      setSessionExpired(true);
+    }
+
+    if (callbackUrl) {
+      setReturnUrl(callbackUrl);
+    }
+
+    // Kaydedilmiş form durumunu yükle
+    const savedState = loadFormState("exam-wizard-data");
+    if (savedState) {
+      setSavedFormState(savedState);
+
+      // Otomatik olarak e-posta alanını doldur (eğer varsa)
+      if (savedState.formData?.basicInfo?.createdBy?.email) {
+        setEmail(savedState.formData.basicInfo.createdBy.email);
+      }
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,32 +75,71 @@ export default function LoginPage() {
       console.log("Login API response:", result);
 
       if (!response.ok) {
+        // Hata durumunda loading ekranını HEMEN kapat
+        setIsLoading(false);
+
+        // Hata mesajını göstermeden önce kısa bir gecikme ekle
+        // Bu, loading ekranının tamamen kapanmasını sağlar
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // E-posta doğrulama gerekiyorsa
         if (response.status === 403 && result.needsVerification) {
           setVerificationNeeded(true);
           setVerificationEmail(result.email || email);
-          toast.error(result.message || "Hesabınız henüz onaylanmamıştır. Lütfen sistem yöneticisiyle iletişime geçin.");
+          // Hata mesajını daha uzun süre göster (15 saniye)
+          toast.error(result.message || "Hesabınız henüz onaylanmamıştır. Lütfen sistem yöneticisiyle iletişime geçin.", {
+            duration: 15000, // 15 saniye
+            id: "login-error", // Aynı ID ile önceki toast'u değiştirir
+            important: true // Önemli bir mesaj olduğunu belirt
+          });
         } else {
           const errorMessage = result.message || result.error || "Giriş yapılamadı";
-          toast.error(errorMessage);
+          // Hata mesajını daha uzun süre göster (15 saniye)
+          toast.error(errorMessage, {
+            duration: 15000, // 15 saniye
+            id: "login-error", // Aynı ID ile önceki toast'u değiştirir
+            important: true // Önemli bir mesaj olduğunu belirt
+          });
         }
-        setIsLoading(false);
         return;
       }
 
       // Başarılı giriş
-      toast.success("Giriş başarılı! Yönlendiriliyorsunuz...");
+      toast.success("Giriş başarılı! Yönlendiriliyorsunuz...", {
+        duration: 5000, // 5 saniye
+        id: "login-success" // Aynı ID ile önceki toast'u değiştirir
+      });
 
-      // Kullanıcı rolüne göre yönlendirme
-      const targetUrl = result.user.role === "PERSONEL" ? "/exam" : "/dashboard";
+      // Yönlendirme hedefini belirle
+      let targetUrl = result.user.role === "PERSONEL" ? "/exam" : "/dashboard";
+
+      // Eğer bir geri dönüş URL'i varsa ve oturum süresi dolmuşsa, oraya yönlendir
+      if (returnUrl && sessionExpired) {
+        targetUrl = returnUrl;
+      }
+
       console.log(`Redirecting to ${targetUrl}`);
 
-      // Doğrudan window.location ile yönlendirme
-      window.location.href = targetUrl;
+      // Kısa bir gecikme ile yönlendirme yap (toast mesajının görünmesi için)
+      setTimeout(() => {
+        // Doğrudan window.location ile yönlendirme
+        window.location.href = targetUrl;
+      }, 1000);
     } catch (error) {
-      console.error("Login error:", error);
-      toast.error("Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin.");
+      // Hata durumunda loading ekranını HEMEN kapat
       setIsLoading(false);
+
+      // Hata mesajını göstermeden önce kısa bir gecikme ekle
+      // Bu, loading ekranının tamamen kapanmasını sağlar
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.error("Login error:", error);
+      // Hata mesajını daha uzun süre göster (15 saniye)
+      toast.error("Giriş sırasında bir hata oluştu. Lütfen tekrar deneyin.", {
+        duration: 15000, // 15 saniye
+        id: "login-error", // Aynı ID ile önceki toast'u değiştirir
+        important: true // Önemli bir mesaj olduğunu belirt
+      });
     }
   };
 
@@ -82,6 +153,31 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Oturum süresi dolduğunda gösterilecek uyarı */}
+          {sessionExpired && (
+            <Alert className="mb-4 bg-amber-50 text-amber-800 border-amber-200">
+              <Icons.alertTriangle className="h-4 w-4" />
+              <AlertTitle>Oturum süreniz doldu</AlertTitle>
+              <AlertDescription>
+                Güvenlik nedeniyle oturumunuz sonlandırıldı. Lütfen yeniden giriş yapın.
+                {savedFormState && (
+                  <div className="mt-2">
+                    <p className="text-sm font-medium">Çalışmanız kaydedildi ve giriş yaptıktan sonra kaldığınız yerden devam edebilirsiniz.</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => clearFormState("exam-wizard-data")}
+                    >
+                      <Icons.trash className="mr-2 h-3 w-3" />
+                      Kaydedilen verileri temizle
+                    </Button>
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {verificationNeeded ? (
             <div className="space-y-4">
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">

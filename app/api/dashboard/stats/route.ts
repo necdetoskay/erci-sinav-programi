@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ExamAttemptStatus, ExamAttemptAnswer as PrismaExamAttemptAnswer } from "@prisma/client"; // Prisma client'tan tipi al
 import { subDays, format, startOfDay, endOfDay } from 'date-fns'; // Tarih işlemleri için
+import { getServerSession } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,22 +30,84 @@ interface ScoreDistributionData {
 export async function GET(request: Request) {
   console.log("[API /api/dashboard/stats] Request received.");
   try {
-    // 1. Genel İstatistikler
-    const totalAttempts = await prisma.examAttempt.count();
+    // Get user session for role-based access control
+    const session = await getServerSession();
+
+    // Check if user is authenticated
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Build where conditions based on user role
+    const isAdmin = session.user.role === 'ADMIN';
+    const isSuperAdmin = session.user.role === 'SUPERADMIN';
+
+    // Base where condition for exams
+    let examWhereCondition = {};
+
+    // Admin users can only see their own exams
+    if (isAdmin) {
+      examWhereCondition = { createdById: session.user.id };
+    }
+    // SuperAdmin users can see all exams
+    // No additional conditions needed for SuperAdmin
+
+    // Get all exam IDs that the user has access to
+    const accessibleExams = await prisma.exam.findMany({
+      where: examWhereCondition,
+      select: { id: true }
+    });
+
+    const accessibleExamIds = accessibleExams.map(exam => exam.id);
+    console.log(`[API /api/dashboard/stats] User has access to ${accessibleExamIds.length} exams`);
+
+    // If user has no accessible exams, return empty stats
+    if (accessibleExamIds.length === 0) {
+      return NextResponse.json({
+        overallStats: { totalAttempts: 0, uniqueParticipants: 0, completedAttempts: 0 },
+        participantStats: [],
+        attemptsOverTime: [],
+        scoreDistribution: [
+          { range: '0-20%', count: 0 },
+          { range: '21-40%', count: 0 },
+          { range: '41-60%', count: 0 },
+          { range: '61-80%', count: 0 },
+          { range: '81-100%', count: 0 },
+        ],
+      });
+    }
+
+    // 1. Genel İstatistikler - filtered by accessible exams
+    const totalAttempts = await prisma.examAttempt.count({
+      where: { examId: { in: accessibleExamIds } }
+    });
+
     const distinctEmails = await prisma.examAttempt.findMany({
-        where: { participantEmail: { not: null } },
-        select: { participantEmail: true },
-        distinct: ['participantEmail'],
+      where: {
+        participantEmail: { not: null },
+        examId: { in: accessibleExamIds }
+      },
+      select: { participantEmail: true },
+      distinct: ['participantEmail'],
     });
+
     const uniqueParticipants = distinctEmails.length;
+
     const completedAttempts = await prisma.examAttempt.count({
-      where: { status: { in: [ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT] } },
+      where: {
+        status: { in: [ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT] },
+        examId: { in: accessibleExamIds }
+      },
     });
+
     console.log(`[API /api/dashboard/stats] Overall stats: TA=${totalAttempts}, UP=${uniqueParticipants}, CA=${completedAttempts}`);
 
-    // 2. Detaylı Katılımcı İstatistikleri
+    // 2. Detaylı Katılımcı İstatistikleri - filtered by accessible exams
     const completedAttemptsWithAnswersRecords = await prisma.examAttempt.findMany({
-        where: { status: { in: [ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT] } },
+      where: {
+        status: { in: [ExamAttemptStatus.SUBMITTED, ExamAttemptStatus.TIMED_OUT] },
+        examId: { in: accessibleExamIds }
+      },
     });
 
     let allAnswers: PrismaExamAttemptAnswer[] = []; // Güncellenmiş tipi kullan
@@ -102,6 +165,7 @@ export async function GET(request: Request) {
             gte: dayStart,
             lte: dayEnd,
           },
+          examId: { in: accessibleExamIds }, // Filter by accessible exams
         },
       });
       attemptsOverTime.push({ date: format(targetDate, 'yyyy-MM-dd'), count });

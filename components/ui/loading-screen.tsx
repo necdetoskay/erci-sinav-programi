@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { BookOpen, PenTool, FileText, CheckSquare } from 'lucide-react';
 
 interface LoadingScreenProps {
   isLoading: boolean;
@@ -17,6 +18,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
 }) => {
   const [shouldRender, setShouldRender] = useState(false);
   const [dots, setDots] = useState("");
+  const [activeIcon, setActiveIcon] = useState(0);
 
   // Animasyon için nokta efekti
   useEffect(() => {
@@ -28,6 +30,17 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
         return prev + ".";
       });
     }, 500);
+
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  // İkon değiştirme animasyonu
+  useEffect(() => {
+    if (!isLoading) return;
+
+    const interval = setInterval(() => {
+      setActiveIcon(prev => (prev + 1) % 4);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [isLoading]);
@@ -49,6 +62,16 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
     };
   }, [isLoading, showDelay]);
 
+  // Eğitim temalı ikonlar
+  const icons = [
+    { icon: BookOpen, label: "Hazırlanıyor" },
+    { icon: PenTool, label: "Yükleniyor" },
+    { icon: FileText, label: "Kontrol ediliyor" },
+    { icon: CheckSquare, label: "Tamamlanıyor" }
+  ];
+
+  const ActiveIcon = icons[activeIcon].icon;
+
   return (
     <div
       className={cn(
@@ -58,17 +81,45 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
       aria-live="polite"
       aria-busy={isLoading}
     >
-      <div className="flex flex-col items-center justify-center text-center">
-        <div className="animate-pulse mb-4">
-          <div className="h-8 w-64 bg-muted rounded mb-2"></div>
-          <div className="h-4 w-32 bg-muted rounded"></div>
+      <div className="flex flex-col items-center justify-center text-center p-8 max-w-md">
+        {/* Logo ve Başlık */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-primary dark:text-primary-foreground">
+            Kent Konut Sınav Portalı
+          </h1>
         </div>
-        <div className="text-center mt-4">
-          <p className="text-xl font-semibold mb-2">Kent Konut Sınav Portalı</p>
-          <p className="text-lg text-primary dark:text-primary-foreground">
+
+        {/* Eğitim Temalı Animasyon */}
+        <div className="relative mb-8">
+          <div className="flex items-center justify-center mb-4">
+            <div className="relative">
+              {/* Animasyonlu ikon */}
+              <div className="p-6 bg-primary/10 dark:bg-primary/20 rounded-full">
+                <ActiveIcon className="h-16 w-16 text-primary dark:text-primary-foreground animate-bounce" />
+              </div>
+
+              {/* Dönen daire efekti */}
+              <div className="absolute inset-0 border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+            </div>
+          </div>
+
+          {/* İkon altındaki metin */}
+          <p className="text-lg font-medium text-primary dark:text-primary-foreground">
+            {icons[activeIcon].label}{dots}
+          </p>
+        </div>
+
+        {/* Yükleniyor Metni */}
+        <div className="text-center">
+          <p className="text-xl font-semibold mb-2 text-foreground dark:text-foreground">
             Yükleniyor{dots}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">{message}</p>
+          <p className="text-base text-muted-foreground mt-1">{message}</p>
+        </div>
+
+        {/* İlerleme Çubuğu */}
+        <div className="w-full mt-6 bg-muted rounded-full h-2.5 overflow-hidden">
+          <div className="bg-primary h-2.5 rounded-full animate-progress"></div>
         </div>
       </div>
     </div>

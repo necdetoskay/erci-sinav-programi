@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getServerSession } from '@/lib/session';
+import { ActivityType, EntityType, logActivity } from '@/lib/activity-logger';
 
 // Sınav tipi
 interface Exam {
@@ -71,17 +72,19 @@ export async function GET(request: Request) {
         },
         _count: {
           select: {
-            exam_results: true
+            exam_results: true,
+            questions: true
           }
         }
       }
     });
 
-    // Katılımcı sayılarını ekle
+    // Katılımcı sayılarını ve soru sayılarını ekle
     const formattedExams = exams.map((exam: any) => ({
       ...exam,
       participantCount: exam._count.exam_results,
       totalParticipants: 0, // Bu değer şu an için 0 olarak ayarlanacak
+      questionCount: exam._count.questions || 0, // Soru sayısını ekle
     }));
 
     return NextResponse.json({
@@ -122,6 +125,23 @@ export async function POST(request: Request) {
         createdById: session.user.id, // Sınavı oluşturan kullanıcı
       }
     });
+
+    // Aktivite kaydı oluştur
+    try {
+      await db.activity.create({
+        data: {
+          type: ActivityType.EXAM_CREATED,
+          title: 'Yeni Sınav Oluşturuldu',
+          description: `"${title}" sınavı oluşturuldu`,
+          userId: session.user.id,
+          entityId: newExam.id.toString(),
+          entityType: EntityType.EXAM,
+        }
+      });
+    } catch (activityError) {
+      console.error('Error creating activity log:', activityError);
+      // Aktivite kaydı oluşturma hatası sınav oluşturmayı etkilemeyecek
+    }
 
     return NextResponse.json(newExam);
   } catch (error) {

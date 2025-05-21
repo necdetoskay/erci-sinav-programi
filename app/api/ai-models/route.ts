@@ -84,9 +84,9 @@ export async function POST(req: NextRequest) {
     console.log(`Creating model for userId: ${userId || 'null'}`);
 
     // Gerekli alanları kontrol et
-    if (!data.name || !data.providerId || !data.codeName) {
+    if (!data.name || !data.providerId || !data.apiCode) {
       return NextResponse.json(
-        { error: "Name, Provider ID and Code Name are required" },
+        { error: "Name, Provider ID and API Code are required" },
         { status: 400 }
       );
     }
@@ -127,8 +127,7 @@ export async function POST(req: NextRequest) {
       data: {
         name: data.name,
         details: data.details || "",
-        codeName: data.codeName,
-        apiCode: data.apiCode || null, // API kodunu ekle
+        apiCode: data.apiCode, // API kodunu kullan
         providerId: data.providerId,
         userId: userId,
         orderIndex: highestOrderIndex ? highestOrderIndex.orderIndex + 1 : 0, // Mevcut en yüksek değerin bir fazlası

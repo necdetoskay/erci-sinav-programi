@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Plus, Check } from 'lucide-react';
+import { MoreHorizontal, Plus, Check, Info, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Breadcrumb } from '../../components/breadcrumb';
 import { ExamStatus, ExamStatusLabels, ExamStatusValues } from '@/lib/constants/exam-status';
@@ -41,6 +41,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useLoadingControl } from "@/hooks/use-loading";
 
 interface Exam {
   id: number;
@@ -51,6 +58,7 @@ interface Exam {
   access_code: string; // Sınav kodunu ekle
   participantCount?: number;
   totalParticipants?: number;
+  questionCount?: number; // Sınava ait soru sayısı
 }
 
 function ExamsTable() {
@@ -61,11 +69,13 @@ function ExamsTable() {
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [updatingExamId, setUpdatingExamId] = useState<number | null>(null);
+  const { showLoading, hideLoading } = useLoadingControl();
 
   useEffect(() => {
     async function fetchExams() {
       try {
         setLoading(true);
+        showLoading(); // Standart loading ekranını göster
         setError(null);
         const response = await fetch(`/api/admin/exams?page=${currentPage}&limit=10`);
 
@@ -82,14 +92,19 @@ function ExamsTable() {
         toast.error('Sınavlar yüklenemedi');
       } finally {
         setLoading(false);
+        hideLoading(); // Loading ekranını gizle
       }
     }
 
     fetchExams();
-  }, [currentPage]);
+  }, [currentPage, showLoading, hideLoading]);
 
   function handleCreateExam() {
     router.push('/admin/exams/create');
+  }
+
+  function handleCreateExamWizard() {
+    router.push('/admin/exams/wizard');
   }
 
   function handleEditExam(examId: number) {
@@ -112,6 +127,7 @@ function ExamsTable() {
   async function handleStatusChange(examId: number, newStatus: string) {
     try {
       setUpdatingExamId(examId);
+      showLoading(); // Standart loading ekranını göster
 
       const response = await fetch(`/api/admin/exams/${examId}/status`, {
         method: 'PUT',
@@ -137,6 +153,7 @@ function ExamsTable() {
       toast.error('Sınav durumu güncellenirken bir hata oluştu');
     } finally {
       setUpdatingExamId(null);
+      hideLoading(); // Loading ekranını gizle
     }
   }
 
@@ -154,6 +171,7 @@ function ExamsTable() {
 
     try {
       setIsDeleting(true);
+      showLoading(); // Standart loading ekranını göster
 
       // Doğrudan veritabanından silme işlemi yap
       const response = await fetch(`/api/admin/exams/delete-exam?id=${examToDelete}`, {
@@ -174,6 +192,7 @@ function ExamsTable() {
       toast.error('Sınav silinirken bir hata oluştu');
     } finally {
       setIsDeleting(false);
+      hideLoading(); // Loading ekranını gizle
     }
   }
 
@@ -187,6 +206,7 @@ function ExamsTable() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Sınavlar</h1>
         <div className="flex gap-2">
+          {/* Sihirbaz butonu geçici olarak kaldırıldı */}
           <Button onClick={handleCreateExam}>
             <Plus className="mr-2 h-4 w-4" />
             Yeni Sınav
@@ -197,8 +217,8 @@ function ExamsTable() {
       {/* Card bileşeni kaldırıldı, tablo doğrudan div içine alındı */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
           {loading ? (
-            <div className="flex justify-center py-8 px-6"> {/* Padding eklendi */}
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            <div className="hidden">
+              {/* Boş div - Gerçek loading ekranı LoadingProvider tarafından gösterilecek */}
             </div>
           ) : error ? (
             <div className="text-center py-8 text-red-500">
@@ -230,6 +250,7 @@ function ExamsTable() {
                     <TableHead>Sınav Adı</TableHead>
                     <TableHead>Sınav Kodu</TableHead>
                     <TableHead>Durum</TableHead>
+                    <TableHead>Soru Sayısı</TableHead>
                     <TableHead>Katılım</TableHead>
                     <TableHead className="text-right">İşlem</TableHead>
                   </TableRow>
@@ -273,6 +294,9 @@ function ExamsTable() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {exam.questionCount || 0}
+                      </TableCell>
+                      <TableCell>
                         {exam.status === ExamStatus.ACTIVE || exam.status === ExamStatus.COMPLETED ?
                           `${exam.participantCount}/${exam.totalParticipants || 'Sınırsız'}` :
                           '0/0'}
@@ -291,16 +315,65 @@ function ExamsTable() {
                             <DropdownMenuItem onClick={() => handleEditExam(exam.id)}>
                               Düzenle
                             </DropdownMenuItem>
-                            {(exam.status === ExamStatus.ACTIVE || exam.status === ExamStatus.COMPLETED) && (
-                              <DropdownMenuItem onClick={() => handleViewResults(exam.id)}>
-                                Sonuçlar
-                              </DropdownMenuItem>
-                            )}
-                            {exam.status === ExamStatus.ACTIVE && (
-                              <DropdownMenuItem onClick={() => handleShareExam(exam.id)}>
-                                Paylaş
-                              </DropdownMenuItem>
-                            )}
+
+                            {/* Sonuçlar bağlantısı - Taslak durumunda devre dışı */}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        if (exam.status === ExamStatus.ACTIVE || exam.status === ExamStatus.COMPLETED) {
+                                          handleViewResults(exam.id);
+                                        }
+                                      }}
+                                      disabled={exam.status === ExamStatus.DRAFT || exam.status === ExamStatus.ARCHIVED}
+                                      className={exam.status === ExamStatus.DRAFT || exam.status === ExamStatus.ARCHIVED ? "opacity-50 cursor-not-allowed" : ""}
+                                    >
+                                      Sonuçlar
+                                      {(exam.status === ExamStatus.DRAFT || exam.status === ExamStatus.ARCHIVED) && (
+                                        <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+                                      )}
+                                    </DropdownMenuItem>
+                                  </div>
+                                </TooltipTrigger>
+                                {(exam.status === ExamStatus.DRAFT || exam.status === ExamStatus.ARCHIVED) && (
+                                  <TooltipContent>
+                                    <p>Bu işlem yalnızca yayında durumundaki sınavlar için kullanılabilir. Sınavı yayınlamak için durumunu 'Yayında' olarak değiştirin.</p>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
+
+                            {/* Paylaş bağlantısı - Taslak durumunda devre dışı */}
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        if (exam.status === ExamStatus.ACTIVE) {
+                                          handleShareExam(exam.id);
+                                        }
+                                      }}
+                                      disabled={exam.status !== ExamStatus.ACTIVE}
+                                      className={exam.status !== ExamStatus.ACTIVE ? "opacity-50 cursor-not-allowed" : ""}
+                                    >
+                                      Paylaş
+                                      {exam.status !== ExamStatus.ACTIVE && (
+                                        <Info className="h-4 w-4 ml-2 text-muted-foreground" />
+                                      )}
+                                    </DropdownMenuItem>
+                                  </div>
+                                </TooltipTrigger>
+                                {exam.status !== ExamStatus.ACTIVE && (
+                                  <TooltipContent>
+                                    <p>Bu işlem yalnızca yayında durumundaki sınavlar için kullanılabilir. Sınavı yayınlamak için durumunu 'Yayında' olarak değiştirin.</p>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            </TooltipProvider>
+
                             <DropdownMenuItem
                               onClick={() => handleDeleteExam(exam.id)}
                               className="text-destructive"
@@ -381,7 +454,7 @@ function ExamsTable() {
 
 export default function ExamsPage() {
   return (
-    <Suspense fallback={<div>Loading exams...</div>}>
+    <Suspense fallback={<div className="hidden"></div>}>
       <ExamsTable />
     </Suspense>
   );

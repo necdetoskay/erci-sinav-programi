@@ -79,6 +79,12 @@ export async function GET(request: Request) {
 
     console.log('Cleaned Model Name:', cleanedModelName);
 
+    // Model ID formatı kontrolü (UUID veya benzeri)
+    if (cleanedModelName.match(/^[a-z0-9]{20,}$/i)) {
+      console.log('Model ID formatı tespit edildi, varsayılan model adı kullanılıyor');
+      cleanedModelName = 'meta-llama/llama-4-maverick:free';
+    }
+
     const isLlama4Maverick = cleanedModelName.toLowerCase().includes('maverick');
 
     // İstek gövdesini hazırla

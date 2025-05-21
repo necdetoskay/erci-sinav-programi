@@ -89,7 +89,7 @@ label,
     --ring: 240 5.9% 10%;
     --radius: 0.5rem;
   }
-  /* Dark mode - Daha yüksek kontrast değerleri */
+  /* Dark mode - WCAG 2.1 AA standartlarına uygun yüksek kontrast değerleri */
   .dark {
     --background: 240 10% 5%;
     --foreground: 0 0% 100%;
@@ -97,19 +97,19 @@ label,
     --card-foreground: 0 0% 100%;
     --popover: 240 10% 10%;
     --popover-foreground: 0 0% 100%;
-    --primary: 210 100% 60%;
+    --primary: 210 100% 65%; /* Daha parlak mavi - daha iyi kontrast */
     --primary-foreground: 0 0% 100%;
     --secondary: 240 10% 20%;
     --secondary-foreground: 0 0% 100%;
     --muted: 240 10% 15%;
-    --muted-foreground: 0 0% 100%; /* Tam beyaz renk - maksimum kontrast */
-    --accent: 210 100% 50%;
+    --muted-foreground: 210 40% 96%; /* Çok açık mavi-gri - daha iyi kontrast */
+    --accent: 210 100% 60%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 100% 50%;
+    --destructive: 0 100% 60%; /* Daha parlak kırmızı - daha iyi kontrast */
     --destructive-foreground: 0 0% 100%;
-    --border: 240 10% 20%;
-    --input: 240 10% 15%;
-    --ring: 210 100% 60%;
+    --border: 240 10% 25%; /* Daha açık sınır rengi */
+    --input: 240 10% 20%; /* Daha açık input arka planı */
+    --ring: 210 100% 65%;
   }
 }
 
@@ -262,27 +262,45 @@ label,
   @apply text-gray-100 !important; /* Daha yüksek kontrast için açık renk */
 }
 
-/* Dark mode için form elemanları */
+/* Dark mode için form elemanları - WCAG 2.1 AA standartlarına uygun */
 .dark input,
 .dark select,
 .dark textarea {
-  @apply bg-card text-gray-200 border-gray-700;
+  @apply bg-gray-800 text-white border-gray-600;
+  color-scheme: dark; /* Tarayıcı kontrolleri için karanlık mod */
 }
 
 /* Dark mode için label ve placeholder */
 .dark label {
-  @apply text-gray-200;
+  @apply text-white font-medium;
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder,
 .dark select::placeholder {
-  @apply text-gray-500 opacity-60;
+  @apply text-gray-400; /* Daha açık placeholder rengi */
 }
 
-/* Dark mode için butonlar */
+/* Sınav giriş sayfası için özel input stilleri */
+.dark input#examCode {
+  @apply bg-gray-800 text-white border-gray-600;
+}
+
+/* Dark mode için butonlar - WCAG 2.1 AA standartlarına uygun */
 .dark .button-icon {
-  @apply text-gray-200 border-gray-600;
+  @apply text-white border-gray-600;
+}
+
+/* Sınav giriş sayfası için buton stilleri */
+.dark button[type="submit"],
+.dark .btn-primary {
+  @apply bg-primary text-white border border-primary hover:bg-blue-700;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2); /* Metin okunabilirliğini artırmak için gölge */
+}
+
+/* Disabled butonlar için stil */
+.dark button:disabled {
+  @apply bg-gray-700 text-gray-300 cursor-not-allowed;
 }
 
 /* Dark mode için profil ve tema değiştirme ikonları */
@@ -316,6 +334,62 @@ label,
 /* Dark mode için badge */
 .dark .badge {
   @apply bg-gray-700 text-gray-200;
+}
+
+/* Sınav giriş sayfası için kullanıcı bilgi kartı */
+.dark .bg-blue-50 {
+  @apply bg-blue-900 border-blue-800;
+}
+
+.dark .text-blue-800,
+.dark .text-blue-700 {
+  @apply text-blue-100;
+}
+
+/* Sınav giriş sayfası için uyarı mesajları */
+.dark .bg-amber-50 {
+  @apply bg-amber-900 border-amber-800;
+}
+
+.dark .text-amber-800 {
+  @apply text-amber-100;
+}
+
+/* Sınav giriş sayfası için bilgi metinleri */
+.dark .text-muted-foreground {
+  @apply text-gray-300;
+}
+
+/* Sınav giriş sayfası için linkler */
+.dark .text-blue-600 {
+  @apply text-blue-300;
+}
+
+/* Sınav giriş sayfası için card başlık ve açıklamaları */
+.dark .text-2xl,
+.dark .text-3xl {
+  @apply text-white;
+}
+
+/* Sınav giriş sayfası için card bileşeni */
+.dark .shadow-lg {
+  @apply bg-gray-800 border border-gray-700;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+/* Sınav giriş sayfası için CardDescription */
+.dark [class*="CardDescription"] {
+  @apply text-gray-300;
+}
+
+/* Sınav giriş sayfası için yükleme animasyonu */
+.dark .animate-spin {
+  @apply text-white;
+}
+
+/* Sınav giriş sayfası için SVG ikonları */
+.dark svg {
+  @apply text-current;
 }
 
 /* Özel animasyonlar */

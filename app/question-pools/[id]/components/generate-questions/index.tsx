@@ -159,7 +159,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
 
         // Eğer aktif model varsa, ilk aktif modeli seç
         if (modelsWithFixedProviders.length > 0) {
-          setModel(modelsWithFixedProviders[0].codeName);
+          setModel(modelsWithFixedProviders[0].id);
         }
       } catch (error) {
         console.error('Provider ve Model verileri yüklenirken hata:', error);
@@ -176,9 +176,9 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
     setPromptText(poolTitle || "");
     setCount(1);
     setDifficulty("medium");
-    // Eğer aktif model varsa, ilk aktif modeli seç
+    // Eğer aktif model varsa, ilk aktif modeli seç (ID kullanarak)
     if (models.length > 0) {
-      setModel(models[0].codeName);
+      setModel(models[0].id);
     } else {
       setModel("");
     }

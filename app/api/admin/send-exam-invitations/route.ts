@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Sınav durumunu kontrol et - taslak sınavlar için e-posta gönderimi engelle
-    if (exam.status !== "published") {
+    if (exam.status !== "active") { // "active" durumu, UI'da "Yayında" olarak gösterilir
       return NextResponse.json(
         { error: "Taslak durumdaki sınavlar için e-posta gönderilemez. Lütfen önce sınavı yayınlayın." },
         { status: 400 }

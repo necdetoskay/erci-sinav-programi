@@ -42,8 +42,8 @@ export async function POST(
     // Sınavın varlığını kontrol et
     const exam = await prisma.exam.findUnique({
       where: { id: examId },
-      select: { 
-        id: true, 
+      select: {
+        id: true,
         createdById: true,
         status: true
       }
@@ -57,7 +57,7 @@ export async function POST(
     }
 
     // Sınavın aktif olup olmadığını kontrol et
-    if (exam.status !== "published") {
+    if (exam.status !== "active") {
       return NextResponse.json(
         { error: "Exam is not active" },
         { status: 400 }

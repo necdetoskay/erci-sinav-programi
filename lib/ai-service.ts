@@ -80,7 +80,6 @@ Açıklama: B'nin doğru cevap olmasının kısa açıklaması.`
   // Model adına göre hangi API'nin kullanılacağını belirle
   const lowerCaseModel = model.toLowerCase();
   const isGoogleModel = lowerCaseModel.includes('gemini');
-  const isGroqModel = lowerCaseModel.includes('llama') || lowerCaseModel.includes('mixtral');
 
   try {
     let apiKey: string | null;
@@ -93,13 +92,6 @@ Açıklama: B'nin doğru cevap olmasının kısa açıklaması.`
         throw new Error('Google API anahtarı veritabanında bulunamadı. Lütfen yönetici panelinden API anahtarını ekleyin.');
       }
       result = await callGoogleAPI(apiKey, model, prompt);
-    } else if (isGroqModel) {
-      // Groq API'sini kullan
-      apiKey = await getApiKey('Groq', '');
-      if (!apiKey) {
-        throw new Error('Groq API anahtarı veritabanında bulunamadı. Lütfen yönetici panelinden API anahtarını ekleyin.');
-      }
-      result = await callGroqAPI(apiKey, model, prompt);
     } else {
       // OpenRouter API'sini kullan (varsayılan)
       apiKey = await getApiKey('Open Router', '');
@@ -210,48 +202,7 @@ export async function callGoogleAPI(apiKey: string, model: string, prompt: strin
   return text;
 }
 
-/**
- * Groq API'sine istek gönderir
- * @param apiKey API anahtarı
- * @param model Model adı
- * @param prompt İstek metni
- * @returns API yanıtı
- */
-export async function callGroqAPI(apiKey: string, model: string, prompt: string): Promise<string> {
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000
-    })
-  });
 
-  if (!response.ok) {
-    const error = await response.json();
-    console.error('Groq API Error:', error);
-    throw new Error(error.error?.message || 'API yanıt vermedi');
-  }
-
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content;
-
-  if (!text) {
-    throw new Error('API yanıtı geçersiz format');
-  }
-
-  return text;
-}
 
 /**
  * Görsel analizi yapar

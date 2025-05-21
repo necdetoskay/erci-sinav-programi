@@ -69,20 +69,7 @@ export async function POST(request: NextRequest) {
         max_tokens: 2000
       };
     }
-    // Groq API
-    else if (model.toLowerCase().includes('llama') || model.toLowerCase().includes('mixtral')) {
-      apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-      headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      };
-      requestBody = {
-        model: model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-        max_tokens: 2000
-      };
-    }
+
     // Varsayılan olarak OpenRouter API
     else {
       apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
@@ -121,7 +108,7 @@ export async function POST(request: NextRequest) {
     // Yanıtı çıkar
     let result = '';
 
-    // OpenAI ve Groq formatı
+    // OpenAI formatı
     if (data.choices && data.choices[0]?.message?.content) {
       result = data.choices[0].message.content;
     }

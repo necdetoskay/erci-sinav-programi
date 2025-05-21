@@ -15,7 +15,8 @@ import {
   Shield,
   ChevronDown,
   ChevronRight,
-  Brain
+  Brain,
+  Wand2
 } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/hooks/useAuth"
@@ -40,6 +41,7 @@ const sidebarNavGroups = [
         href: "/admin/exams",
         icon: BookOpen,
       },
+      // Sınav Oluşturma Sihirbazı geçici olarak kaldırıldı
       {
         title: "Soru Havuzları",
         href: "/question-pools",

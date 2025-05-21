@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     // Tüm sınavları getir ve kod karşılaştırmasını manuel yapalım
     const allActiveExams = await prisma.exam.findMany({
       where: {
-        status: "published", // Sadece yayındaki sınavları kontrol et
+        status: "active", // Sadece yayındaki (active) sınavları kontrol et
       },
       select: {
         id: true,

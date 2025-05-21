@@ -1,0 +1,51 @@
+services:
+  app:
+    container_name: kent-konut-sinav-portali
+    image: necdetoskay/kentkonut-sinav-portali:latest
+    restart: unless-stopped
+    pull_policy: always  # Her zaman imajı Docker Hub'dan çek, cache kullanma
+    ports:
+      - "3003:3000"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+      - REFRESH_TOKEN_SECRET=cpFZHH5zLazWQ0n5+iq+Fmk0AVS1j6fd/tRbai7suMQ=
+      - ACCESS_TOKEN_EXPIRES_IN=15m
+      - REFRESH_TOKEN_EXPIRES_IN=7d
+      - ENCRYPTION_KEY=aB7cD9eF2gH5jK8mN0pQ3rS6tU1vW4xY
+      - DATABASE_URL=postgresql://postgres:P@ssw0rd@db:5432/postgres?schema=public
+      - NEXT_PUBLIC_APP_URL=http://localhost:3003
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=P@ssw0rd
+      - DB_NAME=postgres
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    volumes:
+      - ./sinav-portali/persistent-data/uploads:/app/uploads
+      - ./sinav-portali/persistent-data/logs:/app/logs
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  db:
+    container_name: kent-konut-postgres
+    image: postgres:15-alpine
+    pull_policy: always  # Her zaman imajı Docker Hub'dan çek, cache kullanma
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=P@ssw0rd
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./sinav-portali/persistent-data/postgres:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

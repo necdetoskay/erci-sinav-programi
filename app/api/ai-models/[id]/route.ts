@@ -134,7 +134,6 @@ export async function PATCH(
       data: {
         name: data.name !== undefined ? data.name : undefined,
         details: data.details !== undefined ? data.details : undefined,
-        codeName: data.codeName !== undefined ? data.codeName : undefined,
         apiCode: data.apiCode !== undefined ? data.apiCode : undefined, // API kodunu güncelle
         providerId: data.providerId !== undefined ? data.providerId : undefined,
         orderIndex: data.orderIndex !== undefined ? data.orderIndex : undefined,

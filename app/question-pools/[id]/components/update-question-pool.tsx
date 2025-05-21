@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +33,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { Pencil } from "lucide-react";
-import { QuestionPool } from "@/types/prisma";
+import { QuestionPool, QuestionPoolStatus } from "@/types/prisma";
 
 const formSchema = z.object({
   title: z.string().min(1, "Başlık gereklidir"),
@@ -41,7 +41,7 @@ const formSchema = z.object({
   subject: z.string().min(1, "Ders gereklidir"),
   // grade: z.coerce.number().min(1).max(12), // Sınıf alanı kaldırıldı
   difficulty: z.enum(["easy", "medium", "hard"]),
-  status: z.enum(["draft", "published", "archived"]),
+  status: z.enum([QuestionPoolStatus.ACTIVE, QuestionPoolStatus.INACTIVE]),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -64,11 +64,24 @@ export function UpdateQuestionPool({ data }: UpdateQuestionPoolProps) {
       difficulty: ["easy", "medium", "hard"].includes(data.difficulty)
         ? (data.difficulty as "easy" | "medium" | "hard")
         : "medium", // difficulty'nin enum'a uyduğundan emin ol, değilse 'medium' ata
-      status: ["draft", "published", "archived"].includes(data.status)
-        ? (data.status as "draft" | "published" | "archived")
-        : "draft", // status'un enum'a uyduğundan emin ol, değilse 'draft' ata
+      status: Object.values(QuestionPoolStatus).includes(data.status as QuestionPoolStatus)
+        ? (data.status as QuestionPoolStatus)
+        : QuestionPoolStatus.ACTIVE // status'un enum'a uyduğundan emin ol, değilse 'ACTIVE' ata
     },
   });
+
+  // Form açıldığında değerleri görmek için onOpenChange'i kullanabiliriz
+  const handleOpenChange = (open: boolean) => {
+    setOpen(open);
+    if (open) {
+      console.log("Form default values:", {
+        status: data.status,
+        isInEnum: Object.values(QuestionPoolStatus).includes(data.status as QuestionPoolStatus),
+        enumValues: Object.values(QuestionPoolStatus),
+        formStatus: form.getValues().status
+      });
+    }
+  };
 
   async function onSubmit(formData: FormData) {
     try {
@@ -93,7 +106,7 @@ export function UpdateQuestionPool({ data }: UpdateQuestionPoolProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon">
           <Pencil className="h-4 w-4" />
@@ -200,9 +213,8 @@ export function UpdateQuestionPool({ data }: UpdateQuestionPoolProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="draft">Taslak</SelectItem>
-                      <SelectItem value="published">Yayında</SelectItem>
-                      <SelectItem value="archived">Arşivlenmiş</SelectItem>
+                      <SelectItem value={QuestionPoolStatus.ACTIVE}>Aktif</SelectItem>
+                      <SelectItem value={QuestionPoolStatus.INACTIVE}>Pasif</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

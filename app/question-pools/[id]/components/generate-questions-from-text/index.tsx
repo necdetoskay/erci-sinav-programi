@@ -127,9 +127,10 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
 
         setModels(activeModels);
 
-        // Eğer aktif model varsa, ilk aktif modeli seç
+        // Eğer aktif model varsa, sadece bir tane modeli seç
         if (activeModels.length > 0) {
-          setModel(activeModels[0].codeName);
+          // İlk modeli seç ve diğerlerini seçme
+          setModel(activeModels[0].id);
         }
       } catch (error) {
         console.error('Provider ve Model verileri yüklenirken hata:', error);
@@ -146,9 +147,9 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
     setPromptText(""); // Resetlerken de boşalt
     setCount(1);
     setDifficulty("medium");
-    // Eğer aktif model varsa, ilk aktif modeli seç
+    // Eğer aktif model varsa, sadece ilk aktif modeli seç
     if (models.length > 0) {
-      setModel(models[0].codeName);
+      setModel(models[0].id);
     } else {
       setModel("");
     }
@@ -201,7 +202,7 @@ export function GenerateQuestions({ poolId, poolTitle, onQuestionsGenerated }: G
         content: validatedData.promptText, // promptText -> content
         numberOfQuestions: validatedData.count, // count -> numberOfQuestions
         optionsPerQuestion: 4, // Sabit 4 şık - API'nin beklediği parametre
-        model: validatedData.model,
+        model: validatedData.model, // Artık model ID'si gönderiliyor
         difficulty: validatedData.difficulty // Zorluk seviyesini API'ye gönder
       };
 

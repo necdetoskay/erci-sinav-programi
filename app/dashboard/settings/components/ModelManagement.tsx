@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { ModelTestDialog } from './ModelTestDialog';
+import { CollapsibleSection } from "@/components/ui/collapsible";
 
 interface ModelManagementProps {
   models: Model[];
@@ -36,12 +38,23 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
     id: '',
     name: '',
     details: '', // Açıklama alanı formdan kaldırıldı ama model yapısında korunuyor
-    codeName: '',
     apiCode: '',
     providerId: '',
     orderIndex: 0,
     isEnabled: true
   });
+
+  // Test dialog state'leri
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
+  const [testModel, setTestModel] = useState<Model | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    result?: string;
+    error?: string;
+    responseTime?: number;
+    rawResponse?: any;
+  } | null>(null);
+  const [isTestLoading, setIsTestLoading] = useState(false);
 
   // Validasyon hataları
   const [modelErrors, setModelErrors] = useState<{[key: string]: string}>({});
@@ -58,8 +71,8 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
       errors.providerId = "Provider seçimi gereklidir";
     }
 
-    if (!currentModel.codeName.trim()) {
-      errors.codeName = "Model kod adı gereklidir";
+    if (!currentModel.apiCode.trim()) {
+      errors.apiCode = "Model API kodu gereklidir";
     }
 
     setModelErrors(errors);
@@ -82,7 +95,6 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
           body: JSON.stringify({
             name: currentModel.name,
             details: currentModel.details,
-            codeName: currentModel.codeName,
             apiCode: currentModel.apiCode,
             providerId: currentModel.providerId,
             orderIndex: currentModel.orderIndex,
@@ -104,7 +116,6 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
           id: '',
           name: '',
           details: '',
-          codeName: '',
           apiCode: '',
           providerId: '',
           orderIndex: 0,
@@ -137,7 +148,6 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
           body: JSON.stringify({
             name: currentModel.name,
             details: currentModel.details,
-            codeName: currentModel.codeName,
             apiCode: currentModel.apiCode,
             providerId: currentModel.providerId,
             orderIndex: currentModel.orderIndex,
@@ -162,7 +172,6 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
           id: '',
           name: '',
           details: '', // Açıklama alanı formdan kaldırıldı ama model yapısında korunuyor
-          codeName: '',
           apiCode: '',
           providerId: '',
           orderIndex: 0,
@@ -249,6 +258,37 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
     }
   };
 
+  // Model test etme işlevi
+  const handleTestModel = async (model: Model) => {
+    setTestModel(model);
+    setTestResult(null);
+    setIsTestLoading(true);
+    setIsTestDialogOpen(true);
+
+    try {
+      const response = await fetch('/api/ai-models/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          modelId: model.id
+        }),
+      });
+
+      const data = await response.json();
+      setTestResult(data);
+    } catch (error) {
+      console.error('Model test hatası:', error);
+      setTestResult({
+        success: false,
+        error: 'Test sırasında bir hata oluştu'
+      });
+    } finally {
+      setIsTestLoading(false);
+    }
+  };
+
   // Provider adını getir
   const getProviderName = (providerId: string): string => {
     const provider = providers.find(p => p.id === providerId);
@@ -281,7 +321,6 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
               id: '',
               name: '',
               details: '', // Açıklama alanı formdan kaldırıldı ama model yapısında korunuyor
-              codeName: '',
               apiCode: '',
               providerId: selectedProviderId || '',
               orderIndex: 0,
@@ -306,7 +345,6 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
                 <TableRow>
                   <TableHead>Model Adı</TableHead>
                   {!selectedProviderId && <TableHead>Provider</TableHead>}
-                  <TableHead>Kod Adı</TableHead>
                   <TableHead>API Kodu</TableHead>
                   <TableHead>Sıra</TableHead>
                   <TableHead>Durum</TableHead>
@@ -320,16 +358,7 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
                     {!selectedProviderId && (
                       <TableCell>{getProviderName(model.providerId)}</TableCell>
                     )}
-                    <TableCell className="font-mono text-sm">{model.codeName}</TableCell>
-                    <TableCell>
-                      {model.apiCode ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                          API Kodu Var
-                        </span>
-                      ) : (
-                        <span className="text-red-500">Eksik</span>
-                      )}
-                    </TableCell>
+                    <TableCell className="font-mono text-sm">{model.apiCode}</TableCell>
                     <TableCell>{model.orderIndex}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
@@ -343,6 +372,13 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleTestModel(model)}
+                      >
+                        Test Et
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -422,33 +458,111 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="modelCodeName">Kod Adı *</Label>
-                <Input
-                  id="modelCodeName"
-                  value={currentModel.codeName}
-                  onChange={(e) => setCurrentModel({ ...currentModel, codeName: e.target.value })}
-                  placeholder="Örn: gpt-4, claude-3-opus"
-                />
-                {modelErrors.codeName && (
-                  <p className="text-xs text-destructive">{modelErrors.codeName}</p>
-                )}
-              </div>
+            <div className="space-y-1">
+              <Label htmlFor="modelApiCode">API Kodu *</Label>
+              <Textarea
+                id="modelApiCode"
+                value={currentModel.apiCode}
+                onChange={(e) => setCurrentModel({ ...currentModel, apiCode: e.target.value })}
+                placeholder="Örn: gpt-4, claude-3-opus, anthropic/claude-3-opus-20240229"
+                className="font-mono text-sm"
+                rows={6}
+              />
+              {modelErrors.apiCode && (
+                <p className="text-xs text-destructive">{modelErrors.apiCode}</p>
+              )}
 
-              <div className="space-y-1">
-                <Label htmlFor="modelOrder">Sıralama</Label>
-                <Input
-                  id="modelOrder"
-                  type="number"
-                  value={currentModel.orderIndex.toString()}
-                  onChange={(e) => setCurrentModel({
-                    ...currentModel,
-                    orderIndex: parseInt(e.target.value) || 0
-                  })}
-                  min="0"
-                />
-              </div>
+              <CollapsibleSection
+                title="API Kodu Hakkında Bilgi"
+                defaultOpen={false}
+                className="mt-2 border-l-2 border-muted pl-3"
+                titleClassName="text-sm text-muted-foreground"
+              >
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    API isteklerinde kullanılacak model kodu. OpenRouter için "anthropic/claude-3-opus-20240229" gibi tam model adını girin.
+                    Llama modelleri için "meta-llama/llama-4-maverick:free" formatını kullanın.
+                    <span className="font-semibold text-amber-600 dark:text-amber-400"> Önemli: </span>
+                    Model ID'si değil, model adı veya kodu kullanın. UUID veya benzeri ID formatları hatalara neden olabilir.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-semibold">Gelişmiş Kullanım:</span> JSON formatında API isteği gönderebilirsiniz.
+                    <code className="bg-muted px-1 rounded">{'{API_KEY}'}</code> değişkeni, provider'ın API anahtarı ile otomatik olarak değiştirilecektir.
+                    <code className="bg-muted px-1 rounded">{'{PROMPT}'}</code> değişkeni, test mesajı veya soru üretme promptu ile değiştirilecektir.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Bu yapı hem model test sayfasında hem de soru üretme işlemlerinde aynı şekilde çalışır.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-semibold">Özel API Formatları:</span> Farklı API formatları için özel yapılandırma kullanabilirsiniz.
+                    <code className="bg-muted px-1 rounded">url</code>, <code className="bg-muted px-1 rounded">method</code> ve
+                    <code className="bg-muted px-1 rounded">headers</code> alanlarını belirterek istediğiniz API'ye istek gönderebilirsiniz.
+                  </p>
+                  <div className="bg-muted p-2 rounded-md mt-1 text-xs font-mono">
+                    {`// Basit model adı
+meta-llama/llama-4-maverick:free
+
+// JSON formatı örneği
+{
+  "model": "meta-llama/llama-4-maverick:free",
+  "messages": [{"role": "user", "content": "{PROMPT}"}],
+  "headers": {
+    "Authorization": "Bearer {API_KEY}",
+    "HTTP-Referer": "https://kentkonut.com.tr",
+    "X-Title": "Kent Konut Sinav Portali",
+    "Content-Type": "application/json"
+  }
+}
+
+// Özel API endpoint örneği
+{
+  "url": "https://api.example.com/v1/chat",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer {API_KEY}",
+    "Content-Type": "application/json"
+  },
+  "model": "custom-model",
+  "prompt": "{PROMPT}",
+  "max_tokens": 1000
+}
+
+// JavaScript fetch kodu örneği
+fetch("https://openrouter.ai/api/v1/chat/completions", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer {API_KEY}",
+    "HTTP-Referer": "https://kentkonut.com.tr",
+    "X-Title": "Kent Konut Sinav Portali",
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    "model": "meta-llama/llama-4-maverick:free",
+    "messages": [
+      {
+        "role": "user",
+        "content": "PROMPT"
+      }
+    ]
+  })
+})`}
+                  </div>
+                </div>
+              </CollapsibleSection>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="modelOrder">Sıralama</Label>
+              <Input
+                id="modelOrder"
+                type="number"
+                value={currentModel.orderIndex.toString()}
+                onChange={(e) => setCurrentModel({
+                  ...currentModel,
+                  orderIndex: parseInt(e.target.value) || 0
+                })}
+                min="0"
+              />
             </div>
 
             <div className="flex items-center space-x-2 mb-2">
@@ -463,20 +577,7 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
               <Label htmlFor="modelStatus">Aktif</Label>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="modelApiCode">API Kodu</Label>
-              <Textarea
-                id="modelApiCode"
-                value={currentModel.apiCode || ''}
-                onChange={(e) => setCurrentModel({ ...currentModel, apiCode: e.target.value })}
-                placeholder={`{"model":"MODEL_NAME","messages":[{"role":"user","content":"PROMPT"}],"temperature":0.7,"max_tokens":2000}`}
-                className="font-mono text-xs"
-                rows={6}
-              />
-              <p className="text-xs text-muted-foreground">
-                API isteklerinin doğru şekilde gönderilmesi için kullanılacak JSON kodu. MODEL_NAME ve PROMPT değerleri otomatik olarak değiştirilecektir. JavaScript fetch kodu yerine sadece JSON formatında API isteği gövdesi kullanın.
-              </p>
-            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsModelDialogOpen(false)}>
@@ -488,6 +589,15 @@ export const ModelManagement: React.FC<ModelManagementProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Model Test Dialog */}
+      <ModelTestDialog
+        isOpen={isTestDialogOpen}
+        onClose={() => setIsTestDialogOpen(false)}
+        model={testModel}
+        testResult={testResult}
+        isLoading={isTestLoading}
+      />
     </>
   );
 };

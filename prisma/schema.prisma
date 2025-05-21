@@ -26,6 +26,7 @@ model User {
   refreshTokens RefreshToken[]
   customRole    CustomRole?    @relation(fields: [roleId], references: [id])
   settings      UserSetting[]
+  activities    Activity[]
 }
 
 model RefreshToken {
@@ -220,7 +221,6 @@ model Model {
   id         String   @id @default(cuid())
   name       String
   details    String?
-  codeName   String
   apiCode    String?
   orderIndex Int      @default(0)
   isEnabled  Boolean  @default(true)
@@ -244,6 +244,23 @@ model CustomRole {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   users       User[]
+}
+
+model Activity {
+  id          String   @id @default(cuid())
+  type        String   // exam_created, question_pool_created, exam_published, user_added, etc.
+  title       String
+  description String?
+  userId      String
+  entityId    String?  // ID of the related entity (exam, question pool, user, etc.)
+  entityType  String?  // Type of the related entity (exam, question_pool, user, etc.)
+  metadata    Json?    // Additional data related to the activity
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
 }
 
 enum ExamAttemptStatus {

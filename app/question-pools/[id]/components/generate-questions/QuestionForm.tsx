@@ -211,7 +211,7 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
                     <SelectGroup>
                       <SelectLabel className="dark:text-white font-medium">{providerName}</SelectLabel>
                       {providerModels.map(model => (
-                        <SelectItem key={model.id} value={model.codeName}>
+                        <SelectItem key={model.id} value={model.id}>
                           {model.name}
                         </SelectItem>
                       ))}
@@ -226,6 +226,11 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
         {getError("model") && (
           <p className="text-sm text-red-500">{getError("model")}</p>
         )}
+        <p className="text-xs text-muted-foreground">
+          Seçilen modelin API kodu, model ayarlarında tanımlandığı şekilde kullanılır.
+          API kodunda <code className="bg-muted px-1 rounded">{'{API_KEY}'}</code> değişkeni provider'ın API anahtarı ile,
+          <code className="bg-muted px-1 rounded">{'{PROMPT}'}</code> değişkeni ise yapay zeka ile soru üretme promptu ile otomatik olarak değiştirilir.
+        </p>
       </div>
 
       <Button

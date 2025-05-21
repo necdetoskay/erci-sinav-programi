@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Copy, Mail } from "lucide-react";
+import { useLoadingControl } from "@/hooks/use-loading";
 
 interface User {
   id: string;
@@ -223,6 +224,7 @@ Kent Konut A.Ş.`);
   async function saveEmailTemplate() {
     try {
       setSaving(true);
+      showLoading(); // Standart loading ekranını göster
 
       // Doğrudan kullanıcının girdiği şablonu kaydet
       // Dinamik alanlar zaten yer tutucu olarak girilmiş olmalı
@@ -276,6 +278,7 @@ Kent Konut A.Ş.`);
       toast.error(`E-posta şablonu kaydedilemedi: ${error.message}`);
     } finally {
       setSaving(false);
+      hideLoading(); // Loading ekranını gizle
     }
   }
 
@@ -290,6 +293,7 @@ Kent Konut A.Ş.`);
 
     try {
       setSending(true);
+      showLoading(); // Standart loading ekranını göster
 
       // E-posta gönderirken şablonu otomatik olarak kaydetme işlemini kaldırdık
       // Artık kullanıcı şablonu ayrı bir butonla kaydedebilir
@@ -330,17 +334,29 @@ Kent Konut A.Ş.`);
       toast.error(`E-posta gönderilirken bir hata oluştu: ${error.message}`);
     } finally {
       setSending(false);
+      hideLoading(); // Loading ekranını gizle
     }
   }
 
+  // Sayfa yüklenirken useLoadingControl hook'unu kullanarak standart loading ekranını göster
+  const { showLoading, hideLoading } = useLoadingControl();
+
+  useEffect(() => {
+    if (loading) {
+      showLoading();
+    } else {
+      hideLoading();
+    }
+
+    // Component unmount olduğunda loading ekranını gizle
+    return () => {
+      hideLoading();
+    };
+  }, [loading, showLoading, hideLoading]);
+
+  // Loading durumunda boş bir div döndür, asıl loading ekranı LoadingProvider tarafından gösterilecek
   if (loading) {
-    return (
-      <div className="container py-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
+    return <div className="hidden"></div>;
   }
 
   if (!exam) {
@@ -364,7 +380,7 @@ Kent Konut A.Ş.`);
   }
 
   // Sınav durumunu kontrol et
-  const isExamPublished = exam?.status === "published";
+  const isExamPublished = exam?.status === "active"; // "active" durumu, UI'da "Yayında" olarak gösterilir
 
   return (
     <div className="container py-6">

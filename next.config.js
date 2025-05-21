@@ -12,7 +12,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
 
-  // Static export'u devre dışı bırak
+  // Standalone output aktif
   output: 'standalone',
 
   // Static export sırasında oluşan hataları görmezden gel
@@ -24,8 +24,30 @@ const nextConfig = {
     appUrl: process.env.PUBLIC_SERVER_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
   },
 
+  // Webpack yapılandırması
+  webpack: (config, { isServer }) => {
+    // UI bileşenlerinin doğru şekilde çözümlenmesini sağla
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@/components': require('path').resolve(__dirname, './components'),
+      '@/lib': require('path').resolve(__dirname, './lib'),
+      '@/hooks': require('path').resolve(__dirname, './hooks'),
+      '@/providers': require('path').resolve(__dirname, './providers'),
+    };
+
+    // Eksik modülleri görmezden gel
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+    };
+
+    return config;
+  },
+
   experimental: {
     // Deneysel özellikler
+    esmExternals: 'loose', // ESM modüllerini daha esnek bir şekilde işle
   },
 
   // Güvenlik başlıkları

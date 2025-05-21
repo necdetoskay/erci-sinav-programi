@@ -58,7 +58,7 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
   apiStatusMessage
 }) => {
   // Hata mesajını getir
-  const getError = (path: string) => 
+  const getError = (path: string) =>
     (Array.isArray(formErrors) ? formErrors : [])
     .find(err => err && err.path && typeof err.path.includes === 'function' && err.path.includes(path))?.message;
 
@@ -78,30 +78,30 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
     <div className="space-y-4 py-4">
       {/* API Durumu */}
       {apiStatus === 'checking' && (
-        <Alert className="bg-yellow-50 border-yellow-400">
-          <Loader2 className="h-4 w-4 text-yellow-600 animate-spin" />
-          <AlertTitle>Yapay Zeka Durumu Kontrol Ediliyor</AlertTitle>
-          <AlertDescription>
+        <Alert className="bg-yellow-50 border-yellow-400 dark:bg-yellow-900 dark:border-yellow-700">
+          <Loader2 className="h-4 w-4 text-yellow-600 dark:text-yellow-300 animate-spin" />
+          <AlertTitle className="dark:text-white">Yapay Zeka Durumu Kontrol Ediliyor</AlertTitle>
+          <AlertDescription className="dark:text-gray-100">
             {apiStatusMessage}
           </AlertDescription>
         </Alert>
       )}
 
       {apiStatus === 'error' && (
-        <Alert className="bg-red-50 border-red-400">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertTitle>Yapay Zeka Servisi Hatası</AlertTitle>
-          <AlertDescription>
+        <Alert className="bg-red-50 border-red-400 dark:bg-red-900 dark:border-red-700">
+          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-300" />
+          <AlertTitle className="dark:text-white">Yapay Zeka Servisi Hatası</AlertTitle>
+          <AlertDescription className="dark:text-gray-100">
             {apiStatusMessage}
           </AlertDescription>
         </Alert>
       )}
 
       {apiStatus === 'ready' && (
-        <Alert className="bg-green-50 border-green-400">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertTitle>Yapay Zeka Servisi Hazır</AlertTitle>
-          <AlertDescription>
+        <Alert className="bg-green-50 border-green-400 dark:bg-green-900 dark:border-green-700">
+          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-300" />
+          <AlertTitle className="dark:text-white">Yapay Zeka Servisi Hazır</AlertTitle>
+          <AlertDescription className="dark:text-gray-100">
             {apiStatusMessage}
           </AlertDescription>
         </Alert>
@@ -175,10 +175,10 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
               return (
                 <React.Fragment key={providerId}>
                   <SelectGroup>
-                    <SelectLabel>{provider?.name || "Bilinmeyen Provider"}</SelectLabel>
-                    {providerModels.map(model => (
-                      <SelectItem key={model.id} value={model.codeName}>
-                        {model.name}
+                    <SelectLabel className="dark:text-white font-medium">{provider?.name || "Bilinmeyen Provider"}</SelectLabel>
+                    {providerModels.map(m => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -191,6 +191,11 @@ export const QuestionForm: React.FC<QuestionFormProps> = ({
         {getError("model") && (
           <p className="text-sm text-red-500">{getError("model")}</p>
         )}
+        <p className="text-xs text-muted-foreground">
+          Seçilen modelin API kodu, model ayarlarında tanımlandığı şekilde kullanılır.
+          API kodunda <code className="bg-muted px-1 rounded">{'{API_KEY}'}</code> değişkeni provider'ın API anahtarı ile,
+          <code className="bg-muted px-1 rounded">{'{PROMPT}'}</code> değişkeni ise metinden soru üretme promptu ile otomatik olarak değiştirilir.
+        </p>
       </div>
 
       <Button

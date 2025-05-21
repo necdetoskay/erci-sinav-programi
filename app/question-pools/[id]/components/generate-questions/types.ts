@@ -11,7 +11,7 @@ export interface Provider {
 export interface Model {
   id: string;
   name: string;
-  codeName: string;
+  apiCode?: string;
   details?: string;
   orderIndex: number;
   isEnabled: boolean;

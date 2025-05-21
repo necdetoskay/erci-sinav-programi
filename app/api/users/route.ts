@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
 import { getServerSession } from "@/lib/session";
+import { ActivityType, EntityType } from "@/lib/activity-logger";
 
 // Rol seviyesini döndüren yardımcı fonksiyon
 function getRoleLevel(role: string): number {
@@ -141,6 +142,23 @@ export async function POST(request: Request) {
         emailVerified: emailVerified ? new Date() : null // E-posta onay durumuna göre işaretle
       },
     });
+
+    // Aktivite kaydı oluştur
+    try {
+      await prisma.activity.create({
+        data: {
+          type: ActivityType.USER_CREATED,
+          title: 'Yeni Kullanıcı Oluşturuldu',
+          description: `"${name}" (${email}) kullanıcısı oluşturuldu`,
+          userId: session.user.id,
+          entityId: user.id,
+          entityType: EntityType.USER,
+        }
+      });
+    } catch (activityError) {
+      console.error('Error creating activity log:', activityError);
+      // Aktivite kaydı oluşturma hatası kullanıcı oluşturmayı etkilemeyecek
+    }
 
     const { password: _, ...userWithoutPassword } = user;
 

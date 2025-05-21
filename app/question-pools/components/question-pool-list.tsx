@@ -1,9 +1,17 @@
 import { LoadingLink } from "@/components/ui/loading-link";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { QuestionPool, User } from "@prisma/client";
+import { QuestionPoolStatus } from "@/types/prisma";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface QuestionPoolWithQuestions extends QuestionPool {
   questions: any[];
@@ -28,43 +36,57 @@ export function QuestionPoolList({ questionPools }: QuestionPoolListProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {questionPools.map((pool) => (
-        <LoadingLink key={pool.id} href={`/question-pools/${pool.id}`}>
-          <Card className="hover:bg-muted/50 transition-colors">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <CardTitle className="line-clamp-2">{pool.title}</CardTitle>
-                <Badge variant={pool.status === "ACTIVE" ? "default" : "secondary"}>
-                  {pool.status === "ACTIVE" ? "Aktif" : "Pasif"}
-                </Badge>
-              </div>
-              <CardDescription>
-                {formatDistanceToNow(new Date(pool.updatedAt), {
-                  addSuffix: true,
-                  locale: tr,
-                })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <div>
-                  <p>{pool.subject}</p>
+    <div className="border rounded-md overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="whitespace-nowrap">Başlık</TableHead>
+            <TableHead className="whitespace-nowrap">Konu</TableHead>
+            <TableHead className="whitespace-nowrap">Soru Sayısı</TableHead>
+            <TableHead className="whitespace-nowrap">Zorluk</TableHead>
+            <TableHead className="whitespace-nowrap">Oluşturan</TableHead>
+            <TableHead className="whitespace-nowrap">Son Güncelleme</TableHead>
+            <TableHead className="whitespace-nowrap">Durum</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {questionPools.map((pool) => (
+            <TableRow
+              key={pool.id}
+              className="cursor-pointer hover:bg-muted/50 transition-colors"
+            >
+              <LoadingLink
+                href={`/question-pools/${pool.id}`}
+                className="contents" // Makes the link behave like its children, spanning the entire row
+              >
+                <TableCell className="font-medium">{pool.title}</TableCell>
+                <TableCell>{pool.subject}</TableCell>
+                <TableCell>{pool.questions.length} Soru</TableCell>
+                <TableCell className="capitalize">{pool.difficulty}</TableCell>
+                <TableCell>
                   {pool.createdBy && (
-                    <p className="text-xs text-muted-foreground">
+                    <span className="text-muted-foreground">
                       {pool.createdBy.name || pool.createdBy.email}
-                    </p>
+                    </span>
                   )}
-                </div>
-                <div className="text-right">
-                  <p>{pool.questions.length} Soru</p>
-                  <p className="capitalize">{pool.difficulty}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </LoadingLink>
-      ))}
+                </TableCell>
+                <TableCell>
+                  {formatDistanceToNow(new Date(pool.updatedAt), {
+                    addSuffix: true,
+                    locale: tr,
+                  })}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={pool.status === QuestionPoolStatus.ACTIVE ? "default" : "secondary"}>
+                    {pool.status === QuestionPoolStatus.ACTIVE ? "Aktif" : "Pasif"}
+                    {/* Debug: {JSON.stringify(pool.status)} */}
+                  </Badge>
+                </TableCell>
+              </LoadingLink>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }

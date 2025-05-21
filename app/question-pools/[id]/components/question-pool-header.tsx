@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { QuestionPool } from "@/types/prisma";
+import { QuestionPool, QuestionPoolStatus } from "@/types/prisma";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
@@ -12,6 +12,12 @@ import { DeleteQuestionPool } from "./delete-question-pool";
 import { ExportQuestions } from "./export-questions";
 import { ImportQuestions } from "./import-questions";
 import { PrintQuestions } from "./print-questions";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface QuestionPoolHeaderProps {
   initialData: QuestionPool | null;
@@ -85,11 +91,62 @@ export function QuestionPoolHeader({ initialData }: QuestionPoolHeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <UpdateQuestionPool data={questionPool} />
-        <ExportQuestions id={questionPool.id} title={questionPool.title} />
-        <ImportQuestions id={questionPool.id} />
-        <PrintQuestions id={questionPool.id} title={questionPool.title} />
-        <DeleteQuestionPool id={questionPool.id} />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <UpdateQuestionPool data={questionPool} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Soru Havuzunu Düzenle</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <ImportQuestions id={questionPool.id} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Soruları İçe Aktar</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <ExportQuestions id={questionPool.id} title={questionPool.title} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Soruları Dışa Aktar</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <PrintQuestions id={questionPool.id} title={questionPool.title} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Soruları Yazdır</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <DeleteQuestionPool id={questionPool.id} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Soru Havuzunu Sil</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );

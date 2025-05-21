@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { CollapsibleSection } from "@/components/ui/collapsible";
 import { Eye, EyeOff } from "lucide-react";
 
 interface ProviderManagementProps {
@@ -310,6 +311,17 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
                 placeholder="Provider hakkında kısa açıklama"
                 rows={3}
               />
+              <CollapsibleSection
+                title="Açıklama Hakkında"
+                defaultOpen={false}
+                className="mt-2 border-l-2 border-muted pl-3"
+                titleClassName="text-sm text-muted-foreground"
+              >
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <p>Bu alan isteğe bağlıdır. Provider'ı tanımlamak için kısa bir açıklama ekleyebilirsiniz.</p>
+                  <p>Örneğin: "OpenAI API'si, GPT modelleri için kullanılır."</p>
+                </div>
+              </CollapsibleSection>
             </div>
 
             <div className="space-y-2">
@@ -326,10 +338,33 @@ export const ProviderManagement: React.FC<ProviderManagementProps> = ({
               {providerErrors.apiKey && (
                 <p className="text-sm text-destructive">{providerErrors.apiKey}</p>
               )}
+              {!isEditingProvider && (
+                <CollapsibleSection
+                  title="API Anahtarı Hakkında Bilgi"
+                  defaultOpen={false}
+                  className="mt-2 border-l-2 border-muted pl-3"
+                  titleClassName="text-sm text-muted-foreground"
+                >
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <p>API anahtarınızı ilgili sağlayıcının web sitesinden alabilirsiniz.</p>
+                    <p>API anahtarları güvenli bir şekilde saklanır ve şifrelenir.</p>
+                    <p>API anahtarınızı kimseyle paylaşmayın.</p>
+                  </div>
+                </CollapsibleSection>
+              )}
               {isEditingProvider && (
-                <p className="text-sm text-muted-foreground">
-                  Boş bırakırsanız mevcut API anahtarı korunacaktır
-                </p>
+                <CollapsibleSection
+                  title="Bilgilendirme"
+                  defaultOpen={false}
+                  className="mt-2 border-l-2 border-muted pl-3"
+                  titleClassName="text-sm text-muted-foreground"
+                >
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <p>Boş bırakırsanız mevcut API anahtarı korunacaktır.</p>
+                    <p>API anahtarınızı değiştirmek istiyorsanız, yeni anahtarı girin.</p>
+                    <p>API anahtarları güvenli bir şekilde saklanır ve şifrelenir.</p>
+                  </div>
+                </CollapsibleSection>
               )}
             </div>
           </div>
